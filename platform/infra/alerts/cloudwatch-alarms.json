@@ -1,0 +1,108 @@
+{
+  "alarms": [
+    {
+      "name": "pickket-api-error-rate-high",
+      "namespace": "AWS/ApplicationELB",
+      "metric": "HTTPCode_Target_5XX_Count",
+      "statistic": "Sum",
+      "threshold": 50,
+      "period": 300,
+      "evaluationPeriods": 2,
+      "comparisonOperator": "GreaterThanThreshold",
+      "description": "API 5xx 에러 50건/5분 초과"
+    },
+    {
+      "name": "pickket-db-connections-high",
+      "namespace": "AWS/RDS",
+      "metric": "DatabaseConnections",
+      "statistic": "Average",
+      "threshold": 80,
+      "period": 300,
+      "evaluationPeriods": 2,
+      "comparisonOperator": "GreaterThanThreshold",
+      "description": "DB 커넥션 80% 초과"
+    },
+    {
+      "name": "pickket-db-cpu-high",
+      "namespace": "AWS/RDS",
+      "metric": "CPUUtilization",
+      "statistic": "Average",
+      "threshold": 90,
+      "period": 300,
+      "evaluationPeriods": 3,
+      "comparisonOperator": "GreaterThanThreshold",
+      "description": "DB CPU 90% 초과 15분"
+    },
+    {
+      "name": "pickket-redis-memory-high",
+      "namespace": "AWS/ElastiCache",
+      "metric": "BytesUsedForCache",
+      "statistic": "Average",
+      "threshold": 80,
+      "period": 300,
+      "evaluationPeriods": 2,
+      "comparisonOperator": "GreaterThanThreshold",
+      "description": "Redis 메모리 80% 초과"
+    },
+    {
+      "name": "pickket-redis-evictions",
+      "namespace": "AWS/ElastiCache",
+      "metric": "Evictions",
+      "statistic": "Sum",
+      "threshold": 100,
+      "period": 300,
+      "evaluationPeriods": 1,
+      "comparisonOperator": "GreaterThanThreshold",
+      "description": "Redis eviction 100건/5분 — 메모리 부족"
+    },
+    {
+      "name": "pickket-celery-queue-depth",
+      "namespace": "Custom/Pickket",
+      "metric": "CeleryQueueDepth",
+      "statistic": "Average",
+      "threshold": 100,
+      "period": 300,
+      "evaluationPeriods": 2,
+      "comparisonOperator": "GreaterThanThreshold",
+      "_publisherStatus": "NO_PUBLISHER — put_metric_data(CeleryQueueDepth) 발행자가 레포에 0건. 발행자(주기적 Redis LLEN→put_metric_data) 추가 전까지 영구 INSUFFICIENT_DATA. backend 워크스트림 필요(별도 표시).",
+      "description": "Celery 큐 100건 이상 적체 (주의: 발행자 미구현 — 운영팀/백엔드 후속 필요)"
+    },
+    {
+      "name": "pickket-payment-failure-rate",
+      "namespace": "Pickket/Custom",
+      "metric": "PaymentErrorCount",
+      "statistic": "Sum",
+      "threshold": 10,
+      "period": 600,
+      "evaluationPeriods": 1,
+      "comparisonOperator": "GreaterThanThreshold",
+      "treatMissingData": "notBreaching",
+      "description": "결제 에러 10건/10분 초과 (로그 메트릭 필터 PaymentErrors→PaymentErrorCount 기준; 전제: infra/aws/cloudwatch-log-alerts.sh 적용)"
+    },
+    {
+      "name": "pickket-ecs-task-unhealthy",
+      "namespace": "AWS/ECS",
+      "metric": "RunningTaskCount",
+      "statistic": "Minimum",
+      "threshold": 1,
+      "period": 60,
+      "evaluationPeriods": 3,
+      "comparisonOperator": "LessThanThreshold",
+      "description": "ECS 실행 중인 태스크 1개 미만 (서비스 다운)"
+    },
+    {
+      "name": "pickket-api-latency-p95",
+      "namespace": "AWS/ApplicationELB",
+      "metric": "TargetResponseTime",
+      "statistic": "p95",
+      "threshold": 5.0,
+      "period": 300,
+      "evaluationPeriods": 2,
+      "comparisonOperator": "GreaterThanThreshold",
+      "description": "API P95 응답시간 5초 초과"
+    }
+  ],
+  "snsTopicArn": "arn:aws:sns:ap-northeast-2:ACCOUNT_ID:pickket-alerts",
+  "telegramBotToken": "${TELEGRAM_BOT_TOKEN}",
+  "telegramChatId": "${TELEGRAM_CHAT_ID}"
+}

@@ -1,0 +1,308 @@
+<svg style="enable-background:new 0 0 4096 4096;" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 -0 3793 3158">
+  <defs>
+    <style type="text/css">
+      .section-shape { stroke: #444; stroke-width: 2; }
+      .section-label { font-family: Arial, sans-serif; font-weight: bold; pointer-events: none; }
+    </style>
+  </defs>
+
+  <!-- Stage area -->
+  <g sprite-identifier="stage">
+    <rect x="1400" y="100" width="1000" height="200" rx="40" fill="#333" stroke="#666" stroke-width="3"/>
+    <text x="1900" y="220" text-anchor="middle" fill="#999" font-size="80" font-weight="bold" font-family="Arial">STAGE</text>
+  </g>
+
+  <!-- T1 - Stage Left -->
+  <g sprite-identifier="sT1">
+    <path d="M1100,150 L1350,150 L1350,380 L1100,380 Z" fill="#87f287" class="section-shape"/>
+    <text x="1225" y="280" text-anchor="middle" fill="#111" font-size="40" class="section-label">T1</text>
+  </g>
+
+  <!-- T2 - Stage Right -->
+  <g sprite-identifier="sT2">
+    <path d="M2450,150 L2700,150 L2700,380 L2450,380 Z" fill="#87f287" class="section-shape"/>
+    <text x="2575" y="280" text-anchor="middle" fill="#111" font-size="40" class="section-label">T2</text>
+  </g>
+
+  <!-- W0 - Front Center -->
+  <g sprite-identifier="sW0">
+    <path d="M1500,400 L2300,400 L2350,600 L1450,600 Z" fill="#87f287" class="section-shape"/>
+    <text x="1900" y="520" text-anchor="middle" fill="#111" font-size="48" class="section-label">W0</text>
+  </g>
+
+  <!-- W-F1 to W-F12: West Floor sections (cyan, VIP) arranged in 2 rows of 6 -->
+  <g sprite-identifier="sW-F1">
+    <path d="M400,420 L600,420 L600,560 L400,560 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="500" y="500" text-anchor="middle" fill="#111" font-size="30" class="section-label">W-F1</text>
+  </g>
+  <g sprite-identifier="sW-F2">
+    <path d="M620,420 L820,420 L820,560 L620,560 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="720" y="500" text-anchor="middle" fill="#111" font-size="30" class="section-label">W-F2</text>
+  </g>
+  <g sprite-identifier="sW-F3">
+    <path d="M840,420 L1040,420 L1040,560 L840,560 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="940" y="500" text-anchor="middle" fill="#111" font-size="30" class="section-label">W-F3</text>
+  </g>
+  <g sprite-identifier="sW-F4">
+    <path d="M400,580 L600,580 L600,720 L400,720 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="500" y="660" text-anchor="middle" fill="#111" font-size="30" class="section-label">W-F4</text>
+  </g>
+  <g sprite-identifier="sW-F5">
+    <path d="M620,580 L820,580 L820,720 L620,720 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="720" y="660" text-anchor="middle" fill="#111" font-size="30" class="section-label">W-F5</text>
+  </g>
+  <g sprite-identifier="sW-F6">
+    <path d="M840,580 L1040,580 L1040,720 L840,720 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="940" y="660" text-anchor="middle" fill="#111" font-size="30" class="section-label">W-F6</text>
+  </g>
+  <g sprite-identifier="sW-F7">
+    <path d="M400,740 L600,740 L600,880 L400,880 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="500" y="820" text-anchor="middle" fill="#111" font-size="30" class="section-label">W-F7</text>
+  </g>
+  <g sprite-identifier="sW-F8">
+    <path d="M620,740 L820,740 L820,880 L620,880 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="720" y="820" text-anchor="middle" fill="#111" font-size="30" class="section-label">W-F8</text>
+  </g>
+  <g sprite-identifier="sW-F9">
+    <path d="M840,740 L1040,740 L1040,880 L840,880 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="940" y="820" text-anchor="middle" fill="#111" font-size="30" class="section-label">W-F9</text>
+  </g>
+  <g sprite-identifier="sW-F10">
+    <path d="M400,900 L600,900 L600,1040 L400,1040 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="500" y="980" text-anchor="middle" fill="#111" font-size="28" class="section-label">W-F10</text>
+  </g>
+  <g sprite-identifier="sW-F11">
+    <path d="M620,900 L820,900 L820,1040 L620,1040 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="720" y="980" text-anchor="middle" fill="#111" font-size="28" class="section-label">W-F11</text>
+  </g>
+  <g sprite-identifier="sW-F12">
+    <path d="M840,900 L1040,900 L1040,1040 L840,1040 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="940" y="980" text-anchor="middle" fill="#111" font-size="28" class="section-label">W-F12</text>
+  </g>
+
+  <!-- S-F1 to S-F10: South Floor sections (cyan, VIP) -->
+  <g sprite-identifier="sS-F1">
+    <path d="M2760,420 L2960,420 L2960,560 L2760,560 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="2860" y="500" text-anchor="middle" fill="#111" font-size="30" class="section-label">S-F1</text>
+  </g>
+  <g sprite-identifier="sS-F2">
+    <path d="M2980,420 L3180,420 L3180,560 L2980,560 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="3080" y="500" text-anchor="middle" fill="#111" font-size="30" class="section-label">S-F2</text>
+  </g>
+  <g sprite-identifier="sS-F3">
+    <path d="M3200,420 L3400,420 L3400,560 L3200,560 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="3300" y="500" text-anchor="middle" fill="#111" font-size="30" class="section-label">S-F3</text>
+  </g>
+  <g sprite-identifier="sS-F4">
+    <path d="M2760,580 L2960,580 L2960,720 L2760,720 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="2860" y="660" text-anchor="middle" fill="#111" font-size="30" class="section-label">S-F4</text>
+  </g>
+  <g sprite-identifier="sS-F5">
+    <path d="M2980,580 L3180,580 L3180,720 L2980,720 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="3080" y="660" text-anchor="middle" fill="#111" font-size="30" class="section-label">S-F5</text>
+  </g>
+  <g sprite-identifier="sS-F6">
+    <path d="M3200,580 L3400,580 L3400,720 L3200,720 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="3300" y="660" text-anchor="middle" fill="#111" font-size="30" class="section-label">S-F6</text>
+  </g>
+  <g sprite-identifier="sS-F7">
+    <path d="M2760,740 L2960,740 L2960,880 L2760,880 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="2860" y="820" text-anchor="middle" fill="#111" font-size="30" class="section-label">S-F7</text>
+  </g>
+  <g sprite-identifier="sS-F8">
+    <path d="M2980,740 L3180,740 L3180,880 L2980,880 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="3080" y="820" text-anchor="middle" fill="#111" font-size="30" class="section-label">S-F8</text>
+  </g>
+  <g sprite-identifier="sS-F9">
+    <path d="M3200,740 L3400,740 L3400,880 L3200,880 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="3300" y="820" text-anchor="middle" fill="#111" font-size="30" class="section-label">S-F9</text>
+  </g>
+  <g sprite-identifier="sS-F10">
+    <path d="M2980,900 L3180,900 L3180,1040 L2980,1040 Z" fill="#abfcf7" class="section-shape"/>
+    <text x="3080" y="980" text-anchor="middle" fill="#111" font-size="28" class="section-label">S-F10</text>
+  </g>
+
+  <!-- E1-E10: East sections (curved, main seating on the left) -->
+  <g sprite-identifier="sE1">
+    <path d="M200,650 L380,620 L400,820 L220,850 Z" fill="#87f287" class="section-shape"/>
+    <text x="300" y="745" text-anchor="middle" fill="#111" font-size="36" class="section-label">E1</text>
+  </g>
+  <g sprite-identifier="sE2">
+    <path d="M180,870 L380,840 L400,1040 L200,1070 Z" fill="#87f287" class="section-shape"/>
+    <text x="290" y="960" text-anchor="middle" fill="#111" font-size="36" class="section-label">E2</text>
+  </g>
+  <g sprite-identifier="sE3">
+    <path d="M160,1090 L380,1060 L400,1260 L180,1290 Z" fill="#87f287" class="section-shape"/>
+    <text x="280" y="1180" text-anchor="middle" fill="#111" font-size="36" class="section-label">E3</text>
+  </g>
+  <g sprite-identifier="sE4">
+    <path d="M140,1310 L380,1280 L400,1480 L160,1510 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="270" y="1400" text-anchor="middle" fill="#111" font-size="36" class="section-label">E4</text>
+  </g>
+  <g sprite-identifier="sE5">
+    <path d="M130,1530 L380,1500 L400,1700 L150,1730 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="265" y="1620" text-anchor="middle" fill="#111" font-size="36" class="section-label">E5</text>
+  </g>
+  <g sprite-identifier="sE6">
+    <path d="M120,1750 L380,1720 L400,1920 L140,1950 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="260" y="1840" text-anchor="middle" fill="#111" font-size="36" class="section-label">E6</text>
+  </g>
+  <g sprite-identifier="sE7">
+    <path d="M110,1970 L380,1940 L400,2140 L130,2170 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="255" y="2060" text-anchor="middle" fill="#111" font-size="36" class="section-label">E7</text>
+  </g>
+  <g sprite-identifier="sE8">
+    <path d="M120,2190 L380,2160 L400,2360 L140,2390 Z" fill="#87f287" class="section-shape"/>
+    <text x="260" y="2280" text-anchor="middle" fill="#111" font-size="36" class="section-label">E8</text>
+  </g>
+  <g sprite-identifier="sE9">
+    <path d="M140,2410 L380,2380 L400,2580 L160,2610 Z" fill="#87f287" class="section-shape"/>
+    <text x="270" y="2500" text-anchor="middle" fill="#111" font-size="36" class="section-label">E9</text>
+  </g>
+  <g sprite-identifier="sE10">
+    <path d="M160,2630 L380,2600 L400,2800 L180,2830 Z" fill="#87f287" class="section-shape"/>
+    <text x="280" y="2720" text-anchor="middle" fill="#111" font-size="36" class="section-label">E10</text>
+  </g>
+
+  <!-- N1-N11: North sections (bottom, curved arc) -->
+  <g sprite-identifier="sN1">
+    <path d="M500,2700 L720,2700 L740,2900 L520,2900 Z" fill="#87f287" class="section-shape"/>
+    <text x="620" y="2810" text-anchor="middle" fill="#111" font-size="36" class="section-label">N1</text>
+  </g>
+  <g sprite-identifier="sN2">
+    <path d="M760,2720 L980,2720 L1000,2920 L780,2920 Z" fill="#87f287" class="section-shape"/>
+    <text x="880" y="2830" text-anchor="middle" fill="#111" font-size="36" class="section-label">N2</text>
+  </g>
+  <g sprite-identifier="sN3">
+    <path d="M1020,2740 L1240,2740 L1260,2940 L1040,2940 Z" fill="#87f287" class="section-shape"/>
+    <text x="1140" y="2850" text-anchor="middle" fill="#111" font-size="36" class="section-label">N3</text>
+  </g>
+  <g sprite-identifier="sN4">
+    <path d="M1280,2750 L1500,2750 L1520,2950 L1300,2950 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="1400" y="2860" text-anchor="middle" fill="#111" font-size="36" class="section-label">N4</text>
+  </g>
+  <g sprite-identifier="sN5">
+    <path d="M1540,2760 L1760,2760 L1780,2960 L1560,2960 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="1660" y="2870" text-anchor="middle" fill="#111" font-size="36" class="section-label">N5</text>
+  </g>
+  <g sprite-identifier="sN6">
+    <path d="M1800,2760 L2020,2760 L2040,2960 L1820,2960 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="1920" y="2870" text-anchor="middle" fill="#111" font-size="36" class="section-label">N6</text>
+  </g>
+  <g sprite-identifier="sN7">
+    <path d="M2060,2760 L2280,2760 L2300,2960 L2080,2960 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="2180" y="2870" text-anchor="middle" fill="#111" font-size="36" class="section-label">N7</text>
+  </g>
+  <g sprite-identifier="sN8">
+    <path d="M2320,2750 L2540,2750 L2560,2950 L2340,2950 Z" fill="#87f287" class="section-shape"/>
+    <text x="2440" y="2860" text-anchor="middle" fill="#111" font-size="36" class="section-label">N8</text>
+  </g>
+  <g sprite-identifier="sN9">
+    <path d="M2580,2740 L2800,2740 L2820,2940 L2600,2940 Z" fill="#87f287" class="section-shape"/>
+    <text x="2700" y="2850" text-anchor="middle" fill="#111" font-size="36" class="section-label">N9</text>
+  </g>
+  <g sprite-identifier="sN10">
+    <path d="M2840,2720 L3060,2720 L3080,2920 L2860,2920 Z" fill="#87f287" class="section-shape"/>
+    <text x="2960" y="2830" text-anchor="middle" fill="#111" font-size="36" class="section-label">N10</text>
+  </g>
+  <g sprite-identifier="sN11">
+    <path d="M3100,2700 L3300,2700 L3280,2900 L3080,2900 Z" fill="#87f287" class="section-shape"/>
+    <text x="3190" y="2810" text-anchor="middle" fill="#111" font-size="36" class="section-label">N11</text>
+  </g>
+
+  <!-- S1-S11: South sections (right side, mirroring E sections) -->
+  <g sprite-identifier="sS1">
+    <path d="M3400,620 L3580,650 L3560,850 L3380,820 Z" fill="#87f287" class="section-shape"/>
+    <text x="3480" y="745" text-anchor="middle" fill="#111" font-size="36" class="section-label">S1</text>
+  </g>
+  <g sprite-identifier="sS2">
+    <path d="M3380,840 L3600,870 L3580,1070 L3400,1040 Z" fill="#87f287" class="section-shape"/>
+    <text x="3490" y="960" text-anchor="middle" fill="#111" font-size="36" class="section-label">S2</text>
+  </g>
+  <g sprite-identifier="sS3">
+    <path d="M3400,1060 L3620,1090 L3600,1290 L3380,1260 Z" fill="#87f287" class="section-shape"/>
+    <text x="3500" y="1180" text-anchor="middle" fill="#111" font-size="36" class="section-label">S3</text>
+  </g>
+  <g sprite-identifier="sS4">
+    <path d="M3380,1280 L3640,1310 L3620,1510 L3400,1480 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="3510" y="1400" text-anchor="middle" fill="#111" font-size="36" class="section-label">S4</text>
+  </g>
+  <g sprite-identifier="sS5">
+    <path d="M3400,1500 L3650,1530 L3630,1730 L3380,1700 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="3515" y="1620" text-anchor="middle" fill="#111" font-size="36" class="section-label">S5</text>
+  </g>
+  <g sprite-identifier="sS6">
+    <path d="M3380,1720 L3660,1750 L3640,1950 L3400,1920 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="3520" y="1840" text-anchor="middle" fill="#111" font-size="36" class="section-label">S6</text>
+  </g>
+  <g sprite-identifier="sS7">
+    <path d="M3400,1940 L3670,1970 L3650,2170 L3380,2140 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="3525" y="2060" text-anchor="middle" fill="#111" font-size="36" class="section-label">S7</text>
+  </g>
+  <g sprite-identifier="sS8">
+    <path d="M3380,2160 L3660,2190 L3640,2390 L3400,2360 Z" fill="#87f287" class="section-shape"/>
+    <text x="3520" y="2280" text-anchor="middle" fill="#111" font-size="36" class="section-label">S8</text>
+  </g>
+  <g sprite-identifier="sS9">
+    <path d="M3400,2380 L3640,2410 L3620,2610 L3380,2580 Z" fill="#87f287" class="section-shape"/>
+    <text x="3510" y="2500" text-anchor="middle" fill="#111" font-size="36" class="section-label">S9</text>
+  </g>
+  <g sprite-identifier="sS10">
+    <path d="M3380,2600 L3620,2630 L3600,2830 L3400,2800 Z" fill="#87f287" class="section-shape"/>
+    <text x="3500" y="2720" text-anchor="middle" fill="#111" font-size="36" class="section-label">S10</text>
+  </g>
+  <g sprite-identifier="sS11">
+    <path d="M3400,2820 L3580,2850 L3560,3050 L3380,3020 Z" fill="#87f287" class="section-shape"/>
+    <text x="3480" y="2940" text-anchor="middle" fill="#111" font-size="36" class="section-label">S11</text>
+  </g>
+
+  <!-- W1-W12: West sections (center inner ring, around the floor) -->
+  <g sprite-identifier="sW1">
+    <path d="M1100,650 L1350,620 L1370,800 L1120,830 Z" fill="#87f287" class="section-shape"/>
+    <text x="1235" y="730" text-anchor="middle" fill="#111" font-size="36" class="section-label">W1</text>
+  </g>
+  <g sprite-identifier="sW2">
+    <path d="M1100,850 L1370,820 L1390,1000 L1120,1030 Z" fill="#87f287" class="section-shape"/>
+    <text x="1245" y="930" text-anchor="middle" fill="#111" font-size="36" class="section-label">W2</text>
+  </g>
+  <g sprite-identifier="sW3">
+    <path d="M1100,1050 L1390,1020 L1400,1200 L1110,1230 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="1250" y="1130" text-anchor="middle" fill="#111" font-size="36" class="section-label">W3</text>
+  </g>
+  <g sprite-identifier="sW4">
+    <path d="M1100,1250 L1400,1220 L1410,1400 L1110,1430 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="1255" y="1330" text-anchor="middle" fill="#111" font-size="36" class="section-label">W4</text>
+  </g>
+  <g sprite-identifier="sW5">
+    <path d="M1100,1450 L1410,1420 L1420,1600 L1110,1630 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="1260" y="1530" text-anchor="middle" fill="#111" font-size="36" class="section-label">W5</text>
+  </g>
+  <g sprite-identifier="sW6">
+    <path d="M1100,1650 L1420,1620 L1430,1800 L1110,1830 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="1265" y="1730" text-anchor="middle" fill="#111" font-size="36" class="section-label">W6</text>
+  </g>
+  <g sprite-identifier="sW7">
+    <path d="M1380,1820 L1100,1850 L1120,2030 L1400,2000 Z" fill="#87f287" class="section-shape"/>
+    <text x="1250" y="1930" text-anchor="middle" fill="#111" font-size="36" class="section-label">W7</text>
+  </g>
+  <g sprite-identifier="sW8">
+    <path d="M1100,2050 L1400,2020 L1420,2200 L1120,2230 Z" fill="#87f287" class="section-shape"/>
+    <text x="1260" y="2130" text-anchor="middle" fill="#111" font-size="36" class="section-label">W8</text>
+  </g>
+  <g sprite-identifier="sW9">
+    <path d="M2380,620 L2680,650 L2660,830 L2400,800 Z" fill="#87f287" class="section-shape"/>
+    <text x="2530" y="730" text-anchor="middle" fill="#111" font-size="36" class="section-label">W9</text>
+  </g>
+  <g sprite-identifier="sW10">
+    <path d="M2400,820 L2660,850 L2640,1030 L2380,1000 Z" fill="#87f287" class="section-shape"/>
+    <text x="2520" y="930" text-anchor="middle" fill="#111" font-size="36" class="section-label">W10</text>
+  </g>
+  <g sprite-identifier="sW11">
+    <path d="M2380,1020 L2640,1050 L2620,1230 L2400,1200 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="2510" y="1130" text-anchor="middle" fill="#111" font-size="36" class="section-label">W11</text>
+  </g>
+  <g sprite-identifier="sW12">
+    <path d="M2400,1220 L2620,1250 L2600,1430 L2380,1400 Z" fill="#fcd9ae" class="section-shape"/>
+    <text x="2500" y="1330" text-anchor="middle" fill="#111" font-size="36" class="section-label">W12</text>
+  </g>
+</svg>

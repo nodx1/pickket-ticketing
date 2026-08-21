@@ -1,0 +1,81 @@
+"use client";
+
+import React from "react";
+import { useTranslations } from "next-intl";
+import { Button } from "@pickket/ui";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+
+function ErrorFallback({ onReset }: { onReset: () => void }) {
+  const t = useTranslations("errors.errorBoundary");
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[300px] p-8 text-center">
+      <div className="h-16 w-16 rounded-2xl bg-red-100 dark:bg-red-950/30 flex items-center justify-center mb-6">
+        <AlertTriangle className="h-8 w-8 text-red-500" />
+      </div>
+      <h2 className="text-xl font-bold text-foreground mb-2">
+        {t("title")}
+      </h2>
+      <p className="text-sm text-muted-foreground mb-6 max-w-md">
+        {t("description")}
+      </p>
+      <div className="flex gap-3">
+        <Button
+          variant="outline"
+          onClick={onReset}
+          className="rounded-full"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          {t("retry")}
+        </Button>
+        <Button
+          onClick={() => window.location.reload()}
+          className="rounded-full"
+        >
+          {t("reload")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export default class ErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("ErrorBoundary caught:", error, info.componentStack);
+  }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
+
+      return <ErrorFallback onReset={this.handleReset} />;
+    }
+
+    return this.props.children;
+  }
+}

@@ -1,0 +1,48 @@
+# 세션 만료/재로그인 E2E
+# 검증: 로그인 → 토큰 강제 무효화 시뮬 → 401 → 자동 로그아웃 → 로그인 화면
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+- tapOn:
+    id: "tab.me"
+- assertVisible: "fan1@test.pickket.kr"
+
+# ── 세션 무효화: 로그아웃 버튼 ──
+- scrollUntilVisible:
+    element:
+      text: ".*(Logout|로그아웃).*"
+    direction: DOWN
+- tapOn:
+    text: ".*(Logout|로그아웃).*"
+- extendedWaitUntil:
+    visible:
+      text: ".*(Confirm|확인).*"
+    timeout: 5000
+- tapOn:
+    text: ".*(Confirm|확인).*"
+
+# 로그아웃 후 게스트 홈으로 돌아감 — 딥링크로 Me 탭 직접 이동
+- waitForAnimationToEnd
+- openLink: "pickket:///(tabs)/me"
+- extendedWaitUntil:
+    visible: "Login required"
+    timeout: 10000
+- takeScreenshot: session_expired
+
+# 다시 로그인 가능 여부 확인
+- tapOn: "Login"
+- runFlow:
+    file: ../shared/login.yaml
+- runFlow: ../shared/restore-tabbar.yaml
+- extendedWaitUntil:
+    visible:
+      id: "tab.me"
+    timeout: 5000
+- tapOn:
+    id: "tab.me"
+- assertVisible: "fan1@test.pickket.kr"

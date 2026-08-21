@@ -1,0 +1,3 @@
+ALTER TABLE events
+ADD COLUMN IF NOT EXISTS transport_info TEXT,
+ADD COLUMN IF NOT EXISTS parking_info TEXT;

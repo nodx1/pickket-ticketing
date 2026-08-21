@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pickket - 잠시만 기다려주세요</title>
+  <meta http-equiv="refresh" content="30">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a0a;
+      color: #fafafa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .container {
+      max-width: 420px;
+      text-align: center;
+    }
+    .logo {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 2rem;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+    p {
+      color: #a1a1aa;
+      font-size: 0.875rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #27272a;
+      border-top-color: #8b5cf6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .countdown {
+      font-size: 0.75rem;
+      color: #71717a;
+    }
+    .countdown span {
+      font-variant-numeric: tabular-nums;
+    }
+    .contact {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #27272a;
+      font-size: 0.75rem;
+      color: #52525b;
+    }
+    .contact a {
+      color: #8b5cf6;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">Pickket</div>
+    <div class="spinner"></div>
+    <h1>현재 접속이 폭주하고 있습니다</h1>
+    <p>
+      많은 분들이 동시에 접속하고 있어 잠시 대기 중입니다.<br>
+      페이지가 자동으로 새로고침됩니다. 잠시만 기다려주세요.
+    </p>
+    <div class="countdown">
+      <span id="timer">30</span>초 후 자동 새로고침
+    </div>
+    <div class="contact">
+      문의: <a href="mailto:support@pickket.kr">support@pickket.kr</a>
+    </div>
+  </div>
+  <script>
+    let seconds = 30;
+    const el = document.getElementById('timer');
+    setInterval(() => {
+      seconds--;
+      if (el) el.textContent = String(Math.max(0, seconds));
+    }, 1000);
+  </script>
+</body>
+</html>

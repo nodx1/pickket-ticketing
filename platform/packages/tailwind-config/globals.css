@@ -1,0 +1,746 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@source "../../packages/ui/src";
+@source "../../packages/lib/src";
+@source "../../packages/store/src";
+@source "../../apps/consumer/src";
+@source "../../apps/studio/src";
+@source "../../apps/admin/src";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * Step 1: :root / .dark — 원시 CSS 변수 (다크모드 전환)
+ *
+ * Tailwind v4 공식 패턴:
+ *  ① :root/.dark 에 원시 변수 선언
+ *  ② @theme inline 으로 --color-* 브릿지
+ *  ③ Tailwind가 color-mix(in oklab, ...) 자동 생성
+ *     → gradient/opacity 모두 작동 + 다크모드 전환 OK
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+:root {
+  --radius: 0.75rem;
+
+  /* ── shadcn 시맨틱 토큰 (라이트) — DICE-inspired monochrome ── */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #0a0a0a;
+  --destructive: #dc2626;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: rgba(0, 0, 0, 0.2);
+  --chart-1: #0a0a0a;
+  --chart-2: #059669;
+  --chart-3: #d97706;
+  --chart-4: #525252;
+  --chart-5: #a3a3a3;
+
+  /* ── Sidebar ── */
+  --sidebar: #fafafa;
+  --sidebar-foreground: #404040;
+  --sidebar-primary: #0a0a0a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f5;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #0a0a0a;
+
+  /* ── Brand (다크모드 불변) ── */
+  --brand-hover: #262626;
+  --surface-dim: #fafafa;
+
+  /* ── Overlay / SVG 토큰 ── */
+  --overlay-subtle: rgba(0, 0, 0, 0.04);
+  --overlay-light: rgba(0, 0, 0, 0.08);
+  --overlay-medium: rgba(0, 0, 0, 0.15);
+  --stroke-subtle: rgba(0, 0, 0, 0.08);
+  --stroke-light: rgba(0, 0, 0, 0.12);
+
+  /* ── "항상 다크" 섹션용 토큰 ── */
+  --on-dark-subtle: rgba(255, 255, 255, 0.05);
+  --on-dark-border: rgba(255, 255, 255, 0.10);
+  --on-dark-text: rgba(255, 255, 255, 0.60);
+  --on-dark-text-strong: rgba(255, 255, 255, 0.80);
+
+  /* ── Pickket Event Detail 토큰 (라이트) ── */
+  --pk-bg: #FFFFFF;
+  --pk-surface: #f5f5f5;
+  --pk-surface-hover: #e5e5e5;
+  --pk-border-subtle: rgba(0, 0, 0, 0.10);
+  --pk-border-hover: rgba(0, 0, 0, 0.18);
+  --pk-text: #0a0a0a;
+  --pk-text-secondary: #737373;
+  --pk-text-muted: #a3a3a3;
+  --pk-accent: #0a0a0a;
+  --pk-accent-light: #404040;
+  --pk-accent-glow: rgba(0, 0, 0, 0.08);
+  --pk-fair: #059669;
+  --pk-fair-glow: rgba(5, 150, 105, 0.12);
+  --pk-hot: #dc2626;
+  --pk-hot-glow: rgba(220, 38, 38, 0.10);
+  --pk-warm: #d97706;
+  --pk-glass: rgba(255, 255, 255, 0.85);
+  --pk-glass-border: rgba(0, 0, 0, 0.06);
+}
+
+.dark {
+  /* DICE-inspired monochrome dark */
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #171717;
+  --card-foreground: #fafafa;
+  --popover: #171717;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #0a0a0a;
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+  --accent: #262626;
+  --accent-foreground: #fafafa;
+  --destructive: #f87171;
+  --border: #262626;
+  --input: #262626;
+  --ring: rgba(255, 255, 255, 0.2);
+  --chart-1: #fafafa;
+  --chart-2: #34d399;
+  --chart-3: #fbbf24;
+  --chart-4: #a3a3a3;
+  --chart-5: #737373;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #fafafa;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #262626;
+  --sidebar-ring: #fafafa;
+  --brand-hover: #d4d4d4;
+  --surface-dim: #171717;
+
+  /* ── Overlay / SVG 토큰 (다크모드) ── */
+  --overlay-subtle: rgba(255, 255, 255, 0.04);
+  --overlay-light: rgba(255, 255, 255, 0.08);
+  --overlay-medium: rgba(255, 255, 255, 0.15);
+  --stroke-subtle: rgba(255, 255, 255, 0.08);
+  --stroke-light: rgba(255, 255, 255, 0.12);
+
+  /* ── Pickket Event Detail 토큰 (다크) ── */
+  --pk-bg: #0a0a0a;
+  --pk-surface: #171717;
+  --pk-surface-hover: #262626;
+  --pk-border-subtle: #262626;
+  --pk-border-hover: #404040;
+  --pk-text: #fafafa;
+  --pk-text-secondary: #a3a3a3;
+  --pk-text-muted: #737373;
+  --pk-accent: #fafafa;
+  --pk-accent-light: #d4d4d4;
+  --pk-accent-glow: rgba(255, 255, 255, 0.1);
+  --pk-fair: #34d399;
+  --pk-fair-glow: rgba(52, 211, 153, 0.2);
+  --pk-hot: #f87171;
+  --pk-hot-glow: rgba(248, 113, 113, 0.15);
+  --pk-warm: #fbbf24;
+  --pk-glass: rgba(10, 10, 10, 0.85);
+  --pk-glass-border: rgba(255, 255, 255, 0.06);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * Step 2: @theme inline — 원시 변수 → Tailwind 유틸리티 브릿지
+ *
+ * inline 키워드 = Tailwind가 var(--primary) 직접 참조
+ *  → 브라우저가 런타임에 resolve → .dark 오버라이드 작동
+ *  → color-mix(in oklab, ...) 로 opacity/gradient 분해 OK
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@theme inline {
+  /* ── shadcn 시맨틱 색상 ── */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* ── Sidebar ── */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* ── Brand / Surface ── */
+  --color-brand-hover: var(--brand-hover);
+  --color-surface-dim: var(--surface-dim);
+
+  /* ── Overlay / SVG ── */
+  --color-overlay-subtle: var(--overlay-subtle);
+  --color-overlay-light: var(--overlay-light);
+  --color-overlay-medium: var(--overlay-medium);
+  --color-stroke-subtle: var(--stroke-subtle);
+  --color-stroke-light: var(--stroke-light);
+  --color-on-dark-subtle: var(--on-dark-subtle);
+  --color-on-dark-border: var(--on-dark-border);
+
+  /* ── Pickket Event Detail ── */
+  --color-pk-bg: var(--pk-bg);
+  --color-pk-surface: var(--pk-surface);
+  --color-pk-surface-hover: var(--pk-surface-hover);
+  --color-pk-border-subtle: var(--pk-border-subtle);
+  --color-pk-border-hover: var(--pk-border-hover);
+  --color-pk-text: var(--pk-text);
+  --color-pk-text-secondary: var(--pk-text-secondary);
+  --color-pk-text-muted: var(--pk-text-muted);
+  --color-pk-accent: var(--pk-accent);
+  --color-pk-accent-light: var(--pk-accent-light);
+  --color-pk-accent-glow: var(--pk-accent-glow);
+  --color-pk-fair: var(--pk-fair);
+  --color-pk-fair-glow: var(--pk-fair-glow);
+  --color-pk-hot: var(--pk-hot);
+  --color-pk-hot-glow: var(--pk-hot-glow);
+  --color-pk-warm: var(--pk-warm);
+  --color-pk-glass: var(--pk-glass);
+  --color-pk-glass-border: var(--pk-glass-border);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * Step 3: @theme — 정적 값 (다크모드 전환 불필요한 토큰)
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@theme {
+  /* ── Fonts ── */
+  --font-sans: var(--font-pretendard), system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-serif: Georgia, "Times New Roman", serif;
+
+  /* ── Typography scale extensions ── */
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 1.4;
+  --text-xs-plus: 0.6875rem;
+  --text-xs-plus--line-height: 1.45;
+  --text-sm-minus: 0.8125rem;
+  --text-sm-minus--line-height: 1.4;
+
+  /* ── Radius ── */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  /* ── Pickket Brand Colors (정적 — DICE monochrome) ── */
+  --color-brand: #0a0a0a;
+  --color-brand-light: #404040;
+  --color-brand-dark: #000000;
+  --color-brand-lighter: #737373;
+  --color-brand-lightest: #f5f5f5;
+  --color-violet: #737373;
+  --color-cyan: #059669;
+  --color-success: #059669;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+
+  /* ── Easing tokens ── */
+  --ease-fluid: cubic-bezier(0.3, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-snappy: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ── Motion tokens ── */
+  --animate-fade-in: fade-in 0.5s var(--ease-fluid) both;
+  --animate-slide-up: slide-up 0.5s var(--ease-fluid) both;
+  --animate-scale-in: scale-in 0.3s var(--ease-spring) both;
+  --animate-slide-in-right: slide-in-right 0.4s var(--ease-fluid) both;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(16px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "ss02", "cv01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── P2-6: Keyboard focus-visible styles (WCAG 2.1 AA) ──── */
+  :where(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [role="button"],
+    [role="link"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [role="slider"],
+    [tabindex]:not([tabindex="-1"])
+  ):focus-visible {
+    outline: 2px solid var(--ring, #2563eb);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Remove default outline for mouse/touch — only show for keyboard */
+  :where(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    [role="button"]
+  ):focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  [data-slot="price"],
+  [data-slot="count"],
+  [data-slot="stat"] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ── 디자인 정책 레퍼런스 ──────────────────────────────────────
+ *
+ * [제목 계층]
+ * H1: text-2xl font-bold (md:text-3xl)     — 페이지 타이틀
+ * H2: text-xl font-bold                    — 섹션 헤딩
+ * H3: text-lg font-semibold                — 서브섹션, 다이얼로그 타이틀
+ * H4: text-base font-semibold              — 카드 타이틀
+ * H5: text-sm font-semibold                — 폼 라벨, 사이드바 섹션
+ * H6: text-2xs font-semibold               — 마이크로 헤딩, 그룹 라벨
+ *
+ * [본문 텍스트]
+ * 기본: text-sm       보조: text-xs
+ * 마이크로: text-2xs   메타데이터: text-xs-plus
+ *
+ * [카드 타이틀 말줄임]
+ * 이벤트 타이틀: line-clamp-2
+ * 메타데이터 (아티스트, 장소): line-clamp-1
+ *
+ * [버튼 높이 티어]
+ * XS: h-6   — 인라인 액션, 아이콘 전용
+ * SM: h-8   — 보조 액션, 필터, 태그
+ * MD: h-9   — 표준 폼 버튼 (Button default)
+ * LG: h-10  — 주요 CTA (Button lg)
+ * XL: h-12  — 모바일 풀폭 CTA (Button xl)
+ *
+ * [간격 기준]
+ * 아이콘-텍스트: gap-1 ~ gap-1.5
+ * 라벨-값 쌍: gap-1
+ * 폼 필드 간격: gap-2 ~ gap-3
+ * 카드 내부 패딩: p-4 (컴팩트: p-3)
+ * 섹션 간격: gap-6
+ * 페이지 섹션: gap-8
+ *
+ * [가격 표시]
+ * 모든 숫자/가격에 font-tabular 필수
+ * formatKRW() 사용 시 반드시 font-tabular 클래스 동반
+ * ──────────────────────────────────────────────────────────── */
+
+/* Glassmorphism utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass {
+  background: rgba(15, 15, 25, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Hero gradient — DICE monochrome */
+.hero-gradient {
+  background: linear-gradient(135deg, #0a0a0a 0%, #262626 50%, #404040 100%);
+}
+
+/* Price number font */
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Shimmer loading animation ──────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(200, 200, 220, 0.15) 25%,
+    rgba(200, 200, 220, 0.35) 50%,
+    rgba(200, 200, 220, 0.15) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+.dark .shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* ── Float animation ────────────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ── Pulse-soft ──────────────────────────────────────────────────────── */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* ── Heart favorite pulse ───────────────────────────────────────────── */
+@keyframes heart-pulse {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.3); }
+  50% { transform: scale(0.95); }
+  75% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.heart-pulse {
+  animation: heart-pulse 0.4s ease-in-out;
+}
+
+/* ── Gradient line divider ──────────────────────────────────────────── */
+.gradient-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #a3a3a3 20%,
+    #737373 50%,
+    #a3a3a3 80%,
+    transparent 100%
+  );
+  opacity: 0.2;
+}
+
+.dark .gradient-divider {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #525252 20%,
+    #737373 50%,
+    #525252 80%,
+    transparent 100%
+  );
+  opacity: 0.15;
+}
+
+/* ── Hero animated dots/grid pattern ────────────────────────────────── */
+@keyframes hero-dots-drift {
+  0% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-8px) translateX(4px); }
+  100% { transform: translateY(0) translateX(0); }
+}
+
+.hero-pattern {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 32px 32px;
+  animation: hero-dots-drift 8s ease-in-out infinite;
+}
+
+/* ── Section alternate backgrounds ──────────────────────────────────── */
+.section-alt {
+  background-color: #fafafa;
+}
+
+.dark .section-alt {
+  background-color: #171717;
+}
+
+/* ── Scrollbar hidden helper ────────────────────────────────────────── */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── Responsive section padding ────────────────────────────────────── */
+.section-px {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+@media (min-width: 640px) {
+  .section-px { padding-left: 1.5rem; padding-right: 1.5rem; }
+}
+@media (min-width: 768px) {
+  .section-px { padding-left: 2.5rem; padding-right: 2.5rem; }
+}
+@media (min-width: 1024px) {
+  .section-px { padding-left: 4rem; padding-right: 4rem; }
+}
+
+/* ── "항상 다크" 섹션 배경 ─────────────────────────────────────────── */
+.section-forced-dark {
+  background: #0a0a0a;
+  color: white;
+}
+
+/* ── 항상-다크 섹션 내 카드 ─────────────────────────────────────────── */
+.forced-dark-card {
+  border: 1px solid var(--on-dark-border);
+  background: var(--on-dark-subtle);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.forced-dark-card:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+/* ── 배경 격자 패턴 (항상-다크 전용) ───────────────────────────────── */
+.grid-pattern-dark {
+  background-image:
+    linear-gradient(var(--on-dark-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--on-dark-border) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Premium card border ────────────────────────────────────────────── */
+.card-premium {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.dark .card-premium {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Crossfade for hero carousel ────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+/* ── Font serif utility ───────────────────────────────────────────── */
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+/* ── Mega menu overlay animation ──────────────────────────────────── */
+@keyframes megaMenuIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-megaMenuIn {
+  animation: megaMenuIn 200ms ease-out;
+}
+
+/* ── Marquee scrolling text ────────────────────────────────────────── */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
+/* ── Shake animation ────────────────────────────────────────────────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.3s ease-in-out;
+}
+
+/* ── Cursor blink for terminal animation ─────────────────────────── */
+@keyframes cursor-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.animate-cursor-blink {
+  animation: cursor-blink 1s step-end infinite;
+}
+
+/* ── Hero carousel animations ──────────────────────────────────────── */
+@keyframes heroZoom {
+  from { transform: scale(1.05); }
+  to { transform: scale(1.15); }
+}
+
+@keyframes dotProgress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes trendingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.92); }
+}
+
+/* ── P2-6: Focus-visible utility classes (a11y) ──────────────────── */
+
+/* Standard focus ring — matches brand color, visible on light & dark */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--ring, #2563eb);
+  outline-offset: 2px;
+}
+
+/* Inset focus ring — for cards and containers */
+.focus-ring-inset {
+  outline: none;
+}
+.focus-ring-inset:focus-visible {
+  outline: 2px solid var(--ring, #2563eb);
+  outline-offset: -2px;
+}
+
+/* Brand-colored focus ring */
+.focus-ring-brand {
+  outline: none;
+}
+.focus-ring-brand:focus-visible {
+  outline: 2px solid var(--primary, #0a0a0a);
+  outline-offset: 2px;
+}
+
+.dark .focus-ring-brand:focus-visible {
+  outline-color: var(--primary, #fafafa);
+}
+
+/* Destructive focus ring (for delete/cancel buttons) */
+.focus-ring-destructive {
+  outline: none;
+}
+.focus-ring-destructive:focus-visible {
+  outline: 2px solid var(--destructive, #EF4444);
+  outline-offset: 2px;
+}
+
+/* Skip-to-content link (screen reader + keyboard navigation) */
+.skip-to-content {
+  position: absolute;
+  top: -100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  padding: 0.75rem 1.5rem;
+  background: var(--primary, #0a0a0a);
+  color: var(--primary-foreground, #ffffff);
+  border-radius: 0 0 0.5rem 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+
+.skip-to-content:focus {
+  top: 0;
+}
+
+/* 접근성 — prefers-reduced-motion: CSS 키프레임/트랜지션 애니메이션 억제.
+   (motion/react JS 애니메이션은 별도 — providers 의 MotionConfig reducedMotion="user" 권장) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* 0.001ms 는 parseFloat>0 으로 "활성"으로 잡혀 모션 완전제거 의도와 어긋남.
+       prefers-reduced-motion 에선 애니메이션을 0s 로 완전 정지(스피너 등은 정적 표시). */
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0s !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

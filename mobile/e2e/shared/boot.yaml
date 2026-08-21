@@ -1,0 +1,95 @@
+# 공통 부트 서브플로우 — 앱 실행 + 초기 화면 대기 + 권한 팝업/크래시 자동 처리
+# 사용: - runFlow: shared/boot.yaml
+appId: kr.pickket.app
+---
+
+- back
+- back
+- pressKey: home
+- launchApp:
+    clearKeychain: false
+    stopApp: true
+
+# RN 크래시 복구 1차 (빠른 크래시)
+- runFlow:
+    when:
+      visible: "Reload"
+    commands:
+      - tapOn: "Reload"
+
+# RN LogBox 에러 오버레이 자동 닫기 (dev client)
+- runFlow:
+    when:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+
+# 네이티브 권한 팝업 자동 허용 (알림/위치 등)
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+
+- runFlow:
+    when:
+      visible: "허용"
+    commands:
+      - tapOn: "허용"
+
+# 앱 로딩 대기 (optional — 로그인 화면이 나올 수도 있음)
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 10000
+    optional: true
+
+# RN 크래시 복구 2차 (느린 크래시 — 렌더 중 에러)
+- runFlow:
+    when:
+      visible: "Reload"
+    commands:
+      - tapOn: "Reload"
+      - extendedWaitUntil:
+          visible:
+            id: "tab.index"
+          timeout: 15000
+          optional: true
+
+# RN LogBox 에러 오버레이 자동 닫기 2차 (렌더 후 에러)
+- runFlow:
+    when:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+
+# 로그인 화면이 나왔으면 게스트 모드로 진입
+- runFlow:
+    when:
+      visible: "Browse without login"
+    commands:
+      - tapOn: "Browse without login"
+
+- runFlow:
+    when:
+      visible: "로그인 없이 둘러보기"
+    commands:
+      - tapOn: "로그인 없이 둘러보기"
+
+# 최종: 홈 화면 도달 확인 — 탭바 안 보이면 딥링크로 복구
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 10000
+    optional: true
+
+- runFlow:
+    when:
+      notVisible:
+        id: "tab.index"
+    commands:
+      - openLink: "pickket:///(tabs)"
+      - extendedWaitUntil:
+          visible:
+            id: "tab.index"
+          timeout: 15000

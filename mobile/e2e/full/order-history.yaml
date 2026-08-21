@@ -1,0 +1,41 @@
+# 주문 내역 E2E
+# 검증: 로그인 → 주문 목록 → 주문 상세 → 환불 정책/취소 안내 표시
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── 주문 진입 ──
+- tapOn:
+    id: "me.menu.orders"
+- extendedWaitUntil:
+    visible:
+      id: "orders.screen"
+    timeout: 5000
+
+# My Orders 화면 검증 (실제 주문 카드는 백엔드 의존)
+- assertVisible:
+    id: "orders.screen"
+- takeScreenshot: order_list
+
+# 주문 카드가 있으면 상세 진입
+- runFlow:
+    when:
+      visible:
+        text: "₩.*"
+    commands:
+      - tapOn:
+          text: "₩.*"
+          index: 0
+      - waitForAnimationToEnd
+      - takeScreenshot: order_detail
+      - back
+
+- back
+- tapOn:
+    id: "tab.index"
+- assertVisible:
+    id: "nav.tonight"

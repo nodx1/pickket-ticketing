@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pickket-go-payment-reconcile
+  namespace: pickket-go
+  labels:
+    app: pickket-go
+    component: payment-reconcile
+spec:
+  # 결제확정 대사(감사 P1-3/4). confirm-v2 write-through 실패로 v2 매출이 누락된 주문을
+  # 재확정한다. 스크립트가 failed>0 시 exit 2 → 모니터링 알림 대상.
+  schedule: "*/5 * * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 60
+  failedJobsHistoryLimit: 5
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 90
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: pickket-go
+            component: payment-reconcile
+        spec:
+          serviceAccountName: pickket-go-cron
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          containers:
+            - name: reconcile
+              image: 794562054294.dkr.ecr.ap-northeast-2.amazonaws.com/pickket-go:latest
+              imagePullPolicy: IfNotPresent
+              command: ["npx", "tsx", "scripts/payment-reconcile.ts"]
+              envFrom:
+                - secretRef:
+                    name: pickket-go-stg-secrets
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "256Mi"
+                  cpu: "200m"
+# ── CapRover(현행 배포) 대안 ─────────────────────────────────────────────
+# k8s 미사용 환경(홈서버 CapRover)에서는 위 CronJob 대신 외부 스케줄러가 5분 주기로
+# HTTP 라우트를 호출한다:
+#   curl -fsS -H "Authorization: Bearer $CRON_SECRET" \
+#     -H "x-cron-timestamp: $(date -u +%FT%TZ)" \
+#     https://go.pickket.kr/api/cron/payment-reconcile

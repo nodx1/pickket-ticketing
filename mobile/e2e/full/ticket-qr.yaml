@@ -1,0 +1,57 @@
+# 티켓 QR 화면 E2E
+# 검증: 로그인 → 티켓 탭 → 첫 카드 → 상세 화면 + QR 표시 + 회전
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── Me 탭에서 티켓 확인 ──
+- tapOn:
+    id: "tab.me"
+- extendedWaitUntil:
+    visible:
+      id: "me.menu.orders"
+    timeout: 5000
+
+# 티켓이 있으면 상세로, 없으면 EmptyState 검증
+- runFlow:
+    when:
+      visible:
+        text: ".*No tickets.*|.*티켓이 없.*"
+    commands:
+      - takeScreenshot: ticket_empty
+
+- runFlow:
+    when:
+      notVisible:
+        text: ".*No tickets.*|.*티켓이 없.*"
+    commands:
+      # 첫 번째 티켓 카드 탭 (testID 정규식으로 매칭)
+      - tapOn:
+          id: "ticket\\.card\\..*"
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: "ticket.detail.screen"
+          timeout: 8000
+      - takeScreenshot: ticket_detail
+      # active 상태 티켓이면 QR이 렌더되고, used/cancelled면 상태 뷰만 보임
+      - runFlow:
+          when:
+            visible:
+              id: "ticket.qr"
+          commands:
+            - takeScreenshot: ticket_qr_displayed
+            # 5초 카운트다운 + 회전 확인 (두 번째 스냅샷은 회전 후)
+            - waitForAnimationToEnd:
+                timeout: 6000
+            - takeScreenshot: ticket_qr_rotated
+      - back
+
+# 홈 복귀
+- runFlow: ../shared/restore-tabbar.yaml
+- tapOn:
+    id: "tab.index"

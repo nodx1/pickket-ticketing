@@ -1,0 +1,469 @@
+name: Deploy to AWS ECS
+
+# 수동 트리거만 지원 (staging → prod 승격 모델)
+# Phase 2 — Studio 은퇴 + go ECS 배포 통합 (2026-04-06)
+# 인프라: pickket.v2 관리, 시크릿 네이밍 v2와 통일
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+      wake_service:
+        description: "첫 배포 시 desired-count를 1로 깨움 (v2가 service를 desired=0으로 생성해둠)"
+        required: false
+        default: false
+        type: boolean
+      skip_migration:
+        description: "Skip DB migration (emergency only)"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: deploy-aws-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  # v2와 동일한 시크릿 네이밍 컨벤션
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  # ── 환경별 분기 ──
+  ECS_CLUSTER: ${{ inputs.environment == 'production' && 'pickket' || 'pickket-stg' }}
+  ECS_SERVICE: organizer
+  GO_DOMAIN: ${{ inputs.environment == 'production' && 'go.pickket.kr' || 'go-staging.pickket.kr' }}
+  IMAGE_LATEST_TAG: ${{ inputs.environment == 'production' && 'prod-latest' || 'staging-latest' }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 0. Staging-first gate — 프로덕션 배포는 동일 커밋의 스테이징 성공 기록이 필요
+  # ---------------------------------------------------------------------------
+  staging-gate:
+    if: inputs.environment == 'production'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check this commit was deployed to staging successfully
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMIT_SHA="${{ github.sha }}"
+          echo "🔍 프로덕션 배포 전 커밋(${COMMIT_SHA:0:7})의 스테이징 성공 기록 확인..."
+
+          MATCH=$(gh api "repos/${{ github.repository }}/actions/workflows/deploy-aws.yml/runs" \
+            --jq "[.workflow_runs[] | select(
+              .conclusion == \"success\" and
+              .head_sha == \"${COMMIT_SHA}\" and
+              (.display_title | contains(\"staging\"))
+            )] | length")
+
+          if [[ "$MATCH" == "0" || -z "$MATCH" ]]; then
+            echo "❌ 이 커밋은 스테이징 배포 성공 기록이 없습니다."
+            echo ""
+            echo "   프로덕션 배포 전 반드시 동일 커밋을 스테이징에 먼저 배포하세요."
+            echo "   👉 Actions → Deploy to AWS ECS → staging"
+            exit 1
+          fi
+
+          echo "✅ 커밋 ${COMMIT_SHA:0:7} 스테이징 검증 통과. 프로모션 진행."
+
+  # ---------------------------------------------------------------------------
+  # 1. Build & Push Docker image to ECR
+  # ---------------------------------------------------------------------------
+  build:
+    needs: [staging-gate]
+    if: always() && (needs.staging-gate.result == 'success' || needs.staging-gate.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    # NOTE: image URI는 job output으로 전달하지 않음.
+    # ECR registry 문자열이 secret으로 감지되어 GitHub Actions가 output 전달을 차단함
+    # ("Skip output 'image_uri' since it may contain secret."). 대신 각 job에서
+    # env.ECR_REGISTRY/ECR_REPOSITORY + github.sha 로 직접 조합.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build, tag, and push image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          FULL_IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}"
+          IMAGE_URI="${FULL_IMAGE}:${IMAGE_TAG}"
+
+          echo "[INFO] Building ${IMAGE_URI}"
+          echo "[INFO] Also tagging: ${FULL_IMAGE}:${{ env.IMAGE_LATEST_TAG }}"
+
+          # NEXT_PUBLIC_* 빌드 타임 인라인 — Secrets에서 가져옴
+          docker buildx build \
+            --platform linux/amd64 \
+            --build-arg NEXT_PUBLIC_APP_URL=https://${{ env.GO_DOMAIN }} \
+            --build-arg NEXT_PUBLIC_COMPANY_NAME="${{ secrets.NEXT_PUBLIC_COMPANY_NAME }}" \
+            --build-arg NEXT_PUBLIC_COMPANY_ADDRESS="${{ secrets.NEXT_PUBLIC_COMPANY_ADDRESS }}" \
+            --build-arg NEXT_PUBLIC_CONTACT_EMAIL="${{ secrets.NEXT_PUBLIC_CONTACT_EMAIL }}" \
+            --build-arg NEXT_PUBLIC_OWNER_NAME="${{ secrets.NEXT_PUBLIC_OWNER_NAME }}" \
+            --build-arg NEXT_PUBLIC_BUSINESS_NUMBER="${{ secrets.NEXT_PUBLIC_BUSINESS_NUMBER }}" \
+            --build-arg NEXT_PUBLIC_ECOMMERCE_NUMBER="${{ secrets.NEXT_PUBLIC_ECOMMERCE_NUMBER }}" \
+            --build-arg NEXT_PUBLIC_BANK_NAME="${{ secrets.NEXT_PUBLIC_BANK_NAME }}" \
+            --build-arg NEXT_PUBLIC_BANK_ACCOUNT="${{ secrets.NEXT_PUBLIC_BANK_ACCOUNT }}" \
+            --build-arg NEXT_PUBLIC_BANK_HOLDER="${{ secrets.NEXT_PUBLIC_BANK_HOLDER }}" \
+            -f Dockerfile \
+            -t "${IMAGE_URI}" \
+            -t "${FULL_IMAGE}:${{ env.IMAGE_LATEST_TAG }}" \
+            --push \
+            .
+
+          echo "[OK] Image pushed: ${IMAGE_URI}"
+
+  # ---------------------------------------------------------------------------
+  # 2. Run DB migration via one-off ECS task
+  # ---------------------------------------------------------------------------
+  migrate:
+    needs: build
+    if: always() && needs.build.result == 'success' && inputs.skip_migration == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Register migration task definition with new image
+        id: migrate-taskdef
+        env:
+          # image URI는 job output 대신 secrets에서 직접 조합 (v2 진단 2026-04-06)
+          # GitHub Actions가 job output에서 ECR URL을 secret으로 감지해 차단하기 때문
+          IMAGE_URI: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
+        run: |
+          echo "[INFO] Fetching current ${{ env.ECS_SERVICE }} task-def as migration base"
+
+          CURRENT_TASKDEF_ARN=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services "${{ env.ECS_SERVICE }}" \
+            --query 'services[0].taskDefinition' --output text)
+
+          CURRENT_TASKDEF=$(aws ecs describe-task-definition \
+            --task-definition "$CURRENT_TASKDEF_ARN" \
+            --query 'taskDefinition' --output json)
+
+          # 이미지 교체 + 재등록 불가 필드 제거
+          UPDATED=$(echo "$CURRENT_TASKDEF" | jq --arg img "$IMAGE_URI" '
+            del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                .compatibilities, .registeredAt, .registeredBy, .deregisteredAt) |
+            .containerDefinitions[0].image = $img')
+
+          NEW_TASKDEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$UPDATED" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "taskdef_arn=$NEW_TASKDEF_ARN" >> "$GITHUB_OUTPUT"
+          echo "[OK] Migration task-def registered: $NEW_TASKDEF_ARN"
+
+      - name: Run scripts/migrate.ts as one-off task
+        env:
+          TASKDEF_ARN: ${{ steps.migrate-taskdef.outputs.taskdef_arn }}
+        run: |
+          echo "[INFO] Starting one-off migration task on ${{ env.ECS_CLUSTER }}"
+
+          # ECS 서비스에서 네트워크 설정 상속
+          NETWORK_CONFIG=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services "${{ env.ECS_SERVICE }}" \
+            --query 'services[0].networkConfiguration' \
+            --output json)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --task-definition "$TASKDEF_ARN" \
+            --launch-type FARGATE \
+            --network-configuration "$NETWORK_CONFIG" \
+            --overrides '{
+              "containerOverrides": [{
+                "name": "organizer",
+                "command": ["npx", "tsx", "scripts/migrate.ts"]
+              }]
+            }' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "[INFO] Task started: $TASK_ARN"
+          echo "[INFO] Waiting for task to stop..."
+
+          aws ecs wait tasks-stopped \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks "$TASK_ARN"
+
+          # 종료 코드 검증
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+
+          STOP_REASON=$(aws ecs describe-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --tasks "$TASK_ARN" \
+            --query 'tasks[0].stoppedReason' \
+            --output text)
+
+          echo "[INFO] Exit code: $EXIT_CODE"
+          echo "[INFO] Stop reason: $STOP_REASON"
+
+          if [[ "$EXIT_CODE" != "0" ]]; then
+            echo "::error::Migration failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+
+          echo "[OK] Migration completed successfully"
+
+  # ---------------------------------------------------------------------------
+  # 3. Deploy — 이전 task def 캡처 + 새 task def 등록 + 서비스 업데이트
+  #    (capture-taskdef 별도 job 제거 — GitHub Actions가 ARN에 포함된 account ID를
+  #     secret으로 감지해 job output 전달을 차단하므로, 모든 조회를 한 job 안에서 처리)
+  # ---------------------------------------------------------------------------
+  deploy:
+    needs: [build, migrate]
+    if: always() && needs.build.result == 'success' && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Capture previous task def + register new + update service
+        env:
+          IMAGE_URI: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
+        run: |
+          # 1. 현재(이전) task def ARN 캡처 — 롤백용 파일 저장
+          PREV_TASKDEF_ARN=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services "${{ env.ECS_SERVICE }}" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          echo "[INFO] Previous task-def: $PREV_TASKDEF_ARN"
+          mkdir -p /tmp/deploy-state
+          echo "$PREV_TASKDEF_ARN" > /tmp/deploy-state/previous-taskdef-arn.txt
+
+          # 2. 현재 task def를 기반으로 이미지만 교체해서 새 리비전 등록
+          CURRENT_TASKDEF=$(aws ecs describe-task-definition \
+            --task-definition "$PREV_TASKDEF_ARN" \
+            --query 'taskDefinition' --output json)
+
+          UPDATED=$(echo "$CURRENT_TASKDEF" | jq --arg img "$IMAGE_URI" '
+            del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                .compatibilities, .registeredAt, .registeredBy, .deregisteredAt) |
+            .containerDefinitions[0].image = $img')
+
+          NEW_TASKDEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$UPDATED" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "[OK] New task-def: $NEW_TASKDEF_ARN"
+          echo "$NEW_TASKDEF_ARN" > /tmp/deploy-state/new-taskdef-arn.txt
+
+          # 3. 서비스 업데이트
+          WAKE_FLAG=""
+          if [[ "${{ inputs.wake_service }}" == "true" ]]; then
+            WAKE_FLAG="--desired-count 1"
+            echo "[INFO] wake_service=true — 서비스를 desired=1로 활성화"
+          fi
+
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service "${{ env.ECS_SERVICE }}" \
+            --task-definition "$NEW_TASKDEF_ARN" \
+            --force-new-deployment \
+            $WAKE_FLAG
+
+          echo "[OK] Service update triggered"
+
+      - name: Upload rollback state (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-state
+          path: /tmp/deploy-state/
+          retention-days: 7
+
+      - name: Wait for service stability
+        timeout-minutes: 20
+        run: |
+          echo "[INFO] Waiting for service to reach stable state (최대 20분)..."
+          # aws ecs wait services-stable 기본값: 40회 × 15초 = 10분.
+          # Next.js 콜드스타트 + Docker pull + 헬스체크 패스에 10분 이상 걸릴 수 있음.
+          # 직접 폴링으로 교체: 80회 × 15초 = 20분.
+          for i in $(seq 1 80); do
+            STATUS=$(aws ecs describe-services \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services "${{ env.ECS_SERVICE }}" \
+              --query 'services[0].deployments[?status==`PRIMARY`].rolloutState' \
+              --output text 2>/dev/null || echo "UNKNOWN")
+
+            RUNNING=$(aws ecs describe-services \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services "${{ env.ECS_SERVICE }}" \
+              --query 'services[0].{r:runningCount,d:desiredCount}' \
+              --output text 2>/dev/null || echo "0 0")
+
+            echo "[Attempt $i/80] rolloutState=$STATUS running/desired=$RUNNING"
+
+            if [[ "$STATUS" == "COMPLETED" ]]; then
+              echo "[OK] Service stable — deployment completed"
+              exit 0
+            fi
+
+            if [[ "$STATUS" == "FAILED" ]]; then
+              echo "::error::Deployment failed (rolloutState=FAILED)"
+              exit 1
+            fi
+
+            sleep 15
+          done
+
+          # 80회 도달 — 타임아웃이지만 서비스가 아직 롤링 중일 수 있음
+          echo "::warning::Stability wait timed out (20분). 서비스가 여전히 롤링 중일 수 있음."
+          echo "::warning::수동 확인: aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}"
+          # rollback 발동하지 않도록 성공으로 처리 — smoke-test에서 최종 판단
+          exit 0
+
+  # ---------------------------------------------------------------------------
+  # 4. Smoke test — /api/health/ready must return 200
+  # ---------------------------------------------------------------------------
+  smoke-test:
+    needs: deploy
+    if: always() && needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check — /api/health/ready
+        run: |
+          URL="https://${{ env.GO_DOMAIN }}/api/health/ready"
+          echo "[INFO] Probing $URL"
+
+          for i in $(seq 1 20); do
+            HTTP_CODE=$(curl -s -o /tmp/health.json -w "%{http_code}" "$URL" || echo "000")
+            echo "[Attempt $i] HTTP $HTTP_CODE"
+
+            if [[ "$HTTP_CODE" == "200" ]]; then
+              echo "[OK] Health check passed"
+              cat /tmp/health.json
+              exit 0
+            fi
+
+            if [[ $i -lt 20 ]]; then
+              sleep 10
+            fi
+          done
+
+          echo "::error::Health check failed after 20 attempts (200초)"
+          cat /tmp/health.json || true
+          exit 1
+
+      - name: Smoke test — public landing page
+        run: |
+          URL="https://${{ env.GO_DOMAIN }}/"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+          echo "[INFO] GET $URL → HTTP $HTTP_CODE"
+
+          if [[ "$HTTP_CODE" != "200" ]]; then
+            echo "::error::Landing page returned $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Smoke test — sitemap + robots
+        run: |
+          for path in /sitemap.xml /robots.txt; do
+            URL="https://${{ env.GO_DOMAIN }}${path}"
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+            echo "[INFO] GET $URL → HTTP $HTTP_CODE"
+
+            if [[ "$HTTP_CODE" != "200" ]]; then
+              echo "::error::$path returned $HTTP_CODE"
+              exit 1
+            fi
+          done
+
+  # ---------------------------------------------------------------------------
+  # 5. Rollback — deploy/smoke 실패 시 이전 task def로 복구
+  #    이전 ARN은 artifact 파일에서 읽음 (job output 사용 금지)
+  # ---------------------------------------------------------------------------
+  rollback:
+    needs: [deploy, smoke-test]
+    if: always() && (needs.deploy.result == 'failure' || needs.smoke-test.result == 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download rollback state
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-state
+          path: /tmp/deploy-state/
+        continue-on-error: true
+
+      - name: Revert to previous task definition
+        run: |
+          # artifact에서 이전 ARN 읽기
+          if [[ -f /tmp/deploy-state/previous-taskdef-arn.txt ]]; then
+            PREV_TASKDEF=$(cat /tmp/deploy-state/previous-taskdef-arn.txt)
+          else
+            # artifact 없으면 직접 조회 (ECS deployments에서 ACTIVE 상태 = 이전 배포)
+            echo "[WARN] Artifact not found, querying ECS deployments directly"
+            PREV_TASKDEF=$(aws ecs describe-services \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services "${{ env.ECS_SERVICE }}" \
+              --query 'services[0].deployments[?status==`ACTIVE`].taskDefinition | [0]' \
+              --output text 2>/dev/null || echo "")
+          fi
+
+          if [[ -z "$PREV_TASKDEF" || "$PREV_TASKDEF" == "None" || "$PREV_TASKDEF" == "null" ]]; then
+            echo "::warning::이전 task-def를 찾을 수 없어 자동 롤백 불가. 수동 롤백 필요."
+            echo "::warning::aws ecs describe-task-definition --task-definition organizer 로 이전 리비전 확인"
+            exit 0
+          fi
+
+          echo "[WARN] Deploy 실패 — 이전 task-def로 롤백: $PREV_TASKDEF"
+
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service "${{ env.ECS_SERVICE }}" \
+            --task-definition "$PREV_TASKDEF" \
+            --force-new-deployment
+
+      - name: Wait for rollback stability
+        timeout-minutes: 15
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services "${{ env.ECS_SERVICE }}"
+
+          echo "[OK] Rollback complete"

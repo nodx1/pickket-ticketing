@@ -1,0 +1,16 @@
+Collecting stripe
+  Downloading stripe-15.0.0-py3-none-any.whl.metadata (18 kB)
+Requirement already satisfied: typing_extensions>=4.7.0 in ./.venv/lib/python3.12/site-packages (from stripe) (4.15.0)
+Collecting requests>=2.20 (from stripe)
+  Using cached requests-2.33.0-py3-none-any.whl.metadata (5.1 kB)
+Collecting charset_normalizer<4,>=2 (from requests>=2.20->stripe)
+  Using cached charset_normalizer-3.4.6-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+Requirement already satisfied: idna<4,>=2.5 in ./.venv/lib/python3.12/site-packages (from requests>=2.20->stripe) (3.11)
+Requirement already satisfied: urllib3<3,>=1.26 in ./.venv/lib/python3.12/site-packages (from requests>=2.20->stripe) (2.6.3)
+Requirement already satisfied: certifi>=2023.5.7 in ./.venv/lib/python3.12/site-packages (from requests>=2.20->stripe) (2026.2.25)
+Downloading stripe-15.0.0-py3-none-any.whl (2.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 6.8 MB/s eta 0:00:00
+Using cached requests-2.33.0-py3-none-any.whl (65 kB)
+Using cached charset_normalizer-3.4.6-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (207 kB)
+Installing collected packages: charset_normalizer, requests, stripe
+Successfully installed charset_normalizer-3.4.6 requests-2.33.0 stripe-15.0.0

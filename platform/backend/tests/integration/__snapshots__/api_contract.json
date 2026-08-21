@@ -1,0 +1,2960 @@
+{
+  "endpoints": {
+    "GET /api/v1/events/": {
+      "parameters": [
+        {
+          "in": "query",
+          "name": "skip",
+          "required": false,
+          "schema": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Skip",
+            "type": "integer"
+          }
+        },
+        {
+          "in": "query",
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        {
+          "in": "query",
+          "name": "category",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          }
+        },
+        {
+          "in": "query",
+          "name": "status",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventListItemResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "GET /api/v1/events/categories": {
+      "parameters": [],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/CategoryCount"
+                },
+                "title": "Response Event Categories Api V1 Events Categories Get",
+                "type": "array"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      }
+    },
+    "GET /api/v1/events/featured": {
+      "parameters": [],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/EventListItem"
+                },
+                "title": "Response Featured Events Api V1 Events Featured Get",
+                "type": "array"
+              }
+            }
+          },
+          "description": "Successful Response"
+        }
+      }
+    },
+    "GET /api/v1/events/ranking": {
+      "parameters": [
+        {
+          "in": "query",
+          "name": "period",
+          "required": false,
+          "schema": {
+            "default": "realtime",
+            "title": "Period",
+            "type": "string"
+          }
+        },
+        {
+          "in": "query",
+          "name": "category",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/EventSummaryResponse"
+                },
+                "title": "Response Event Ranking Api V1 Events Ranking Get",
+                "type": "array"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "GET /api/v1/events/search": {
+      "parameters": [
+        {
+          "in": "query",
+          "name": "q",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Q"
+          }
+        },
+        {
+          "in": "query",
+          "name": "category",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          }
+        },
+        {
+          "in": "query",
+          "name": "sub_category",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sub Category"
+          }
+        },
+        {
+          "in": "query",
+          "name": "city",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          }
+        },
+        {
+          "in": "query",
+          "name": "date_from",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date From"
+          }
+        },
+        {
+          "in": "query",
+          "name": "date_to",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date To"
+          }
+        },
+        {
+          "in": "query",
+          "name": "price_min",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Min"
+          }
+        },
+        {
+          "in": "query",
+          "name": "price_max",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Max"
+          }
+        },
+        {
+          "in": "query",
+          "name": "status",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        {
+          "in": "query",
+          "name": "is_public_sector",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Public Sector"
+          }
+        },
+        {
+          "in": "query",
+          "name": "sort",
+          "required": false,
+          "schema": {
+            "default": "newest",
+            "title": "Sort",
+            "type": "string"
+          }
+        },
+        {
+          "in": "query",
+          "name": "skip",
+          "required": false,
+          "schema": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Skip",
+            "type": "integer"
+          }
+        },
+        {
+          "in": "query",
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventListItemResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "GET /api/v1/orders/my": {
+      "parameters": [
+        {
+          "in": "query",
+          "name": "skip",
+          "required": false,
+          "schema": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Skip",
+            "type": "integer"
+          }
+        },
+        {
+          "in": "query",
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": 50,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        {
+          "in": "query",
+          "name": "status",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        {
+          "in": "query",
+          "name": "event_id",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          }
+        },
+        {
+          "description": "Cursor for keyset pagination (created_at:id)",
+          "in": "query",
+          "name": "cursor",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cursor for keyset pagination (created_at:id)",
+            "title": "Cursor"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                },
+                "title": "Response My Orders Api V1 Orders My Get",
+                "type": "array"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "GET /api/v1/orders/{order_id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "order_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "GET /api/v1/orders/{order_id}/status": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "order_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "GET /api/v1/tickets/my": {
+      "parameters": [
+        {
+          "in": "query",
+          "name": "skip",
+          "required": false,
+          "schema": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Skip",
+            "type": "integer"
+          }
+        },
+        {
+          "in": "query",
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": 50,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketListResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "GET /api/v1/tickets/{ticket_id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "ticket_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "title": "Ticket Id",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "GET /api/v1/tickets/{ticket_id}/qr": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "ticket_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "title": "Ticket Id",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketQrResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "POST /api/v1/auth/login": {
+      "parameters": [],
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UserLogin"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "POST /api/v1/auth/refresh": {
+      "parameters": [],
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RefreshRequest"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Body"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "POST /api/v1/auth/register": {
+      "parameters": [],
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/UserCreate"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "201": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "POST /api/v1/auth/verify-token": {
+      "parameters": [],
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/VerifyTokenRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyTokenResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "POST /api/v1/orders/{order_id}/cancel": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "order_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "POST /api/v1/orders/{order_id}/capture": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "order_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "POST /api/v1/orders/{order_id}/payment/prepare": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "order_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PaymentPrepareRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentPrepareResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "POST /api/v1/orders/{order_id}/refund": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "order_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "title": "Order Id",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/RefundRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    },
+    "POST /api/v1/tickets/validate-qr": {
+      "parameters": [],
+      "requestBody": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ValidateQRRequest"
+            }
+          }
+        },
+        "required": true
+      },
+      "responses": {
+        "200": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateQRResponse"
+              }
+            }
+          },
+          "description": "Successful Response"
+        },
+        "422": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HTTPValidationError"
+              }
+            }
+          },
+          "description": "Validation Error"
+        }
+      }
+    }
+  },
+  "schemas": {
+    "CategoryCount": {
+      "properties": {
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "category",
+        "count"
+      ],
+      "title": "CategoryCount",
+      "type": "object"
+    },
+    "EventListItem": {
+      "description": "Lightweight DTO for list views — only essential fields for cards/grids.",
+      "properties": {
+        "bid_count": {
+          "default": 0,
+          "title": "Bid Count",
+          "type": "integer"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Category"
+        },
+        "event_date": {
+          "format": "date-time",
+          "title": "Event Date",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "image_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Image Url"
+        },
+        "image_variants": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Image Variants"
+        },
+        "is_featured": {
+          "default": false,
+          "title": "Is Featured",
+          "type": "boolean"
+        },
+        "is_sold_out": {
+          "default": false,
+          "title": "Is Sold Out",
+          "type": "boolean"
+        },
+        "location_city": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Location City"
+        },
+        "min_price": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Min Price"
+        },
+        "organizer_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Organizer Name"
+        },
+        "primary_sale_mode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Primary Sale Mode"
+        },
+        "service_fee_rate": {
+          "default": 0.11,
+          "title": "Service Fee Rate",
+          "type": "number"
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        },
+        "sold_count": {
+          "default": 0,
+          "title": "Sold Count",
+          "type": "integer"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "thumbnail_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Thumbnail Url"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "total_capacity": {
+          "default": 0,
+          "title": "Total Capacity",
+          "type": "integer"
+        },
+        "venue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Venue"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "slug",
+        "event_date",
+        "status"
+      ],
+      "title": "EventListItem",
+      "type": "object"
+    },
+    "EventListItemResponse": {
+      "description": "Paginated list wrapper using lightweight EventListItem.",
+      "properties": {
+        "events": {
+          "items": {
+            "$ref": "#/components/schemas/EventListItem"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "events",
+        "total"
+      ],
+      "title": "EventListItemResponse",
+      "type": "object"
+    },
+    "EventStatus": {
+      "enum": [
+        "draft",
+        "pending_review",
+        "under_review",
+        "revision_requested",
+        "approved",
+        "bidding_open",
+        "bidding_closed",
+        "allocating",
+        "allocated",
+        "completed",
+        "cancelled"
+      ],
+      "title": "EventStatus",
+      "type": "string"
+    },
+    "EventSummaryResponse": {
+      "description": "Public-safe event payload used by list/search/ranking endpoints.",
+      "properties": {
+        "age_restriction": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Age Restriction"
+        },
+        "artist_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Artist Name"
+        },
+        "away_team": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Away Team"
+        },
+        "bid_count": {
+          "default": 0,
+          "title": "Bid Count",
+          "type": "integer"
+        },
+        "bidding_closes_at": {
+          "format": "date-time",
+          "title": "Bidding Closes At",
+          "type": "string"
+        },
+        "bidding_opens_at": {
+          "format": "date-time",
+          "title": "Bidding Opens At",
+          "type": "string"
+        },
+        "blurhash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Blurhash"
+        },
+        "broadcast_platform": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Broadcast Platform"
+        },
+        "broadcast_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Broadcast Url"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "currency": {
+          "default": "KRW",
+          "title": "Currency",
+          "type": "string"
+        },
+        "deposit_amount": {
+          "default": 0.0,
+          "title": "Deposit Amount",
+          "type": "number"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Description"
+        },
+        "duration_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Duration Minutes"
+        },
+        "event_date": {
+          "format": "date-time",
+          "title": "Event Date",
+          "type": "string"
+        },
+        "event_date_end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Event Date End"
+        },
+        "event_timezone": {
+          "default": "Asia/Seoul",
+          "title": "Event Timezone",
+          "type": "string"
+        },
+        "gallery_images": {
+          "anyOf": [
+            {
+              "items": {},
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Gallery Images"
+        },
+        "home_team": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Home Team"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "image_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Image Url"
+        },
+        "image_variants": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Image Variants"
+        },
+        "is_featured": {
+          "default": false,
+          "title": "Is Featured",
+          "type": "boolean"
+        },
+        "is_free": {
+          "default": false,
+          "title": "Is Free",
+          "type": "boolean"
+        },
+        "is_public_sector": {
+          "default": false,
+          "title": "Is Public Sector",
+          "type": "boolean"
+        },
+        "location_city": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Location City"
+        },
+        "match_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Match Status"
+        },
+        "max_price": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Max Price"
+        },
+        "min_price": {
+          "title": "Min Price",
+          "type": "number"
+        },
+        "nft_enabled": {
+          "default": false,
+          "title": "Nft Enabled",
+          "type": "boolean"
+        },
+        "parking_info": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Parking Info"
+        },
+        "participant_enabled": {
+          "default": false,
+          "title": "Participant Enabled",
+          "type": "boolean"
+        },
+        "program_data": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Program Data"
+        },
+        "program_notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Program Notes"
+        },
+        "resident_priority": {
+          "default": false,
+          "title": "Resident Priority",
+          "type": "boolean"
+        },
+        "resident_priority_days": {
+          "default": 7,
+          "title": "Resident Priority Days",
+          "type": "integer"
+        },
+        "service_fee_rate": {
+          "default": 0.11,
+          "title": "Service Fee Rate",
+          "type": "number"
+        },
+        "slug": {
+          "title": "Slug",
+          "type": "string"
+        },
+        "stage_info": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Stage Info"
+        },
+        "status": {
+          "$ref": "#/components/schemas/EventStatus"
+        },
+        "sub_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Sub Category"
+        },
+        "subject_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subject Name"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Summary"
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Tags"
+        },
+        "thumbnail_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Thumbnail Url"
+        },
+        "time_slot_capacity": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Time Slot Capacity"
+        },
+        "time_slot_duration_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Time Slot Duration Minutes"
+        },
+        "time_slot_enabled": {
+          "default": false,
+          "title": "Time Slot Enabled",
+          "type": "boolean"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "total_seats": {
+          "title": "Total Seats",
+          "type": "integer"
+        },
+        "venue": {
+          "title": "Venue",
+          "type": "string"
+        },
+        "view_count": {
+          "default": 0,
+          "title": "View Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "slug",
+        "venue",
+        "event_date",
+        "bidding_opens_at",
+        "bidding_closes_at",
+        "total_seats",
+        "min_price",
+        "status"
+      ],
+      "title": "EventSummaryResponse",
+      "type": "object"
+    },
+    "HTTPValidationError": {
+      "properties": {
+        "detail": {
+          "items": {
+            "$ref": "#/components/schemas/ValidationError"
+          },
+          "title": "Detail",
+          "type": "array"
+        }
+      },
+      "title": "HTTPValidationError",
+      "type": "object"
+    },
+    "OrderResponse": {
+      "properties": {
+        "authorized_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Authorized At"
+        },
+        "captured_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Captured At"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "guest_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Guest Id"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "order_type": {
+          "title": "Order Type",
+          "type": "string"
+        },
+        "payment_currency": {
+          "title": "Payment Currency",
+          "type": "string"
+        },
+        "payment_deadline": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Payment Deadline"
+        },
+        "payment_failed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Payment Failed At"
+        },
+        "payment_failed_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Payment Failed Reason"
+        },
+        "payment_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Payment Id"
+        },
+        "payment_started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Payment Started At"
+        },
+        "pg_approved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pg Approved At"
+        },
+        "pg_provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pg Provider"
+        },
+        "pg_transaction_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pg Transaction Id"
+        },
+        "quantity": {
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "tier_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Tier Id"
+        },
+        "time_slot_end": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Time Slot End"
+        },
+        "time_slot_start": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Time Slot Start"
+        },
+        "total_amount": {
+          "title": "Total Amount",
+          "type": "number"
+        },
+        "unit_price": {
+          "title": "Unit Price",
+          "type": "number"
+        },
+        "user_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User Id"
+        }
+      },
+      "required": [
+        "id",
+        "event_id",
+        "tier_id",
+        "order_type",
+        "status",
+        "quantity",
+        "unit_price",
+        "total_amount",
+        "payment_currency",
+        "created_at"
+      ],
+      "title": "OrderResponse",
+      "type": "object"
+    },
+    "PaymentPrepareRequest": {
+      "properties": {
+        "fail_url": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fail Url"
+        },
+        "idempotency_key": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Idempotency Key"
+        },
+        "pay_method": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pay Method"
+        },
+        "success_url": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Success Url"
+        }
+      },
+      "title": "PaymentPrepareRequest",
+      "type": "object"
+    },
+    "PaymentPrepareResponse": {
+      "properties": {
+        "amount": {
+          "title": "Amount",
+          "type": "number"
+        },
+        "currency": {
+          "title": "Currency",
+          "type": "string"
+        },
+        "order_id": {
+          "format": "uuid",
+          "title": "Order Id",
+          "type": "string"
+        },
+        "payment_deadline": {
+          "format": "date-time",
+          "title": "Payment Deadline",
+          "type": "string"
+        },
+        "payment_id": {
+          "title": "Payment Id",
+          "type": "string"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "provider_params": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Provider Params"
+        },
+        "redirect_url": {
+          "title": "Redirect Url",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "provider",
+        "payment_id",
+        "amount",
+        "currency",
+        "redirect_url",
+        "payment_deadline",
+        "status"
+      ],
+      "title": "PaymentPrepareResponse",
+      "type": "object"
+    },
+    "RefreshRequest": {
+      "properties": {
+        "refresh_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Refresh Token"
+        }
+      },
+      "title": "RefreshRequest",
+      "type": "object"
+    },
+    "RefundRequest": {
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Amount"
+        },
+        "idempotency_key": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Idempotency Key"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "ticket_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Ticket Ids"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "RefundRequest",
+      "type": "object"
+    },
+    "RefundResponse": {
+      "properties": {
+        "order_id": {
+          "format": "uuid",
+          "title": "Order Id",
+          "type": "string"
+        },
+        "original_amount": {
+          "title": "Original Amount",
+          "type": "number"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "refund_amount": {
+          "title": "Refund Amount",
+          "type": "number"
+        },
+        "refund_id": {
+          "format": "uuid",
+          "title": "Refund Id",
+          "type": "string"
+        },
+        "refund_status": {
+          "title": "Refund Status",
+          "type": "string"
+        },
+        "refunded_at": {
+          "format": "date-time",
+          "title": "Refunded At",
+          "type": "string"
+        },
+        "requires_approval": {
+          "title": "Requires Approval",
+          "type": "boolean"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "ticket_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Ticket Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "refund_id",
+        "order_id",
+        "status",
+        "refund_status",
+        "refund_amount",
+        "original_amount",
+        "reason",
+        "requires_approval",
+        "ticket_ids",
+        "refunded_at"
+      ],
+      "title": "RefundResponse",
+      "type": "object"
+    },
+    "TicketListResponse": {
+      "properties": {
+        "tickets": {
+          "items": {
+            "$ref": "#/components/schemas/TicketResponse"
+          },
+          "title": "Tickets",
+          "type": "array"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tickets",
+        "total"
+      ],
+      "title": "TicketListResponse",
+      "type": "object"
+    },
+    "TicketQrResponse": {
+      "properties": {
+        "expires_in_seconds": {
+          "title": "Expires In Seconds",
+          "type": "integer"
+        },
+        "qr_data": {
+          "title": "Qr Data",
+          "type": "string"
+        },
+        "ticket_id": {
+          "format": "uuid",
+          "title": "Ticket Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ticket_id",
+        "qr_data",
+        "expires_in_seconds"
+      ],
+      "title": "TicketQrResponse",
+      "type": "object"
+    },
+    "TicketResponse": {
+      "properties": {
+        "checked_in": {
+          "default": false,
+          "title": "Checked In",
+          "type": "boolean"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "current_owner_id": {
+          "format": "uuid",
+          "title": "Current Owner Id",
+          "type": "string"
+        },
+        "event_category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Event Category"
+        },
+        "event_date": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Event Date"
+        },
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event_title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Event Title"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "is_resalable": {
+          "title": "Is Resalable",
+          "type": "boolean"
+        },
+        "purchase_price": {
+          "title": "Purchase Price",
+          "type": "number"
+        },
+        "sale_mode": {
+          "title": "Sale Mode",
+          "type": "string"
+        },
+        "seat_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Seat Id"
+        },
+        "seat_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Seat Label"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "tier_id": {
+          "format": "uuid",
+          "title": "Tier Id",
+          "type": "string"
+        },
+        "tier_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Tier Name"
+        },
+        "transfer_count": {
+          "title": "Transfer Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "event_id",
+        "tier_id",
+        "current_owner_id",
+        "purchase_price",
+        "sale_mode",
+        "status",
+        "is_resalable",
+        "transfer_count",
+        "created_at"
+      ],
+      "title": "TicketResponse",
+      "type": "object"
+    },
+    "TokenResponse": {
+      "properties": {
+        "access_token": {
+          "title": "Access Token",
+          "type": "string"
+        },
+        "captcha_required": {
+          "default": false,
+          "title": "Captcha Required",
+          "type": "boolean"
+        },
+        "mfa_required": {
+          "default": false,
+          "title": "Mfa Required",
+          "type": "boolean"
+        },
+        "mfa_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Mfa Token"
+        },
+        "refresh_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Refresh Token"
+        },
+        "token_type": {
+          "default": "bearer",
+          "title": "Token Type",
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/components/schemas/UserResponse"
+        }
+      },
+      "required": [
+        "access_token",
+        "user"
+      ],
+      "title": "TokenResponse",
+      "type": "object"
+    },
+    "UserCreate": {
+      "properties": {
+        "email": {
+          "format": "email",
+          "title": "Email",
+          "type": "string"
+        },
+        "is_organizer": {
+          "default": false,
+          "title": "Is Organizer",
+          "type": "boolean"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "password": {
+          "maxLength": 72,
+          "minLength": 8,
+          "title": "Password",
+          "type": "string"
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Phone"
+        }
+      },
+      "required": [
+        "email",
+        "password",
+        "name"
+      ],
+      "title": "UserCreate",
+      "type": "object"
+    },
+    "UserLogin": {
+      "properties": {
+        "captcha_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Captcha Token"
+        },
+        "email": {
+          "format": "email",
+          "title": "Email",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "password"
+      ],
+      "title": "UserLogin",
+      "type": "object"
+    },
+    "UserResponse": {
+      "properties": {
+        "admin_role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Admin Role"
+        },
+        "avatar_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Avatar Url"
+        },
+        "bio": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Bio"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "is_admin": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Is Admin"
+        },
+        "is_organizer": {
+          "title": "Is Organizer",
+          "type": "boolean"
+        },
+        "is_verified": {
+          "title": "Is Verified",
+          "type": "boolean"
+        },
+        "loyalty_score": {
+          "title": "Loyalty Score",
+          "type": "number"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Phone"
+        },
+        "preferred_language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "ko",
+          "title": "Preferred Language"
+        },
+        "timezone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "Asia/Seoul",
+          "title": "Timezone"
+        },
+        "verification_level": {
+          "title": "Verification Level",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "name",
+        "phone",
+        "is_verified",
+        "is_organizer",
+        "verification_level",
+        "loyalty_score",
+        "created_at"
+      ],
+      "title": "UserResponse",
+      "type": "object"
+    },
+    "ValidateQRRequest": {
+      "properties": {
+        "qr_payload": {
+          "title": "Qr Payload",
+          "type": "string"
+        }
+      },
+      "required": [
+        "qr_payload"
+      ],
+      "title": "ValidateQRRequest",
+      "type": "object"
+    },
+    "ValidateQRResponse": {
+      "properties": {
+        "admission_mode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Admission Mode"
+        },
+        "attended_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Attended Date"
+        },
+        "attendee_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Attendee Name"
+        },
+        "checked_in_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Checked In At"
+        },
+        "event_title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Event Title"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Outcome"
+        },
+        "seat_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Seat Label"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "ticket_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Ticket Id"
+        },
+        "tier_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Tier Name"
+        }
+      },
+      "required": [
+        "status",
+        "message"
+      ],
+      "title": "ValidateQRResponse",
+      "type": "object"
+    },
+    "ValidationError": {
+      "properties": {
+        "ctx": {
+          "title": "Context",
+          "type": "object"
+        },
+        "input": {
+          "title": "Input"
+        },
+        "loc": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "title": "Location",
+          "type": "array"
+        },
+        "msg": {
+          "title": "Message",
+          "type": "string"
+        },
+        "type": {
+          "title": "Error Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "loc",
+        "msg",
+        "type"
+      ],
+      "title": "ValidationError",
+      "type": "object"
+    },
+    "VerifyTokenRequest": {
+      "properties": {
+        "token": {
+          "title": "Token",
+          "type": "string"
+        }
+      },
+      "required": [
+        "token"
+      ],
+      "title": "VerifyTokenRequest",
+      "type": "object"
+    },
+    "VerifyTokenResponse": {
+      "properties": {
+        "email": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Email"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expires At"
+        },
+        "go_account_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Go Account Id"
+        },
+        "is_admin": {
+          "default": false,
+          "title": "Is Admin",
+          "type": "boolean"
+        },
+        "is_organizer": {
+          "default": false,
+          "title": "Is Organizer",
+          "type": "boolean"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Name"
+        },
+        "organizer_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Organizer Ref"
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Phone"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason"
+        },
+        "user_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User Id"
+        },
+        "valid": {
+          "title": "Valid",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "valid"
+      ],
+      "title": "VerifyTokenResponse",
+      "type": "object"
+    }
+  }
+}

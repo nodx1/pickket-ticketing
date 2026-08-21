@@ -1,0 +1,33 @@
+name = "pickket-edge-guard"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# ── Staging ──────────────────────────────────────────────────────────────────
+[env.staging]
+name = "pickket-edge-guard-staging"
+routes = [
+  { pattern = "api-staging.pickket.kr/*", zone_name = "pickket.kr" },
+]
+
+[env.staging.vars]
+RATE_LIMIT_PURCHASE = "10"
+RATE_LIMIT_GENERAL = "100"
+
+[[env.staging.kv_namespaces]]
+binding = "RATE_LIMITS"
+id = "ea4c2c17a90c497cac9e2e454b600f4f"
+
+# ── Production ───────────────────────────────────────────────────────────────
+[env.production]
+name = "pickket-edge-guard"
+routes = [
+  { pattern = "api.pickket.kr/*", zone_name = "pickket.kr" },
+]
+
+[env.production.vars]
+RATE_LIMIT_PURCHASE = "10"
+RATE_LIMIT_GENERAL = "100"
+
+[[env.production.kv_namespaces]]
+binding = "RATE_LIMITS"
+id = "8dac5e5a683a4301907490164096e166"

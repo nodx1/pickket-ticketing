@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pickket-go-ops-cleanup
+  namespace: pickket-go
+  labels:
+    app: pickket-go
+    component: ops-cleanup
+spec:
+  # telemetry 보존기간 정리 + 중단된 running 원장 회수(하루 1회).
+  schedule: "15 0 * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  failedJobsHistoryLimit: 5
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 90
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: pickket-go
+            component: ops-cleanup
+        spec:
+          serviceAccountName: pickket-go-cron
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          containers:
+            - name: ops-cleanup
+              image: curlimages/curl:8.10.1
+              imagePullPolicy: IfNotPresent
+              command:
+                - sh
+                - -c
+                - >
+                  curl --connect-timeout 5 --max-time 75 -fsS -H "Authorization: Bearer $CRON_SECRET"
+                  -H "x-cron-timestamp: $(date -u +%FT%TZ)"
+                  "$GO_BASE_URL/api/cron/ops-cleanup"
+              env:
+                - name: GO_BASE_URL
+                  value: "http://pickket-go.pickket-go.svc.cluster.local:3000"
+              envFrom:
+                - secretRef:
+                    name: pickket-go-stg-secrets
+              resources:
+                requests:
+                  memory: "32Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "64Mi"
+                  cpu: "100m"

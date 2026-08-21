@@ -1,0 +1,76 @@
+name: Migration Check
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/models/**"
+      - "backend/alembic/**"
+
+jobs:
+  migration-check:
+    name: Alembic Migration Check
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: pickket_ci_test
+          POSTGRES_USER: pickket_ci
+          POSTGRES_PASSWORD: pickket_ci_2026
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pickket_ci -d pickket_ci_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: "postgresql+asyncpg://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_test"
+          DATABASE_URL_SYNC: "postgresql://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_test"
+        run: |
+          # Override the alembic.ini sqlalchemy.url with the CI database
+          alembic -x sqlalchemy.url="postgresql://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_test" upgrade head
+
+      - name: Verify no pending migrations (model ↔ DB drift gate)
+        env:
+          DATABASE_URL: "postgresql+asyncpg://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_test"
+          DATABASE_URL_SYNC: "postgresql://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_test"
+        run: |
+          # alembic check가 drift(모델↔DB 불일치)를 발견하면 비정상 종료 → CI 실패.
+          # 절대 '|| echo'로 삼키지 않는다 (가역성/정합 게이트 무력화 방지).
+          alembic -x sqlalchemy.url="postgresql://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_test" check
+
+      - name: Verify head migration is reversible (downgrade -1 → upgrade head)
+        env:
+          DATABASE_URL: "postgresql+asyncpg://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_test"
+          DATABASE_URL_SYNC: "postgresql://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_test"
+        run: |
+          # head 마이그레이션 가역성(롤백 가능성) 게이트.
+          # downgrade가 깨진 마이그레이션이 올라오면 여기서 CI를 막는다.
+          URL="postgresql://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_test"
+          echo "[1/3] downgrade -1 ..."
+          alembic -x sqlalchemy.url="$URL" downgrade -1
+          echo "[2/3] upgrade head ..."
+          alembic -x sqlalchemy.url="$URL" upgrade head
+          echo "[3/3] 가역 후 재정합 확인 (alembic check) ..."
+          alembic -x sqlalchemy.url="$URL" check

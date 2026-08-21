@@ -1,0 +1,566 @@
+name: Deploy to AWS ECS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+      service:
+        description: "Service to deploy"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - backend
+          - consumer
+          - admin
+          - celery-worker
+          - celery-beat
+          - ticket-gateway
+          - realtime-hub
+          - mcp-dev-server
+
+concurrency:
+  group: deploy-aws-${{ inputs.environment }}-${{ inputs.service || github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com
+  # ── 환경별 분기 (staging / production) ──
+  ECS_CLUSTER: ${{ inputs.environment == 'production' && 'pickket' || 'pickket-stg' }}
+  API_DOMAIN: ${{ inputs.environment == 'production' && 'api.pickket.kr' || 'api-staging.pickket.kr' }}
+  BASE_DOMAIN: ${{ inputs.environment == 'production' && 'www.pickket.kr' || 'staging.pickket.kr' }}
+  GO_DOMAIN: ${{ inputs.environment == 'production' && 'go.pickket.kr' || 'go-staging.pickket.kr' }}
+  ADMIN_DOMAIN: ${{ inputs.environment == 'production' && 'admin.pickket.kr' || 'admin-staging.pickket.kr' }}
+  IMAGE_LATEST_TAG: ${{ inputs.environment == 'production' && 'prod-latest' || 'staging-latest' }}
+  # production 서비스는 prod- 프리픽스 사용
+  SERVICE_PREFIX: ${{ inputs.environment == 'production' && 'prod-' || '' }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 0-pre. Staging-first gate — 프로덕션 배포 시 최근 스테이징 성공 확인
+  # ---------------------------------------------------------------------------
+  staging-gate:
+    if: inputs.environment == 'production'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check this commit was deployed to staging successfully
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMIT_SHA="${{ github.sha }}"
+          echo "🔍 프로덕션 배포 전 이 커밋(${COMMIT_SHA:0:7})의 스테이징 배포 성공 여부 확인..."
+
+          # 이 커밋의 staging 배포 성공 기록 확인
+          MATCH=$(gh api repos/${{ github.repository }}/actions/workflows/deploy-aws.yml/runs \
+            --jq "[.workflow_runs[] | select(
+              .conclusion == \"success\" and
+              .head_sha == \"${COMMIT_SHA}\" and
+              (.display_title | contains(\"staging\"))
+            )] | length")
+
+          if [[ "$MATCH" == "0" || -z "$MATCH" ]]; then
+            echo "❌ 이 커밋(${COMMIT_SHA:0:7})은 스테이징 배포 기록이 없습니다."
+            echo ""
+            echo "   프로덕션 배포 전 반드시 동일 커밋을 스테이징에 먼저 배포하세요."
+            echo "   👉 Actions → Deploy to AWS ECS → staging → all"
+            echo ""
+            echo "   이렇게 하면 다른 팀원의 배포와 무관하게,"
+            echo "   본인이 배포하려는 코드만 정확히 검증됩니다."
+            echo ""
+            echo "   참고: docs/operations/PROMOTION_PROCESS.md"
+            exit 1
+          fi
+
+          echo "✅ 커밋 ${COMMIT_SHA:0:7}의 스테이징 배포 성공 확인. 프로덕션 프로모션 진행."
+
+  # ---------------------------------------------------------------------------
+  # 0. Preflight — 핵심 파일 무결성 검증 (staging-gate와 독립 실행)
+  # ---------------------------------------------------------------------------
+  preflight:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run preflight checks
+        run: ./scripts/ci/preflight-check.sh
+
+  # ---------------------------------------------------------------------------
+  # 1. Build & Push Docker images
+  # ---------------------------------------------------------------------------
+  build:
+    needs: [preflight, staging-gate]
+    if: |
+      always() &&
+      needs.preflight.result == 'success' &&
+      (needs.staging-gate.result == 'success' || needs.staging-gate.result == 'skipped')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: backend
+            dockerfile: backend/Dockerfile
+            ecr_repo: pickket-backend
+          - service: ticket-gateway
+            dockerfile: services/ticket-gateway/Dockerfile
+            ecr_repo: pickket/ticket-gateway
+          - service: realtime-hub
+            dockerfile: services/realtime-hub/Dockerfile
+            ecr_repo: pickket/realtime-hub
+          - service: consumer
+            dockerfile: apps/consumer/Dockerfile
+            ecr_repo: pickket-consumer
+          - service: admin
+            dockerfile: apps/admin/Dockerfile
+            ecr_repo: pickket-admin
+          - service: mcp-dev-server
+            dockerfile: packages/mcp-dev-server/Dockerfile
+            ecr_repo: pickket-mcp-dev-server
+
+    steps:
+      - name: Check if this service should build
+        id: should-run
+        run: |
+          SERVICE="${{ inputs.service }}"
+          MATRIX="${{ matrix.service }}"
+          if [[ "$SERVICE" == "all" || "$SERVICE" == "$MATRIX" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [[ ("$SERVICE" == "celery-worker" || "$SERVICE" == "celery-beat") && "$MATRIX" == "backend" ]]; then
+            # celery-worker and celery-beat share the backend image
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.should-run.outputs.run == 'true'
+
+      - name: Configure AWS credentials
+        if: steps.should-run.outputs.run == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: steps.should-run.outputs.run == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Validate required env vars
+        if: steps.should-run.outputs.run == 'true' && matrix.service != 'backend' && matrix.service != 'ticket-gateway' && matrix.service != 'realtime-hub' && matrix.service != 'mcp-dev-server'
+        run: |
+          for var in NEXT_PUBLIC_API_URL NEXT_PUBLIC_CONSUMER_URL; do
+            if [ -z "${!var}" ]; then echo "FATAL: $var not set" && exit 1; fi
+          done
+        env:
+          NEXT_PUBLIC_API_URL: https://${{ env.API_DOMAIN }}
+          NEXT_PUBLIC_CONSUMER_URL: https://${{ env.BASE_DOMAIN }}
+
+      - name: Build, tag, and push image to ECR
+        if: steps.should-run.outputs.run == 'true'
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          FULL_IMAGE="${{ env.ECR_REGISTRY }}/${{ matrix.ecr_repo }}"
+
+          BUILD_ARGS=""
+          SVC="${{ matrix.service }}"
+          if [[ "$SVC" != "backend" && "$SVC" != "ticket-gateway" && "$SVC" != "realtime-hub" ]]; then
+            # Next.js frontend services
+            BUILD_ARGS="--build-arg BUILD_TARGET=${{ inputs.environment }}"
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_API_URL=https://${{ env.API_DOMAIN }}"
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_BASE_URL=https://${{ env.BASE_DOMAIN }}"
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_GO_URL=https://${{ env.GO_DOMAIN }}"
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_CONSUMER_URL=https://${{ env.BASE_DOMAIN }}"
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_CDN_URL=https://${{ env.BASE_DOMAIN }}"
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_PUBLIC_WS_URL=wss://${{ env.API_DOMAIN }}"
+            BUILD_ARGS="$BUILD_ARGS --build-arg NEXT_DEPLOYMENT_ID=${{ github.sha }}"
+          fi
+
+          docker build \
+            $BUILD_ARGS \
+            -f ${{ matrix.dockerfile }} \
+            -t "$FULL_IMAGE:$IMAGE_TAG" \
+            -t "$FULL_IMAGE:${{ env.IMAGE_LATEST_TAG }}" \
+            .
+
+          docker push "$FULL_IMAGE" --all-tags
+
+  # ---------------------------------------------------------------------------
+  # 2. Pre-deploy RDS snapshot (production only)
+  # ---------------------------------------------------------------------------
+  snapshot:
+    needs: build
+    runs-on: ubuntu-latest
+    if: inputs.environment == 'production' && (inputs.service == 'all' || inputs.service == 'backend')
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create pre-deploy Aurora cluster snapshot
+        run: |
+          # production DB는 Aurora Serverless v2 클러스터(pickket-aurora-v2, Terraform SoT:
+          # infra/terraform/modules/database/main.tf '${prefix}-aurora-v2').
+          # 레거시 인스턴스 'pickket-db'(migrate-to-aurora.sh의 OLD_RDS_ID, 폐기 대상)가 아니라
+          # Aurora 클러스터를 대상으로 create-db-cluster-snapshot을 써야 한다.
+          AURORA_CLUSTER_ID="${AURORA_CLUSTER_ID:-pickket-aurora-v2}"
+          SNAPSHOT_ID="pre-deploy-${GITHUB_SHA::8}-$(date +%Y%m%d-%H%M)"
+          echo "[INFO] Creating Aurora cluster snapshot: ${SNAPSHOT_ID} (cluster: ${AURORA_CLUSTER_ID})"
+          aws rds create-db-cluster-snapshot \
+            --db-cluster-identifier "$AURORA_CLUSTER_ID" \
+            --db-cluster-snapshot-identifier "$SNAPSHOT_ID" \
+            --tags Key=Source,Value=deploy-pipeline Key=Environment,Value=production Key=Commit,Value="${GITHUB_SHA}"
+          echo "[INFO] Snapshot creation initiated (async). Proceeding with migration."
+
+  # ---------------------------------------------------------------------------
+  # 3. Run DB migration (only when backend is being deployed)
+  # ---------------------------------------------------------------------------
+  migrate:
+    needs: [build, snapshot]
+    # 주의: snapshot이 'failure'면 이 if가 거짓이 되어 migrate가 'skipped'로 처리되고,
+    # 아래 capture-taskdefs가 skipped를 통과시켜 백업/마이그레이션 없이 deploy가 진행되던
+    # 무력화 버그가 있었다. 그래서 (a) if에서 snapshot 'failure'/'cancelled'를 명시 제외하고,
+    # (b) 아래 guard 스텝과 capture-taskdefs의 snapshot 의존으로 실패를 deploy까지 전파한다.
+    if: always() && needs.build.result == 'success' && needs.snapshot.result != 'failure' && needs.snapshot.result != 'cancelled' && (inputs.service == 'all' || inputs.service == 'backend')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard — pre-deploy snapshot must not have failed
+        if: needs.snapshot.result == 'failure' || needs.snapshot.result == 'cancelled'
+        run: |
+          echo "::error::pre-deploy Aurora snapshot 잡이 실패/취소됨 — 백업 없이 마이그레이션/배포 진행 불가."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Register migration task definition with new image
+        id: migrate-taskdef
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          FULL_IMAGE="${{ env.ECR_REGISTRY }}/pickket-backend:${IMAGE_TAG}"
+          echo "Image: $FULL_IMAGE"
+
+          # Fetch current backend task-def from ECS and update image only
+          CURRENT_TASKDEF=$(aws ecs describe-task-definition \
+            --task-definition "$(aws ecs describe-services \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services "${{ env.SERVICE_PREFIX }}backend" \
+              --query 'services[0].taskDefinition' --output text)" \
+            --query 'taskDefinition' --output json)
+
+          UPDATED=$(echo "$CURRENT_TASKDEF" | jq --arg img "$FULL_IMAGE" '
+            del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                .compatibilities, .registeredAt, .registeredBy, .deregisteredAt) |
+            .containerDefinitions[0].image = $img')
+
+          NEW_TASKDEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$UPDATED" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "taskdef_arn=$NEW_TASKDEF_ARN" >> "$GITHUB_OUTPUT"
+          echo "Registered migration task definition: $NEW_TASKDEF_ARN"
+
+      - name: Run alembic upgrade head
+        env:
+          ECS_SERVICE: ${{ env.SERVICE_PREFIX }}backend
+          AWS_RUN_COMMAND: alembic upgrade head
+          OVERRIDE_TASKDEF: ${{ steps.migrate-taskdef.outputs.taskdef_arn }}
+        run: |
+          ./scripts/ci/aws_run_backend_task.sh
+
+  # ---------------------------------------------------------------------------
+  # 4. Capture previous task definitions (for rollback)
+  # ---------------------------------------------------------------------------
+  capture-taskdefs:
+    needs: [build, snapshot, migrate]
+    # snapshot 또는 migrate가 'failure'/'cancelled'면 deploy가 진행되지 않도록 차단한다.
+    # (snapshot 'skipped' = 비프로덕션/비백엔드 배포라 정상; migrate 'skipped' = 백엔드 미배포라 정상.)
+    if: >-
+      always() && needs.build.result == 'success'
+      && needs.snapshot.result != 'failure' && needs.snapshot.result != 'cancelled'
+      && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+    runs-on: ubuntu-latest
+    outputs:
+      taskdefs: ${{ steps.capture.outputs.taskdefs }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Capture current task definitions
+        id: capture
+        run: |
+          RESULT="{}"
+          INPUT_SERVICE="${{ inputs.service }}"
+          PREFIX="${{ env.SERVICE_PREFIX }}"
+
+          for svc in backend consumer admin celery-worker celery-beat ticket-gateway realtime-hub mcp-dev-server; do
+            # mcp-dev-server는 staging 전용 — production rollback capture 제외
+            if [[ "$svc" == "mcp-dev-server" && "${{ inputs.environment }}" == "production" ]]; then continue; fi
+            if [[ "$INPUT_SERVICE" == "all" || "$INPUT_SERVICE" == "$svc" ]]; then
+              TASKDEF=$(aws ecs describe-services \
+                --cluster ${{ env.ECS_CLUSTER }} \
+                --services "${PREFIX}${svc}" \
+                --query 'services[0].taskDefinition' \
+                --output text)
+              RESULT=$(echo "$RESULT" | jq --arg k "$svc" --arg v "$TASKDEF" '. + {($k): $v}')
+            fi
+          done
+
+          echo "taskdefs=$(echo "$RESULT" | jq -c .)" >> "$GITHUB_OUTPUT"
+          echo "Captured task definitions:"
+          echo "$RESULT" | jq .
+
+  # ---------------------------------------------------------------------------
+  # 5. Deploy — update ECS services
+  # ---------------------------------------------------------------------------
+  deploy:
+    needs: capture-taskdefs
+    if: always() && needs.capture-taskdefs.result == 'success'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - backend
+          - consumer
+          - admin
+          - celery-worker
+          - celery-beat
+          - ticket-gateway
+          - realtime-hub
+          - mcp-dev-server
+
+    steps:
+      - name: Check if this service should deploy
+        id: should-deploy
+        run: |
+          SERVICE="${{ inputs.service }}"
+          MATRIX="${{ matrix.service }}"
+          ENV="${{ inputs.environment }}"
+          # mcp-dev-server는 staging 전용 — production 배포 시 건너뜀
+          if [[ "$MATRIX" == "mcp-dev-server" && "$ENV" == "production" ]]; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "⏭️  mcp-dev-server skipped on production (staging-only service)"
+          elif [[ "$SERVICE" == "all" || "$SERVICE" == "$MATRIX" ]]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure AWS credentials
+        if: steps.should-deploy.outputs.deploy == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: actions/checkout@v4
+        if: steps.should-deploy.outputs.deploy == 'true'
+
+      - name: Register task definition
+        if: steps.should-deploy.outputs.deploy == 'true'
+        id: register-taskdef
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          SERVICE="${{ matrix.service }}"
+          PREFIX="${{ env.SERVICE_PREFIX }}"
+
+          # ECR repo naming
+          case "$SERVICE" in
+            backend|consumer|admin)
+              FULL_IMAGE="${{ env.ECR_REGISTRY }}/pickket-${SERVICE}:${IMAGE_TAG}"
+              ;;
+            celery-worker|celery-beat)
+              FULL_IMAGE="${{ env.ECR_REGISTRY }}/pickket-backend:${IMAGE_TAG}"
+              ;;
+            mcp-dev-server)
+              FULL_IMAGE="${{ env.ECR_REGISTRY }}/pickket-mcp-dev-server:${IMAGE_TAG}"
+              ;;
+            *)
+              FULL_IMAGE="${{ env.ECR_REGISTRY }}/pickket/${SERVICE}:${IMAGE_TAG}"
+              ;;
+          esac
+
+          echo "Image: $FULL_IMAGE"
+
+          # Fetch current task-def from ECS and update image only
+          CURRENT_TASKDEF=$(aws ecs describe-task-definition \
+            --task-definition "$(aws ecs describe-services \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services "${PREFIX}${SERVICE}" \
+              --query 'services[0].taskDefinition' --output text)" \
+            --query 'taskDefinition' --output json)
+
+          # Strip fields that can't be re-registered
+          UPDATED=$(echo "$CURRENT_TASKDEF" | jq --arg img "$FULL_IMAGE" '
+            del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                .compatibilities, .registeredAt, .registeredBy, .deregisteredAt) |
+            .containerDefinitions[0].image = $img')
+
+          NEW_TASKDEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$UPDATED" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "taskdef_arn=$NEW_TASKDEF_ARN" >> "$GITHUB_OUTPUT"
+          echo "Registered task definition: $NEW_TASKDEF_ARN"
+
+      - name: Update ECS service
+        if: steps.should-deploy.outputs.deploy == 'true'
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service "${{ env.SERVICE_PREFIX }}${{ matrix.service }}" \
+            --task-definition ${{ steps.register-taskdef.outputs.taskdef_arn }} \
+            --force-new-deployment
+
+      - name: Wait for service stability
+        if: steps.should-deploy.outputs.deploy == 'true'
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services "${{ env.SERVICE_PREFIX }}${{ matrix.service }}"
+
+  # ---------------------------------------------------------------------------
+  # 6. Smoke tests
+  # ---------------------------------------------------------------------------
+  smoke-test:
+    needs: deploy
+    if: always() && needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Post-deploy smoke checks
+        env:
+          TARGET_SERVICE: ${{ inputs.service }}
+          API_BASE_URL: https://${{ env.API_DOMAIN }}
+          CONSUMER_BASE_URL: https://${{ env.BASE_DOMAIN }}
+          GO_BASE_URL: https://${{ env.GO_DOMAIN }}
+          ADMIN_BASE_URL: https://${{ env.ADMIN_DOMAIN }}
+        run: |
+          ./scripts/ci/aws_post_deploy_smoke.sh
+
+      - name: Verify CloudWatch alarms exist
+        if: inputs.environment == 'production'
+        run: |
+          ALARM_COUNT=$(aws cloudwatch describe-alarms \
+            --alarm-name-prefix pickket- \
+            --query 'MetricAlarms | length(@)' \
+            --output text --region ${{ env.AWS_REGION }})
+          echo "Active alarms: $ALARM_COUNT"
+          if [ "$ALARM_COUNT" -lt 8 ]; then
+            echo "::warning::Expected 8+ CloudWatch alarms, found $ALARM_COUNT. Run cloudwatch-alarms-v2.sh."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # 7. Rollback — revert to previous task definitions on smoke-test failure
+  # ---------------------------------------------------------------------------
+  rollback:
+    needs: [capture-taskdefs, deploy, smoke-test]
+    if: always() && (needs.deploy.result == 'failure' || needs.smoke-test.result == 'failure')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - backend
+          - consumer
+          - admin
+          - celery-worker
+          - celery-beat
+          - ticket-gateway
+          - realtime-hub
+
+    steps:
+      - name: Check if this service needs rollback
+        id: check
+        run: |
+          SERVICE="${{ inputs.service }}"
+          MATRIX="${{ matrix.service }}"
+          if [[ "$SERVICE" == "all" || "$SERVICE" == "$MATRIX" ]]; then
+            echo "rollback=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "rollback=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure AWS credentials
+        if: steps.check.outputs.rollback == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Rollback to previous task definition
+        if: steps.check.outputs.rollback == 'true'
+        env:
+          TASKDEFS_JSON: ${{ needs.capture-taskdefs.outputs.taskdefs }}
+        run: |
+          PREV_TASKDEF=$(echo "$TASKDEFS_JSON" | jq -r '."${{ matrix.service }}" // empty')
+
+          if [[ -z "$PREV_TASKDEF" ]]; then
+            echo "No previous task definition found for ${{ matrix.service }}, skipping"
+            exit 0
+          fi
+
+          echo "Rolling back ${{ matrix.service }} to $PREV_TASKDEF"
+
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service "${{ env.SERVICE_PREFIX }}${{ matrix.service }}" \
+            --task-definition "$PREV_TASKDEF" \
+            --force-new-deployment
+
+      - name: Wait for rollback stability
+        if: steps.check.outputs.rollback == 'true'
+        env:
+          TASKDEFS_JSON: ${{ needs.capture-taskdefs.outputs.taskdefs }}
+        run: |
+          PREV_TASKDEF=$(echo "$TASKDEFS_JSON" | jq -r '."${{ matrix.service }}" // empty')
+          if [[ -z "$PREV_TASKDEF" ]]; then
+            exit 0
+          fi
+
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services "${{ env.SERVICE_PREFIX }}${{ matrix.service }}"
+
+          echo "Rollback complete for ${{ matrix.service }}"

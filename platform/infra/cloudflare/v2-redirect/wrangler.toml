@@ -1,0 +1,11 @@
+name = "pickket-v2-redirect"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+account_id = "9fa16ac13c7beb314b0a0ddc0f374c22"
+
+routes = [
+  { pattern = "v2.pickket.kr/*", zone_name = "pickket.kr" },
+  { pattern = "api-v2.pickket.kr/*", zone_name = "pickket.kr" },
+  { pattern = "studio-v2.pickket.kr/*", zone_name = "pickket.kr" },
+  { pattern = "admin-v2.pickket.kr/*", zone_name = "pickket.kr" }
+]

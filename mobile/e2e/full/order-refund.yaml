@@ -1,0 +1,56 @@
+# 주문 내역 → 주문 상세 → 환불 버튼 노출 검증
+# 실제 환불은 실행하지 않음 (destructive) — 버튼 가시성까지만
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── 프로필 → 주문 내역 ──
+- tapOn:
+    id: "me.menu.orders"
+- extendedWaitUntil:
+    visible:
+      id: "orders.screen"
+    timeout: 5000
+
+# 주문이 있으면 첫 카드 탭, 없으면 EmptyState 검증 후 종료
+- runFlow:
+    when:
+      visible:
+        id: "order\\.card\\..*"
+    commands:
+      - tapOn:
+          id: "order\\.card\\..*"
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: "order.detail.screen"
+          timeout: 8000
+      - takeScreenshot: order_detail
+      # 환불 가능 상태면 버튼이 보여야 함 (destructive confirm 은 띄우지 않음)
+      - runFlow:
+          when:
+            visible:
+              id: "order.detail.refund"
+          commands:
+            - assertVisible:
+                id: "order.detail.refund"
+            - takeScreenshot: order_refund_available
+      - back
+
+- runFlow:
+    when:
+      notVisible:
+        id: "order\\.card\\..*"
+    commands:
+      - takeScreenshot: orders_empty
+
+# 프로필 복귀 (orders 는 tab 바깥 스택)
+- back
+- extendedWaitUntil:
+    visible:
+      id: "me.menu.orders"
+    timeout: 5000

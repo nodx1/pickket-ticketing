@@ -1,0 +1,61 @@
+# 지갑 허브 E2E — 프로필 → 지갑 → 3섹션(티켓/멤버십/포인트) 검증 (Phase F)
+# 태그: full
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── 프로필 → 지갑 진입 ──
+- tapOn:
+    id: "me.menu.wallet"
+
+- extendedWaitUntil:
+    visible:
+      id: "wallet.screen"
+    timeout: 8000
+
+- assertVisible:
+    id: "wallet.summary"
+- takeScreenshot: wallet_hub
+
+# ── 섹션 헤더 존재 검증 ──
+- assertVisible:
+    id: "wallet.section.tickets"
+- assertVisible:
+    id: "wallet.section.memberships"
+- assertVisible:
+    id: "wallet.section.points"
+
+# ── 포인트 상세 진입 ──
+- tapOn:
+    id: "wallet.more.points"
+
+- extendedWaitUntil:
+    visible:
+      id: "wallet.points.screen"
+    timeout: 5000
+- takeScreenshot: wallet_points
+
+- back
+
+# ── 멤버십 상세 진입 ──
+- tapOn:
+    id: "wallet.more.memberships"
+
+- extendedWaitUntil:
+    visible:
+      id: "wallet.memberships.screen"
+    timeout: 5000
+- takeScreenshot: wallet_memberships
+
+- back
+
+# ── 복귀 ──
+- back
+- extendedWaitUntil:
+    visible:
+      id: "me.menu.orders"
+    timeout: 5000

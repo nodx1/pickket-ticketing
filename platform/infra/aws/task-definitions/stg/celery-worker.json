@@ -1,0 +1,82 @@
+{
+  "family": "pickket-stg-celery-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "celery-worker",
+      "image": "794562054294.dkr.ecr.ap-northeast-2.amazonaws.com/pickket-backend:staging-latest",
+      "command": [
+        "celery",
+        "-A",
+        "app.core.celery_app:celery_app",
+        "worker",
+        "--loglevel=info",
+        "--concurrency=2"
+      ],
+      "essential": true,
+      "environment": [
+        { "name": "ENVIRONMENT", "value": "staging" },
+        { "name": "LOG_LEVEL", "value": "INFO" },
+        { "name": "PORTONE_MOCK_MODE", "value": "true" },
+        { "name": "UPLOAD_PROVIDER", "value": "s3" },
+        { "name": "S3_BUCKET", "value": "pickket-uploads" },
+        { "name": "S3_REGION", "value": "auto" },
+        {
+          "name": "S3_ENDPOINT_URL",
+          "value": "https://9fa16ac13c7beb314b0a0ddc0f374c22.r2.cloudflarestorage.com"
+        },
+        {
+          "name": "S3_PUBLIC_URL",
+          "value": "https://pub-e2742c598b854b65960d364f90957772.r2.dev"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/secret-key"
+        },
+        {
+          "name": "S3_ACCESS_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/s3-access-key"
+        },
+        {
+          "name": "S3_SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/s3-secret-key"
+        },
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/database-url"
+        },
+        {
+          "name": "DATABASE_URL_SYNC",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/database-url-sync"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/redis-url"
+        },
+        {
+          "name": "CELERY_BROKER_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/celery-broker-url"
+        },
+        {
+          "name": "CELERY_RESULT_BACKEND",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/celery-result-backend"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket-stg-celery-worker",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

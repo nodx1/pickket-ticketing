@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pickket-backend"
+version = "0.1.0"
+description = "Pickket - AI-powered fair ticket allocation engine"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "sqlalchemy[asyncio]>=2.0.25",
+    "asyncpg>=0.29.0",
+    "psycopg2-binary>=2.9.9",
+    "alembic>=1.13.0",
+    "redis>=5.0.0",
+    "celery[redis]>=5.3.0",
+    "PyJWT[crypto]>=2.10.1",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.6",
+    "httpx>=0.26.0",
+    "openpyxl>=3.1.5",
+    "ortools>=9.8",
+    "numpy>=1.26.0",
+    "email-validator>=2.1.0",
+    "reportlab>=4.2.5",
+    "sse-starlette>=1.6.0",
+    "aiosqlite>=0.19.0",
+    "prometheus-client>=0.20.0",
+    "sentry-sdk[fastapi]>=2.0.0",
+    "tenacity>=8.2.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-exporter-otlp>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.41b0",
+    "opentelemetry-instrumentation-redis>=0.41b0",
+    "opentelemetry-instrumentation-httpx>=0.41b0",
+    "stripe>=8.0.0",
+    "aioboto3>=12.0.0",
+    "cryptography>=42.0.0",
+    "pywebpush>=2.0.0",
+    "pyotp>=2.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "httpx>=0.26.0",
+    "ruff>=0.1.0",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = ["alembic/"]
+
+[tool.ruff.lint]
+ignore = [
+    "E402",   # module-level import not at top — intentional lazy imports
+    "E712",   # comparison to True/False — required for SQLAlchemy column expressions
+]
+
+# 도메인 모듈러 아키텍처 계층 위반 검사는 별도 스크립트에서 수행한다.
+# (ruff 의 banned-api 는 파일 단위 차등 적용이 불가능 — 마이그레이션 중 위양성 다수)
+# 검사 스크립트: scripts/ci/check_architecture_layers.py
+# 규칙 정의:    docs/architecture/backend/ARCHITECTURE.md §3
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests", "app/tests"]
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=60"
+
+[tool.coverage.run]
+omit = [
+    "app/tasks/*",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["alembic*", "tests*"]
+
+[tool.pdm.scripts]
+# 개발용 서버 실행 (코드 변경 시 자동 재시작)
+dev = "uvicorn app.main:app --reload"
+# 운영용 서버 실행
+start = "uvicorn app.main:app --host 0.0.0.0 --port 8000"

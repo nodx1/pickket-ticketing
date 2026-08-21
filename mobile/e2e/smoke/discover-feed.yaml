@@ -1,0 +1,46 @@
+# Discover 피드 E2E — 홈에서 트렌딩 섹션 스크롤 + 이벤트 진입
+# 태그: smoke
+appId: kr.pickket.app
+tags:
+  - smoke
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── 홈 화면 확인 ──
+- assertVisible:
+    id: "nav.tonight"
+
+# ── 트렌딩 섹션까지 스크롤 ──
+- scrollUntilVisible:
+    element:
+      id: "home.trending.section"
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: discover_trending
+
+# 트렌딩 카드 터치
+- tapOn:
+    id: "event\\.card\\.compact\\..*"
+    index: 0
+
+- extendedWaitUntil:
+    visible:
+      id: "event.detail.bookNow"
+    timeout: 8000
+- takeScreenshot: discover_to_detail
+
+# 뒤로가기
+- back
+
+# ── Home 복귀 ──
+- swipe:
+    direction: DOWN
+    duration: 500
+- swipe:
+    direction: DOWN
+    duration: 500
+- extendedWaitUntil:
+    visible:
+      id: "nav.tonight"
+    timeout: 5000

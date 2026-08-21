@@ -1,0 +1,2 @@
+ALTER TABLE events
+ADD COLUMN IF NOT EXISTS homepage_design JSONB NOT NULL DEFAULT '{}'::jsonb;

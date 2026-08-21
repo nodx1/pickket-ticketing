@@ -1,0 +1,104 @@
+name: SSL Pin Expiry Monitor
+
+# Nightly check that the SPKI pins baked into the mobile app
+# (`pickket.v2.app/src/lib/ssl-pinning.ts`) still match the live
+# api.pickket.kr certificate AND that the configured expiry date is
+# far enough out.
+#
+# Alerts (GitHub issue + exit 1) fire when:
+#   - live SPKI hash differs from any entry in PIN_HASHES
+#   - PIN_EXPIRATION_DATE is within 60 days
+#
+# The mobile app repo lives at /home/oem/Desktop/pickket.v2.app locally but is
+# a sibling repo in CI. We check it out via the `mobile_repo` repository input.
+
+on:
+  schedule:
+    - cron: "30 3 * * *" # 03:30 UTC nightly
+  workflow_dispatch:
+    inputs:
+      mobile_repo:
+        description: "GitHub repo hosting pickket.v2.app (owner/name)"
+        required: false
+        default: "pickket/pickket.v2.app"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-pins:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: v2
+
+      - name: Checkout mobile app
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.inputs.mobile_repo || 'pickket/pickket.v2.app' }}
+          path: app
+        continue-on-error: true
+
+      - name: Extract live SPKI hash
+        id: live
+        run: |
+          set -euo pipefail
+          HASH=$(openssl s_client -connect api.pickket.kr:443 -servername api.pickket.kr \
+            </dev/null 2>/dev/null \
+            | openssl x509 -pubkey -noout \
+            | openssl pkey -pubin -outform der 2>/dev/null \
+            | openssl dgst -sha256 -binary \
+            | base64)
+          echo "spki=$HASH" >>"$GITHUB_OUTPUT"
+          echo "Live SPKI: $HASH"
+
+      - name: Compare against pinned hashes
+        id: compare
+        run: |
+          set -euo pipefail
+          if [ ! -f app/src/lib/ssl-pinning.ts ]; then
+            echo "mobile_missing=1" >>"$GITHUB_OUTPUT"
+            echo "::warning::Mobile repo checkout failed — cannot compare pins"
+            exit 0
+          fi
+          LIVE='${{ steps.live.outputs.spki }}'
+          if grep -q "$LIVE" app/src/lib/ssl-pinning.ts; then
+            echo "match=1" >>"$GITHUB_OUTPUT"
+          else
+            echo "match=0" >>"$GITHUB_OUTPUT"
+          fi
+
+          # Extract PIN_EXPIRATION_DATE
+          EXP=$(grep -oP 'PIN_EXPIRATION_DATE\s*=\s*"\K[0-9-]+' app/src/lib/ssl-pinning.ts || true)
+          if [ -n "$EXP" ]; then
+            DAYS_LEFT=$(( ( $(date -d "$EXP" +%s) - $(date +%s) ) / 86400 ))
+            echo "days_left=$DAYS_LEFT" >>"$GITHUB_OUTPUT"
+            echo "expires=$EXP" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Fail if drift or expiry imminent
+        env:
+          MATCH: ${{ steps.compare.outputs.match }}
+          DAYS_LEFT: ${{ steps.compare.outputs.days_left }}
+          EXP: ${{ steps.compare.outputs.expires }}
+          LIVE: ${{ steps.live.outputs.spki }}
+          MOBILE_MISSING: ${{ steps.compare.outputs.mobile_missing }}
+        run: |
+          set -euo pipefail
+          if [ "$MOBILE_MISSING" = "1" ]; then
+            echo "::warning::Skipping — mobile repo not accessible."
+            exit 0
+          fi
+          FAIL=0
+          if [ "$MATCH" != "1" ]; then
+            echo "::error::SSL pin drift — live SPKI ($LIVE) not in PIN_HASHES"
+            FAIL=1
+          fi
+          if [ -n "${DAYS_LEFT:-}" ] && [ "$DAYS_LEFT" -lt 60 ]; then
+            echo "::error::PIN_EXPIRATION_DATE=$EXP expires in $DAYS_LEFT days (threshold: 60)"
+            FAIL=1
+          fi
+          exit $FAIL

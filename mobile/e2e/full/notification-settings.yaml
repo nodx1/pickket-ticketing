@@ -1,0 +1,69 @@
+# Phase E.5 — 알림 설정 센터 카테고리 확장 검증
+# 태그: full
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── 프��필 → 알림 설정 (스크롤 필요 — 2번째 메뉴 섹션) ──
+- scrollUntilVisible:
+    element:
+      id: "me.menu.notifications"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "me.menu.notifications"
+
+- extendedWaitUntil:
+    visible:
+      id: "notifications.screen"
+    timeout: 5000
+
+# ── 핵심 토글 검증 ──
+- assertVisible:
+    id: "notification.toggle.push_enabled"
+- assertVisible:
+    id: "notification.toggle.email_enabled"
+- assertVisible:
+    id: "notification.toggle.sms_enabled"
+- assertVisible:
+    id: "notification.toggle.allocation_result"
+- assertVisible:
+    id: "notification.toggle.payment_reminder"
+- assertVisible:
+    id: "notification.toggle.event_update"
+- assertVisible:
+    id: "notification.toggle.price_alert"
+- scrollUntilVisible:
+    element:
+      id: "notification.toggle.location_based"
+    direction: DOWN
+    timeout: 5000
+- assertVisible:
+    id: "notification.toggle.location_based"
+- assertVisible:
+    id: "notification.toggle.price_watch"
+- assertVisible:
+    id: "notification.toggle.weekly_curation"
+- assertVisible:
+    id: "notification.toggle.friend_activity"
+- takeScreenshot: notification_settings_proactive
+
+# 위치 기반 토글
+- tapOn:
+    id: "notification.toggle.location_based"
+- takeScreenshot: notification_location_toggled
+
+# 주간 큐레이션 토글
+- tapOn:
+    id: "notification.toggle.weekly_curation"
+- takeScreenshot: notification_weekly_toggled
+
+- back
+- extendedWaitUntil:
+    visible:
+      id: "me.menu.orders"
+    timeout: 5000

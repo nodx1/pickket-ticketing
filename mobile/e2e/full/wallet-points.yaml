@@ -1,0 +1,72 @@
+# 지갑 포인트 + 멤버십 상세 E2E — 서브 페이지 내부 검증
+# 태그: full
+appId: kr.pickket.app
+tags:
+  - full
+  - wallet
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── 프로필 → 지갑 진입 ──
+- tapOn:
+    id: "me.menu.wallet"
+
+- extendedWaitUntil:
+    visible:
+      id: "wallet.screen"
+    timeout: 8000
+
+# ── 포인트 상세 페이지 진입 ──
+- tapOn:
+    id: "wallet.more.points"
+
+- extendedWaitUntil:
+    visible:
+      id: "wallet.points.screen"
+    timeout: 5000
+
+- takeScreenshot: wallet_points_detail
+
+# 포인트 잔액 카드 확인 (화면에 AP 텍스트 표시)
+- assertVisible:
+    id: "wallet.points.screen"
+
+- back
+
+# ── 멤버십 상세 페이지 진입 ──
+- extendedWaitUntil:
+    visible:
+      id: "wallet.screen"
+    timeout: 5000
+
+- tapOn:
+    id: "wallet.more.memberships"
+
+- extendedWaitUntil:
+    visible:
+      id: "wallet.memberships.screen"
+    timeout: 5000
+
+- takeScreenshot: wallet_memberships_detail
+
+# 멤버십 목록 화면 확인
+- assertVisible:
+    id: "wallet.memberships.screen"
+
+- back
+
+# ── 지갑 허브 복귀 확인 ──
+- extendedWaitUntil:
+    visible:
+      id: "wallet.screen"
+    timeout: 5000
+
+- back
+
+# ── Me 탭 복귀 확인 ──
+- extendedWaitUntil:
+    visible:
+      id: "me.menu.orders"
+    timeout: 5000

@@ -1,0 +1,4 @@
+# Standards/ADR 경로 — 변경 시 리뷰 필수
+docs/architecture/ @go-tech-lead
+docs/adr/ @go-tech-lead
+CONTRIBUTING.md @go-tech-lead

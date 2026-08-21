@@ -1,0 +1,20 @@
+{
+  "TaskTemplate": {
+    "ContainerSpec": {
+      "Command": [
+        "celery",
+        "-A",
+        "app.core.celery_app:celery_app",
+        "beat",
+        "--loglevel=info",
+        "--schedule=/tmp/celerybeat-schedule"
+      ],
+      "Healthcheck": {
+        "Test": ["NONE"]
+      }
+    }
+  },
+  "UpdateConfig": {
+    "Order": "stop-first"
+  }
+}

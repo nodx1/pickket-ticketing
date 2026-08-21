@@ -1,0 +1,91 @@
+{
+  "family": "pickket-stg-realtime-hub",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-execution-role",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "taskRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "realtime-hub",
+      "image": "794562054294.dkr.ecr.ap-northeast-2.amazonaws.com/pickket/realtime-hub:latest",
+      "portMappings": [{ "containerPort": 8031, "protocol": "tcp" }],
+      "essential": true,
+      "environment": [
+        { "name": "ENVIRONMENT", "value": "staging" },
+        { "name": "PORT", "value": "8031" },
+        { "name": "LOG_LEVEL", "value": "DEBUG" },
+        { "name": "MAX_CONNECTIONS", "value": "50000" },
+        {
+          "name": "ALLOWED_ORIGINS",
+          "value": "https://staging.pickket.kr,https://go-staging.pickket.kr,https://admin-staging.pickket.kr"
+        },
+        { "name": "OTEL_ENABLED", "value": "true" },
+        { "name": "OTEL_SERVICE_NAME", "value": "pickket-realtime-hub-stg" },
+        { "name": "OTEL_EXPORTER_ENDPOINT", "value": "http://localhost:4317" }
+      ],
+      "secrets": [
+        {
+          "name": "REDIS_CLUSTER_NODES",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/redis-cluster-nodes"
+        },
+        {
+          "name": "REDIS_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/redis-password"
+        },
+        {
+          "name": "JWT_SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/secret-key"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket-stg/realtime-hub",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:8031/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      }
+    },
+    {
+      "name": "otel-collector",
+      "image": "public.ecr.aws/aws-observability/aws-otel-collector:v0.41.1",
+      "essential": false,
+      "command": ["--config", "env:AOT_CONFIG_CONTENT"],
+      "portMappings": [
+        { "containerPort": 4317, "protocol": "tcp" },
+        { "containerPort": 4318, "protocol": "tcp" }
+      ],
+      "environment": [
+        {
+          "name": "AOT_CONFIG_CONTENT",
+          "value": "receivers:\n  otlp:\n    protocols:\n      grpc:\n        endpoint: 0.0.0.0:4317\n      http:\n        endpoint: 0.0.0.0:4318\nprocessors:\n  batch:\n    timeout: 5s\n    send_batch_size: 256\nexporters:\n  awsxray:\n    region: ap-northeast-2\n  awsemf:\n    region: ap-northeast-2\n    namespace: Pickket/Application\n    log_group_name: /pickket/metrics\nservice:\n  pipelines:\n    traces:\n      receivers: [otlp]\n      processors: [batch]\n      exporters: [awsxray]\n    metrics:\n      receivers: [otlp]\n      processors: [batch]\n      exporters: [awsemf]"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket-stg/otel-collector",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "memory": 256
+    }
+  ]
+}

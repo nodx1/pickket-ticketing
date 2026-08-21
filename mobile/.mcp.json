@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "pickket-dev": {
+      "type": "sse",
+      "url": "https://mcp-staging.pickket.kr/sse",
+      "headers": { "Authorization": "Bearer ${PICKKET_MCP_TOKEN}" }
+    }
+  }
+}

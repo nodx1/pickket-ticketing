@@ -1,0 +1,37 @@
+-- 238-b: 레벨2 컷오버 T2-REST 3단계 — v2 이전 완료분 폐기.
+--
+-- ⚠️ **선행 조건**: v2 alembic `ctrest_0727` 이 **먼저** 적용되어 있어야 한다.
+--    (platform/backend/alembic/versions/ctrest_0727_go_ledger_tax_invoice_seat_funnel.py)
+--    v2 테이블/엔드포인트 없이 이 마이그를 돌리면 go 쪽 write 경로가 502 로 죽는다.
+--    배포 순서: v2 alembic → v2 배포 → go 배포 → 이 마이그.
+--
+-- ── tax_invoices (mig011) ──
+-- 세금계산서·현금영수증 발행 원장 = **국세 규제 데이터**. 어느 컷오버 트랙에도 편입돼
+-- 있지 않아 그냥 DROP 하면 발행 이력이 무성 소실된다. v2 `tax_invoices` 로 이전했다.
+--   · go 는 `orders/[orderId]/receipt` 에서 `recordTaxInvoice()`(v2 internal API)만 호출한다.
+--   · 이관하며 교정한 결함 3건:
+--       (1) 멱등장치 부재 → 더블클릭이면 같은 주문에 2건. v2 는 (order_id, receipt_type)
+--           부분 유니크(status<>'cancelled')로 봉쇄하고 경합 시 승자 행을 재생한다.
+--       (2) 현금영수증을 business_number='-' / company_name='현금영수증' 문자열로 구분 →
+--           v2 는 `receipt_type` 컬럼으로 명시.
+--       (3) 식별번호(개인정보)가 meta 에 원문으로 들어갈 여지 → v2 는 꼬리 4자리만 보관.
+--   · 키 변경: go order_id(go 주문) → v2 order_id(canonical). go 는 v2_order_id 앵커를 전달한다.
+--
+-- ── seat_funnel_events (mig148) ──
+-- 좌석 선택 퍼널 텔레메트리. `internal_commerce_read.py` 가 seat-analytics 응답의
+-- `funnel` 을 None 으로 하드코딩하며 "테이블 미존재 — 별도 신설"이라 남겨 둔 그 테이블이라,
+-- v2 대응이 **명시적으로 부재**했다. 지금 지우면 좌석 전환율 분석이 통째로 사라진다.
+-- → v2 `seat_funnel_events` 신설 + 수집/집계 internal API 로 이전했다.
+--   · 수집: POST /internal/events/{id}/seat-funnel  (fail-soft, at-least-once)
+--   · 집계: GET  /internal/events/{id}/seat-funnel  (COUNT DISTINCT session_id)
+--   · 멱등키가 없는 것이 의도다 — 집계가 DISTINCT session_id 라 중복 수집이 결과를 바꾸지 않는다.
+--
+-- ── DROP 순서 ──
+-- 두 테이블 모두 **자식이 없다**(어떤 테이블도 이들을 REFERENCES 하지 않음). 순서 무관.
+--
+-- ── 재실행 안전 / 롤백 ──
+-- IF EXISTS + CASCADE. 되돌리려면 mig011 / mig148 의 CREATE TABLE 을 재실행하되,
+-- 그 사이 v2 에 쌓인 행은 go 로 돌아오지 않는다(정본이 v2 로 넘어갔다).
+
+DROP TABLE IF EXISTS tax_invoices CASCADE;
+DROP TABLE IF EXISTS seat_funnel_events CASCADE;

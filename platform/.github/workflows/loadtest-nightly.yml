@@ -1,0 +1,107 @@
+name: Load Test Nightly
+
+on:
+  schedule:
+    - cron: "0 17 * * *" # 02:00 KST = 17:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: loadtest-nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  K6_TARGET_URL: ${{ vars.K6_TARGET_URL || 'https://api-staging.pickket.kr' }}
+
+jobs:
+  k6-load-test:
+    name: k6 Nightly Load Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - cart-flow
+          - eda-e2e
+          - queue-simulation
+          - seat-hold-concurrency
+          - ticket-gateway-rps
+          - websocket-stress
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D68
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Run k6 — ${{ matrix.scenario }}
+        id: k6
+        run: |
+          mkdir -p results
+          k6 run \
+            --env BASE_URL="${K6_TARGET_URL}" \
+            --out json=results/${{ matrix.scenario }}.json \
+            --summary-export=results/${{ matrix.scenario }}-summary.json \
+            tests/load/${{ matrix.scenario }}.js \
+            2>&1 | tee results/${{ matrix.scenario }}.log
+        continue-on-error: true
+
+      - name: Check threshold result
+        id: threshold
+        run: |
+          if [ "${{ steps.k6.outcome }}" = "failure" ]; then
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload k6 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-results-${{ matrix.scenario }}
+          path: results/
+          retention-days: 30
+
+      - name: Publish job summary
+        if: always()
+        run: |
+          echo "## k6 Load Test — ${{ matrix.scenario }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.threshold.outputs.passed }}" = "true" ]; then
+            echo "**Result:** PASS" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "**Result:** FAIL (threshold breached)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f results/${{ matrix.scenario }}-summary.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat results/${{ matrix.scenario }}-summary.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Notify Telegram on threshold failure
+        if: steps.threshold.outputs.passed == 'false'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_CRITICAL: ${{ secrets.TELEGRAM_CHAT_CRITICAL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "${TELEGRAM_BOT_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_CRITICAL}" ]; then
+            echo "TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_CRITICAL not set — skipping notification"
+            exit 0
+          fi
+          TEXT="⚠️ k6 야간 부하 테스트 임계치 초과
+          • 시나리오: ${{ matrix.scenario }}
+          • 대상: ${K6_TARGET_URL}
+          • 실행: ${RUN_URL}"
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_CRITICAL}" \
+            --data-urlencode text="${TEXT}"

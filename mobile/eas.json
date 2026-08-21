@@ -1,0 +1,53 @@
+{
+  "cli": {
+    "version": ">= 16.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:8021"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-stg.pickket.kr"
+      }
+    },
+    "preview-local": {
+      "extends": "preview",
+      "channel": "preview-local",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://10.0.2.2:8021"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "autoIncrement": true,
+      "ios": {
+        "distribution": "store"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.pickket.kr"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "TBD_BEFORE_FIRST_SUBMIT",
+        "appleTeamId": "TBD_BEFORE_FIRST_SUBMIT"
+      },
+      "android": {
+        "track": "internal"
+      }
+    }
+  }
+}

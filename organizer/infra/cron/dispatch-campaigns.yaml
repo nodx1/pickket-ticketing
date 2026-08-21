@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pickket-go-dispatch-campaigns
+  namespace: pickket-go
+  labels:
+    app: pickket-go
+    component: dispatch-campaigns
+spec:
+  # 이메일 캠페인 드레인(1분) — 'sending' 캠페인의 pending 수신자를 실제 발송(NCP).
+  # 상시 BullMQ 워커(worker:email) 미배포 대체. 미정의 시 캠페인이 'sending' 으로 잔류해 발송되지 않는다.
+  # ⚠️ W5-MSG(2026-07-27) 이후 이 라우트는 **v2 위임 스텁**이다(항상 200 no-op).
+  #    실제 드레인 = v2 Celery beat `messaging-dispatch-campaigns`. 감시 대상은 v2 worker.
+  schedule: "* * * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 30
+  failedJobsHistoryLimit: 5
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 90
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: pickket-go
+            component: dispatch-campaigns
+        spec:
+          serviceAccountName: pickket-go-cron
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          containers:
+            - name: dispatch-campaigns
+              image: curlimages/curl:8.10.1
+              imagePullPolicy: IfNotPresent
+              command:
+                - sh
+                - -c
+                - >
+                  curl --connect-timeout 5 --max-time 75 -fsS -H "Authorization: Bearer $CRON_SECRET"
+                  -H "x-cron-timestamp: $(date -u +%FT%TZ)"
+                  "$GO_BASE_URL/api/cron/dispatch-campaigns"
+              env:
+                - name: GO_BASE_URL
+                  value: "http://pickket-go.pickket-go.svc.cluster.local:3000"
+              envFrom:
+                - secretRef:
+                    name: pickket-go-stg-secrets
+              resources:
+                requests:
+                  memory: "32Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "64Mi"
+                  cpu: "100m"
+# ── CapRover(현행 배포) 대안 ─────────────────────────────────────────────
+# 외부 스케줄러가 1분 주기로 호출:
+#   curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://go.pickket.kr/api/cron/dispatch-campaigns

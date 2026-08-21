@@ -1,0 +1,55 @@
+{
+  "family": "pickket-prod-realtime-hub",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "realtime-hub",
+      "image": "794562054294.dkr.ecr.ap-northeast-2.amazonaws.com/pickket/realtime-hub:staging-latest",
+      "portMappings": [{ "containerPort": 8031, "protocol": "tcp" }],
+      "essential": true,
+      "environment": [
+        { "name": "ENVIRONMENT", "value": "production" },
+        { "name": "PORT", "value": "8031" },
+        { "name": "LOG_LEVEL", "value": "INFO" },
+        { "name": "MAX_CONNECTIONS", "value": "200000" }
+      ],
+      "secrets": [
+        {
+          "name": "REDIS_CLUSTER_NODES",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/redis-cluster-nodes"
+        },
+        {
+          "name": "REDIS_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/redis-password"
+        },
+        {
+          "name": "JWT_SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/secret-key"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket/realtime-hub",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:8031/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      }
+    }
+  ]
+}

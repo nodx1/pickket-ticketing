@@ -1,0 +1,46 @@
+# 루트 CI (감사 P1): platform JS 워크스페이스(consumer/admin + 공유 패키지) 게이트.
+# pnpm + turbo 로 lint + 단위테스트 실행. next build/e2e 는 env·인프라 의존이라 여기서 제외
+# (기존 platform 전용 워크플로/야간 잡이 담당). 백엔드(Python)·엔진은 별도 잡/워크플로.
+name: platform-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "platform/apps/**"
+      - "platform/packages/**"
+      - "platform/turbo.json"
+      - "platform/package.json"
+      - "platform/pnpm-lock.yaml"
+      - ".github/workflows/platform-ci.yml"
+  pull_request:
+    paths:
+      - "platform/apps/**"
+      - "platform/packages/**"
+      - "platform/turbo.json"
+      - "platform/package.json"
+      - "platform/pnpm-lock.yaml"
+      - ".github/workflows/platform-ci.yml"
+
+defaults:
+  run:
+    working-directory: platform
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: platform/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm run lint
+      - name: Unit tests
+        run: pnpm run test

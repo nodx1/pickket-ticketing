@@ -1,0 +1,62 @@
+# 접근성 스모크 — 4탭 + 핵심 화면 testID/accessibilityLabel 가시성
+# 목적: 접근성 라벨/testID 회귀 감지 (스크린리더 사용자 대상 최소 보장)
+appId: kr.pickket.app
+tags:
+  - smoke
+  - a11y
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── 4탭 testID 접근 가능 (기본 expanded 상태) ──
+- assertVisible:
+    id: "tab.index"
+- assertVisible:
+    id: "tab.schedule"
+- assertVisible:
+    id: "tab.tickets"
+- assertVisible:
+    id: "tab.me"
+
+# ── 홈 네비 아이콘 a11y ──
+- assertVisible:
+    id: "nav.tonight"
+- assertVisible:
+    id: "nav.thisWeek"
+- assertVisible:
+    id: "nav.trending"
+
+# ── Schedule 탭 a11y ──
+- runFlow: ../shared/restore-tabbar.yaml
+- tapOn:
+    id: "tab.schedule"
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+
+# ── Me 탭 a11y ──
+- runFlow: ../shared/restore-tabbar.yaml
+- tapOn:
+    id: "tab.me"
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+
+# 게스트면 로그인 → Me 메뉴 검증
+- runFlow: ../shared/ensure-logged-in.yaml
+- assertVisible:
+    id: "me.menu.orders"
+- assertVisible:
+    id: "me.menu.favorites"
+- scrollUntilVisible:
+    element:
+      id: "me.menu.language"
+    direction: DOWN
+
+# 홈 복귀
+- runFlow: ../shared/restore-tabbar.yaml
+- tapOn:
+    id: "tab.index"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "nav.tonight"

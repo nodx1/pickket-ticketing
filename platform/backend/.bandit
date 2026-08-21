@@ -1,0 +1,7 @@
+---
+exclude_dirs:
+  - app/tests
+  - scripts
+  - alembic
+skips:
+  - B101

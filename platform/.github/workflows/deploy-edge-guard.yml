@@ -1,0 +1,77 @@
+name: Deploy Edge Workers (Cloudflare)
+
+on:
+  push:
+    paths:
+      - "services/edge-guard/**"
+      - "infra/cloudflare/edge-queue/**"
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: edge-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Determine environment
+  # ---------------------------------------------------------------------------
+  resolve-env:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+    steps:
+      - id: env
+        run: |
+          # push 트리거(main/develop 포함)는 항상 staging만 배포.
+          # production 배포는 workflow_dispatch + environment=production 으로만 가능 (수동 게이트).
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=staging" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Deploy edge-guard
+  # ---------------------------------------------------------------------------
+  deploy-edge-guard:
+    runs-on: ubuntu-latest
+    needs: resolve-env
+    name: Deploy edge-guard (${{ needs.resolve-env.outputs.environment }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy edge-guard
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          workingDirectory: services/edge-guard
+          command: deploy --env ${{ needs.resolve-env.outputs.environment }}
+
+  # ---------------------------------------------------------------------------
+  # Deploy edge-queue
+  # ---------------------------------------------------------------------------
+  deploy-edge-queue:
+    runs-on: ubuntu-latest
+    needs: resolve-env
+    name: Deploy edge-queue (${{ needs.resolve-env.outputs.environment }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy edge-queue
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          workingDirectory: infra/cloudflare/edge-queue
+          command: deploy --env ${{ needs.resolve-env.outputs.environment }}

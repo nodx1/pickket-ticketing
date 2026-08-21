@@ -1,0 +1,45 @@
+# 로그인 플로우 E2E — 로그인 + Me/홈 검증
+# 태그: smoke
+appId: kr.pickket.app
+tags:
+  - smoke
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── Me 탭 검증 (프로필 + 티켓 통합) ──
+- extendedWaitUntil:
+    visible:
+      id: "me.menu.orders"
+    timeout: 5000
+- assertVisible: "fan1@test.pickket.kr"
+- assertVisible:
+    id: "me.menu.orders"
+- assertVisible:
+    id: "me.menu.favorites"
+# Picks/friends/memories 메뉴 추가로 language가 스크롤 아래로 밀림
+- scrollUntilVisible:
+    element:
+      id: "me.menu.language"
+    direction: DOWN
+- takeScreenshot: login_me
+
+# ── 홈 탭 복귀 ──
+- runFlow: ../shared/restore-tabbar.yaml
+- tapOn:
+    id: "tab.index"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "nav.tonight"
+- swipe:
+    direction: UP
+    duration: 500
+- swipe:
+    direction: UP
+    duration: 500
+- extendedWaitUntil:
+    visible:
+      id: "home.trending.section"
+    timeout: 5000
+- takeScreenshot: login_home

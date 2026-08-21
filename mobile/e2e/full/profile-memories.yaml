@@ -1,0 +1,55 @@
+# 프로필 추억 모음 E2E — Me 탭 → Memories 진입 + 화면 검증
+# 태그: full
+appId: kr.pickket.app
+tags:
+  - full
+  - profile
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── Me 탭으로 이동 ──
+- openLink: "pickket:///(tabs)/me"
+- extendedWaitUntil:
+    visible:
+      id: "me.menu.orders"
+    timeout: 8000
+
+# ── 메뉴에서 Memories 진입 ──
+- scrollUntilVisible:
+    element:
+      id: "me.menu.memories"
+    direction: DOWN
+    timeout: 8000
+
+- tapOn:
+    id: "me.menu.memories"
+
+# ── Memories 화면 도달 확인 (데이터 유/무 둘 다 대응) ──
+- extendedWaitUntil:
+    visible:
+      id: "memories.screen"
+    timeout: 8000
+    optional: true
+
+- runFlow:
+    when:
+      visible:
+        id: "memories.screen.empty"
+    commands:
+      - takeScreenshot: memories_empty
+
+- runFlow:
+    when:
+      visible:
+        id: "memories.screen"
+    commands:
+      - takeScreenshot: memories_list
+
+# ── 홈 복귀 ──
+- openLink: "pickket:///(tabs)"
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 5000

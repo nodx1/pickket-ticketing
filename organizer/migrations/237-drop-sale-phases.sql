@@ -1,0 +1,23 @@
+-- 237: 레벨2 컷오버 T2-PHASE — go `sale_phases` DROP.
+--
+-- 판매 단계(sale phase)의 SSOT 는 v2 `phase_configs` 로 완전 이전됐다
+-- (alembic `ctphase_0727`: target_quantity·allocated_quantity·status·config JSONB 가산 +
+--  ends_at nullable 완화 = go 컬럼 전부 흡수).
+--
+-- 코드 측 선행 조건 (이 마이그 적용 전에 배포되어야 함):
+--   · `lib/sale-plan/**` · `lib/v2/phase-transition-sync.ts` · `scripts/sale-phase-reaper.ts` 제거
+--   · `sale-phases` API 는 v2 `PUT/GET /api/v1/internal/events/{id}/sale-plan` 프록시로 재배선
+--   · `public/events/{slug}/current-phase` 는 v2 `GET /api/v1/public/...` 로 이관
+--     (consumer `useCurrentPhase` 도 v2 호출로 전환 — go 호출 0)
+--   · fcfs-converted webhook 2개(`webhooks/v2/fcfs-converted`, `v2-webhook/.../fcfs-converted`) 제거
+--     (v2 `auto_fcfs_transition` Celery beat 가 자체 전환 — go 왕복 불필요)
+--   · `lib/server/events.ts` hasLotteryPhase · products PATCH 가격 게이트 → v2 기준
+--   · 단계 상태기계(scheduled→open→closed)는 v2 `phase_transition.check_phase_transitions`
+--     (celery beat 60초)가 승계 — go reaper 크론 등록 해제 필요
+--
+-- 검증: `grep -rE "FROM sale_phases|INTO sale_phases|UPDATE sale_phases" organizer/src organizer/scripts` = 0
+--
+-- ⚠️ 비가역. 적용 전 pg_dump 백업 + 롤백 태그. 잔여 데이터는 v2 phase_configs 로 이미 수렴돼 있어야 한다
+--    (주최자가 판매 방식을 한 번이라도 저장했거나, 심사요청 웹훅이 phase 를 밀어넣은 이벤트).
+
+DROP TABLE IF EXISTS sale_phases CASCADE;

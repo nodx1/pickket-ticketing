@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pickket - 대기 중</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #2d1b69 100%);
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      text-align: center;
+      max-width: 480px;
+      padding: 2rem;
+    }
+    .logo {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 2rem;
+      background: linear-gradient(90deg, #a78bfa, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .queue-info {
+      background: rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+    .queue-position {
+      font-size: 3rem;
+      font-weight: 700;
+      color: #a78bfa;
+      margin-bottom: 0.5rem;
+    }
+    .queue-label {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 1rem;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 1rem;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #a78bfa, #818cf8);
+      border-radius: 3px;
+      animation: pulse 2s ease-in-out infinite;
+      width: 30%;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+    .message {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 1.5rem;
+    }
+    .countdown {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #818cf8;
+    }
+    .notice {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.4);
+      margin-top: 2rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">PICKKET</div>
+    <div class="queue-info">
+      <div class="queue-label">현재 대기 순번</div>
+      <div class="queue-position" id="position">{{waitTimeKnown ? waitTime : '--'}}</div>
+      <div class="queue-label">예상 대기 시간: <span class="countdown" id="eta">{{waitTimeKnown ? waitTime + '분' : '계산 중...'}}</span></div>
+      <div class="progress-bar"><div class="progress-fill"></div></div>
+    </div>
+    <p class="message">
+      현재 많은 분들이 접속 중입니다.<br>
+      순서가 되면 자동으로 입장됩니다.<br>
+      <strong>이 페이지를 닫지 마세요.</strong>
+    </p>
+    <p class="notice">
+      페이지를 새로고침하면 대기 순번이 초기화될 수 있습니다.<br>
+      공정한 티켓 구매를 위해 대기열 시스템을 운영합니다.
+    </p>
+  </div>
+  <script>
+    // Auto-refresh handled by Cloudflare Waiting Room
+    // This page is served when the user is in the queue
+    setInterval(function() {
+      var el = document.querySelector('.progress-fill');
+      if (el) el.style.width = (Math.random() * 30 + 20) + '%';
+    }, 3000);
+  </script>
+</body>
+</html>

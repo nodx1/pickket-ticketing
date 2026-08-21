@@ -1,0 +1,48 @@
+# ChatFAB + Today Schedule E2E — 홈 화면 새 기능 검증
+# 태그: full
+# 피처플래그: CHAT_FAB (ON), TODAY_SCHEDULE_HOME (ON)
+appId: kr.pickket.app
+tags:
+  - full
+  - chat
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── ChatFAB 존재 확인 (피처플래그 ON) ──
+- assertVisible:
+    id: "chat.fab"
+- takeScreenshot: home_chat_fab_visible
+
+# ── 오늘의 일정 섹션 확인 (피처플래그 TODAY_SCHEDULE_HOME OFF 시 스킵) ──
+- runFlow:
+    when:
+      visible:
+        id: "today.schedule.section"
+    commands:
+      - takeScreenshot: home_today_schedule
+
+# ── ChatFAB 터치 → 챗 화면 진입 ──
+- swipe:
+    direction: DOWN
+    duration: 500
+- swipe:
+    direction: DOWN
+    duration: 500
+- tapOn:
+    id: "chat.fab"
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+- takeScreenshot: chat_screen
+
+# ── 뒤로가기 → 홈 복귀 ──
+- back
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 5000
+
+# ── ChatFAB 여전히 존재 ──
+- assertVisible:
+    id: "chat.fab"

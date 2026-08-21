@@ -1,0 +1,43 @@
+# Phase C.1 — 친구 화면 접근 검증 (백엔드 미구현 시 EmptyState)
+# 태그: full
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── 프로필 → 친구 진입 ──
+- scrollUntilVisible:
+    element:
+      id: "me.menu.friends"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "me.menu.friends"
+
+- extendedWaitUntil:
+    visible:
+      id: "friends.screen"
+    timeout: 5000
+
+# ── 검색바 + 빈 상태 ──
+- assertVisible:
+    id: "friends.searchInput"
+- takeScreenshot: friends_empty
+
+# ── 검색 시도 ──
+- tapOn:
+    id: "friends.searchInput"
+- inputText: "test"
+- pressKey: Enter
+- takeScreenshot: friends_search
+
+# ── 복귀 ──
+- back
+- runFlow: ../shared/restore-tabbar.yaml
+- extendedWaitUntil:
+    visible:
+      id: "tab.me"
+    timeout: 5000

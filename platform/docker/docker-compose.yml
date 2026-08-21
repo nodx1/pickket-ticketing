@@ -1,0 +1,178 @@
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: pickket-v2-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pickket_v2_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-pickket_v2}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5435}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pickket_v2} -d ${POSTGRES_DB:-pickket_v2_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Redis
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: pickket-v2-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set} --appendonly yes --appendfsync everysec --save 900 1 --save 300 100
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6381}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$REDIS_PASSWORD redis-cli ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Backend API (FastAPI + Uvicorn)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: pickket-v2-backend
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-pickket_v2}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pickket_v2_dev}"
+      DATABASE_URL_SYNC: "postgresql://${POSTGRES_USER:-pickket_v2}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pickket_v2_dev}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      CELERY_BROKER_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://:${REDIS_PASSWORD}@redis:6379/1"
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8021}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Celery Worker
+  # ---------------------------------------------------------------------------
+  celery-worker:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: pickket-v2-celery-worker
+    command: celery -A app.core.celery_app:celery_app worker --loglevel=info --concurrency=2
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-pickket_v2}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pickket_v2_dev}"
+      DATABASE_URL_SYNC: "postgresql://${POSTGRES_USER:-pickket_v2}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pickket_v2_dev}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      CELERY_BROKER_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://:${REDIS_PASSWORD}@redis:6379/1"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.core.celery_app:celery_app", "inspect", "ping", "--timeout", "10"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Celery Beat (Scheduler)
+  # ---------------------------------------------------------------------------
+  celery-beat:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: pickket-v2-celery-beat
+    command: celery -A app.core.celery_app:celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      CELERY_BROKER_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://:${REDIS_PASSWORD}@redis:6379/1"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "find /tmp/celerybeat-schedule -mmin -5 | grep -q ."]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Frontend (Next.js)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ..
+      dockerfile: apps/consumer/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8021}
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3020}
+        NEXT_PUBLIC_GO_URL: ${NEXT_PUBLIC_GO_URL:-https://go.pickket.kr}
+        BUILD_TARGET: development
+    container_name: pickket-v2-frontend
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3020}:3000"
+    # NOTE: NEXT_PUBLIC_* 는 빌드 타임에 번들에 베이킹됨. 런타임 environment는 효과 없음.
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Prometheus (monitoring profile)
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: pickket-v2-prometheus
+    profiles: [monitoring]
+    volumes:
+      - ../infra/grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Grafana (monitoring profile)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: pickket-v2-grafana
+    profiles: [monitoring]
+    volumes:
+      - ../infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3030:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "None"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/pickket-overview.json
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:

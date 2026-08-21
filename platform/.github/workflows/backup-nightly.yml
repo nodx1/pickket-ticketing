@@ -1,0 +1,73 @@
+name: Nightly Database Backup
+
+on:
+  schedule:
+    # KST 03:00 (UTC 18:00)
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+env:
+  DATABASE_URL_SYNC: ${{ secrets.DATABASE_URL_SYNC }}
+  BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+  BACKUP_S3_PREFIX: ${{ secrets.BACKUP_S3_PREFIX || 'backups/' }}
+  BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION || 'ap-northeast-2' }}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Install dependencies
+        run: |
+          pip install boto3 cryptography
+
+      - name: Run backup
+        id: backup
+        run: |
+          cd backend
+          python scripts/backup.py --backup
+
+      - name: Cleanup old backups (30-day retention)
+        run: |
+          cd backend
+          python scripts/backup.py --cleanup
+
+      - name: List current backups
+        run: |
+          cd backend
+          python scripts/backup.py --list
+
+      - name: Notify Telegram on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_CRITICAL: ${{ secrets.TELEGRAM_CHAT_CRITICAL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "${TELEGRAM_BOT_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_CRITICAL}" ]; then
+            echo "TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_CRITICAL not set — skipping notification"
+            exit 0
+          fi
+          TEXT="🚨 Pickket 야간 백업 실패!
+          • 워크플로우: ${RUN_URL}
+          • 트리거: ${{ github.event.schedule || 'manual' }}"
+          curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_CRITICAL}" \
+            --data-urlencode text="${TEXT}"

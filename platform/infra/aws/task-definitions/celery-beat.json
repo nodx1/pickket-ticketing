@@ -1,0 +1,62 @@
+{
+  "family": "pickket-v2-celery-beat",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "celery-beat",
+      "image": "794562054294.dkr.ecr.ap-northeast-2.amazonaws.com/pickket-backend:staging-latest",
+      "command": [
+        "celery",
+        "-A",
+        "app.core.celery_app:celery_app",
+        "beat",
+        "--loglevel=info",
+        "--schedule=/tmp/celerybeat-schedule"
+      ],
+      "essential": true,
+      "environment": [
+        { "name": "ENVIRONMENT", "value": "staging" },
+        { "name": "LOG_LEVEL", "value": "INFO" }
+      ],
+      "secrets": [
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/secret-key"
+        },
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/database-url"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/redis-url"
+        },
+        {
+          "name": "CELERY_BROKER_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/celery-broker-url"
+        },
+        {
+          "name": "PORTONE_API_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/portone-api-secret"
+        },
+        {
+          "name": "PORTONE_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/portone-webhook-secret"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket-v2/celery-beat",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

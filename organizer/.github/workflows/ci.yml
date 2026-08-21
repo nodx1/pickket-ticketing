@@ -1,0 +1,228 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+# 동시 실행 취소 (PR 업데이트 시 이전 run 자동 cancel)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tsc --noEmit
+        run: npx tsc --noEmit
+
+  build:
+    name: Next.js Build
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Restore Next.js cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        run: npm run build
+        env:
+          # 빌드 시 필요한 더미 env (런타임은 실제 값)
+          PG_HOST: localhost
+          PG_PORT: '5432'
+          PG_USER: dummy
+          PG_PASSWORD: dummy
+          PG_DATABASE: dummy
+          REDIS_URL: redis://localhost:6379
+          SESSION_SECRET: ci_dummy_secret_32_chars_minimum_length
+          NODE_ENV: production
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: |
+            .next/standalone
+            .next/static
+          retention-days: 3
+
+  e2e-smoke:
+    name: E2E Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pickket
+          POSTGRES_PASSWORD: pickket_ci
+          POSTGRES_DB: pickket_go_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pickket"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run migrations
+        env:
+          PG_HOST: localhost
+          PG_PORT: '5432'
+          PG_USER: pickket
+          PG_PASSWORD: pickket_ci
+          PG_DATABASE: pickket_go_test
+        run: npx tsx scripts/migrate.ts
+
+      - name: Run E2E smoke tests
+        env:
+          PG_HOST: localhost
+          PG_PORT: '5432'
+          PG_USER: pickket
+          PG_PASSWORD: pickket_ci
+          PG_DATABASE: pickket_go_test
+          REDIS_URL: redis://localhost:6379
+          SESSION_SECRET: ci_dummy_secret_32_chars_minimum_length
+          PLAYWRIGHT_TEST: '1'
+        run: npm run test:e2e:smoke
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # go↔v2 Tier0 계약 게이트 (cross-product/contracts.spec.ts)
+  #  - v2 internal 응답키를 핀해 go가 프로덕션에서 502 나기 전에 잡는다.
+  #  - 2026-06 실증: discount_code_id 키 불일치로 프로모 항상 502 → 사일로 테스트가 못 잡음.
+  #  - 살아있는 v2(스테이징)를 V2_INTERNAL_BASE_URL로 대상화. BASE_URL을 세팅해
+  #    playwright의 원격 대상 경로(로컬 webServer/DB setup 생략)를 탄다.
+  # ---------------------------------------------------------------------------
+  contract-tier0:
+    name: go↔v2 Tier0 Contract Gate
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Require v2 target config (no silent skip)
+        env:
+          V2_INTERNAL_BASE_URL: ${{ vars.V2_INTERNAL_BASE_URL }}
+          GO_WEBHOOK_SECRET: ${{ secrets.GO_WEBHOOK_SECRET }}
+        run: |
+          # 게이트가 조용히 통과하지 않도록 필수 설정 부재 시 하드 실패.
+          missing=0
+          if [ -z "${V2_INTERNAL_BASE_URL}" ]; then
+            echo "::error::V2_INTERNAL_BASE_URL 변수 미설정 — Tier0 계약 게이트를 실행할 v2 대상이 없음."
+            missing=1
+          fi
+          if [ -z "${GO_WEBHOOK_SECRET}" ]; then
+            echo "::error::GO_WEBHOOK_SECRET 시크릿 미설정 — v2 internal HMAC 호출 불가."
+            missing=1
+          fi
+          [ "$missing" -eq 0 ] || exit 1
+
+      - name: Run go↔v2 Tier0 contract tests
+        env:
+          # BASE_URL 세팅 → playwright 원격 대상 경로(로컬 webServer/DB setup 생략).
+          # contracts.spec.ts는 v2 internal API만 호출하므로 go 서버 기동 불필요.
+          BASE_URL: ${{ vars.V2_INTERNAL_BASE_URL }}
+          V2_INTERNAL_BASE_URL: ${{ vars.V2_INTERNAL_BASE_URL }}
+          GO_WEBHOOK_SECRET: ${{ secrets.GO_WEBHOOK_SECRET }}
+          V2_EVENT_SYNC_SECRET: ${{ secrets.GO_WEBHOOK_SECRET }}
+        run: npm run test:e2e:contracts
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-contracts
+          path: playwright-report/
+          retention-days: 7

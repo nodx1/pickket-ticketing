@@ -1,0 +1,214 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`QRTicket snapshot active status — QR + countdown 표시 1`] = `
+<View
+  accessibilityLabel="ticket.qrAccessibilityLabel"
+  accessibilityRole="summary"
+  style={
+    {
+      "alignItems": "center",
+      "paddingVertical": 24,
+    }
+  }
+  testID="ticket.qr"
+>
+  <View
+    accessibilityLabel="ticket.qrCodeLabel"
+    accessibilityRole="image"
+    accessible={true}
+    style={
+      [
+        {
+          "borderRadius": 12,
+          "borderWidth": 1,
+          "padding": 16,
+        },
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E5E7EB",
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderRadius": 8,
+          "overflow": "hidden",
+        }
+      }
+    >
+      <View
+        testID="qr-mock"
+      />
+    </View>
+  </View>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "marginTop": 12,
+        "width": 232,
+      }
+    }
+  >
+    <View
+      style={
+        [
+          {
+            "borderRadius": 2,
+            "flex": 1,
+            "height": 4,
+            "overflow": "hidden",
+          },
+          {
+            "backgroundColor": "#F3F4F6",
+          },
+        ]
+      }
+    >
+      <View
+        style={
+          [
+            {
+              "borderRadius": 2,
+              "height": "100%",
+            },
+            {
+              "backgroundColor": "#1E2A78",
+              "width": "80%",
+            },
+          ]
+        }
+      />
+    </View>
+    <Text
+      style={
+        [
+          {
+            "fontFamily": "Pretendard-Regular",
+            "fontSize": 10,
+            "fontWeight": "400",
+            "lineHeight": 14,
+          },
+          {
+            "color": "#6B7280",
+            "marginLeft": 8,
+          },
+        ]
+      }
+    >
+      ticket.secondsRemaining
+    </Text>
+  </View>
+  <Text
+    style={
+      [
+        {
+          "fontFamily": "Pretendard-Regular",
+          "fontSize": 10,
+          "fontWeight": "400",
+          "lineHeight": 14,
+        },
+        {
+          "color": "#6B7280",
+          "marginTop": 8,
+          "textAlign": "center",
+        },
+      ]
+    }
+  >
+    ticket.qrRefresh
+  </Text>
+</View>
+`;
+
+exports[`QRTicket snapshot cancelled status — cancelled view 1`] = `
+<View
+  style={
+    [
+      {
+        "alignItems": "center",
+        "paddingVertical": 24,
+      },
+      {
+        "justifyContent": "center",
+        "minHeight": 200,
+      },
+    ]
+  }
+>
+  <Text
+    style={
+      [
+        {
+          "fontFamily": "Pretendard-SemiBold",
+          "fontSize": 18,
+          "fontWeight": "600",
+          "lineHeight": 26,
+        },
+        {
+          "color": "#EF4444",
+        },
+      ]
+    }
+  >
+    ticket.cancelled
+  </Text>
+</View>
+`;
+
+exports[`QRTicket snapshot used status — completion view 1`] = `
+<View
+  style={
+    [
+      {
+        "alignItems": "center",
+        "paddingVertical": 24,
+      },
+      {
+        "justifyContent": "center",
+        "minHeight": 200,
+      },
+    ]
+  }
+>
+  <Text
+    style={
+      [
+        {
+          "fontFamily": "Pretendard-Bold",
+          "fontSize": 24,
+          "fontWeight": "700",
+          "lineHeight": 32,
+        },
+        {
+          "color": "#22C55E",
+        },
+      ]
+    }
+  >
+    ✓
+  </Text>
+  <Text
+    style={
+      [
+        {
+          "fontFamily": "Pretendard-SemiBold",
+          "fontSize": 18,
+          "fontWeight": "600",
+          "lineHeight": 26,
+        },
+        {
+          "color": "#22C55E",
+          "marginTop": 8,
+        },
+      ]
+    }
+  >
+    ticket.attended
+  </Text>
+</View>
+`;

@@ -1,0 +1,66 @@
+# ── 루트 안전망 (각 앱은 자체 .gitignore 도 보유) ──
+
+# 의존성
+**/node_modules/
+**/.venv/
+**/venv/
+.pnp.*
+
+# 빌드 산출물
+**/.next/
+**/dist/
+**/build/
+**/.turbo/
+**/out/
+**/.expo/
+**/android/app/build/
+**/android/build/
+**/ios/build/
+**/*.apk
+**/*.aab
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/htmlcov/
+**/.coverage
+
+# 환경/시크릿 — 절대 커밋 금지 (.example 만 허용)
+**/.env
+**/.env.local
+**/.env.*.local
+**/.env.production
+**/.env.development
+!**/.env.example
+!**/.env.*.example
+!**/.env.e2e
+
+# 테스트 산출물
+**/playwright-report/
+**/test-results/
+**/coverage/
+
+# 로그/임시
+**/*.log
+**/.DS_Store
+**/tmp/
+**/.idea/
+**/.vscode/
+
+# ops 시크릿
+scripts/ops/ops.env
+scripts/ops/backup.env
+docs/ops/ALERTS.log
+platform/backend/.venv
+
+# 심링크로 만든 node_modules 도 잡는다(디렉토리 패턴 `node_modules/` 는 심링크를 못 잡음)
+node_modules
+**/node_modules
+
+# 나이스 구형 PDF 원본(로컬 작업용, /tmp/nicepay-api 사본) + 잔여 이미지 — 리포 비대화 방지
+NICEPAY API.zip
+NICEPAY API/
+Gemini_Generated_Image_*.png

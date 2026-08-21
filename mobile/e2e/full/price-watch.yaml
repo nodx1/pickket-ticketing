@@ -1,0 +1,61 @@
+# Phase E.2 — 가격 알림(PriceAlert) 설정 플로우
+# 태그: full
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── 홈 → 트렌딩 섹션 스크롤 → 이벤트 진입 ──
+- openLink: "pickket:///(tabs)"
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "home.trending.section"
+    direction: DOWN
+    timeout: 8000
+
+- tapOn:
+    id: "event\\.card\\.compact\\..*"
+    index: 0
+
+- extendedWaitUntil:
+    visible:
+      id: "event.detail.bookNow"
+    timeout: 8000
+
+# ── 가격 알림 버튼 노출 검증 ──
+- assertVisible:
+    id: "event.detail.priceAlert"
+- takeScreenshot: price_alert_button
+
+# ── 시트 오픈 ──
+- tapOn:
+    id: "event.detail.priceAlert"
+
+- extendedWaitUntil:
+    visible:
+      id: "priceAlert.sheet"
+    timeout: 5000
+
+- takeScreenshot: price_alert_sheet
+
+# ── 시트 닫기 + 복귀 (탭 전환으로 resetDirection 트리거) ──
+- back
+- back
+- openLink: "pickket:///(tabs)/schedule"
+- extendedWaitUntil:
+    visible:
+      id: "schedule.header"
+    timeout: 5000
+- openLink: "pickket:///(tabs)"
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 8000

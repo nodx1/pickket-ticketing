@@ -1,0 +1,40 @@
+-- 243: 레벨2 컷오버 W3-MSG — `crm_contacts` 폐기 (T5 차단요소 해소).
+--
+-- ── 배경: 이 테이블이 왜 여태 남아 있었나 ──
+-- mig225(2026-07) 와 mig233 이 **둘 다 DROP 을 보류**했다. 사유는 동일하다:
+--   `src/lib/notification/recipients.ts` 가 crm_contacts 를 세 곳에서 하드 참조했고
+--   (crmTiers 세그먼트 / crmTags 세그먼트 / **전 발송 공통 블랙리스트 NOT EXISTS**),
+--   지금 지우면 "relation does not exist" 로 **전 발송 경로가 중단**되기 때문이다.
+--
+-- ── 이번에 해소된 방식 ──
+--  (a) crmTiers / crmTags 세그먼트 → **폐기**.
+--      · writer 0: CRM 관리 route·대시보드 UI·feature-toggle('crm') 은 mig225 라운드(287814e)
+--        에서 이미 삭제됐다. 리포 전수 grep 결과 crm_contacts 에 대한 INSERT/UPDATE 는 **0건**
+--        (남은 매치는 recipients.ts 의 read 3곳 + migrations 뿐이었다).
+--      · 데이터 0: prod go DB 실측(2026-07-27, LEVEL2-CUTOVER-EXEC-PLAN §6-3) — 행이 있는
+--        22개 테이블 목록에 crm_contacts 는 없다(= 0행). dev(pickket_go) 직접 실측도
+--        crm_contacts 0 / tier='blacklist' 0.
+--      ⟹ 등급을 부여할 수단이 없는 채로 남은 死조건이었다. 무엇을 골라도 수신자 0명.
+--      · 조용히 무시하지 않는다: `segment-schema.ts` 가 crmTiers/crmTags 를 담은 요청을
+--        **400 으로 거부**한다. strip 하면 "VIP 만" 발송이 전체 발송으로 확대되기 때문이다.
+--  (b) 블랙리스트(tier='blacklist') → **v2 `message_suppressions`(channel='all', reason='manual')**
+--      로 개념 이관. recipients.ts 의 억제 조회는 `channel IN (발송채널,'all')` 이라 구
+--      블랙리스트가 그대로 잡힌다. 억제 원장 자체도 이번에 v2 로 flip 됐다
+--      (`src/lib/v2/messaging-compliance-client.ts` → `/internal/messaging/suppressions/*`).
+--      · ⚠️ 세만틱 미세 변화: 구 블랙리스트는 **이메일 키**로 SMS 발송까지 막았다. 신규 억제는
+--        연락처 문자열 기준이므로 이메일·전화 **각각** 행이 필요하다.
+--        이관 스크립트(`scripts/backfill-crm-blacklist-to-v2.ts`)가 두 행을 모두 만든다.
+--      · 실 이관량은 0(위 실측). 스크립트는 계약을 코드로 남기고 타 환경 대비용이다.
+--
+-- ── 실행 전 확인 (운영자) ──
+--   1) `npx tsx scripts/backfill-crm-blacklist-to-v2.ts --dry-run` → 이관 대상 0 확인
+--   2) 0 이 아니면 `--apply` 로 v2 이관 후 이 마이그레이션 적용
+--   이 DROP 은 비가역이다. 백업 정책은 runbooks/routine-백업복원.md.
+--
+-- ── crm_activities 는? ──
+--   mig233 에서 이미 DROP 됨(코드 참조 0). 여기서는 재실행 안전용으로만 한 번 더 건다.
+--
+-- 재실행 안전: IF EXISTS + CASCADE.
+
+DROP TABLE IF EXISTS crm_activities CASCADE;
+DROP TABLE IF EXISTS crm_contacts CASCADE;

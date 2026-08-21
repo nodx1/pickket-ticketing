@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pickket-go-reconcile-deliveries
+  namespace: pickket-go
+  labels:
+    app: pickket-go
+    component: reconcile-deliveries
+spec:
+  # 도달결과 대사(5분) — SENS DLR 로 sent→delivered/failed 교정 + 이메일 오픈/클릭 실측 집계.
+  # 미정의 시 sent_count 가 "접수" 기준에 머물고 오픈/클릭 지표가 갱신되지 않는다.
+  # ⚠️ W5-MSG(2026-07-27): 이 라우트는 **살아 있다**(provider DLR 조회 arm). 다만 원장 read/write
+  #    는 전부 v2 내부 API 경유이고, stale sending 스윕은 v2 celery 가 단독 소유한다.
+  #    원장에 못 닿으면 502 를 반환하므로 -fsS 가 실패로 잡아준다(침묵 금지).
+  schedule: "*/5 * * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 60
+  failedJobsHistoryLimit: 5
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 90
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: pickket-go
+            component: reconcile-deliveries
+        spec:
+          serviceAccountName: pickket-go-cron
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          containers:
+            - name: reconcile-deliveries
+              image: curlimages/curl:8.10.1
+              imagePullPolicy: IfNotPresent
+              command:
+                - sh
+                - -c
+                - >
+                  curl --connect-timeout 5 --max-time 75 -fsS -H "Authorization: Bearer $CRON_SECRET"
+                  -H "x-cron-timestamp: $(date -u +%FT%TZ)"
+                  "$GO_BASE_URL/api/cron/reconcile-deliveries"
+              env:
+                - name: GO_BASE_URL
+                  value: "http://pickket-go.pickket-go.svc.cluster.local:3000"
+              envFrom:
+                - secretRef:
+                    name: pickket-go-stg-secrets
+              resources:
+                requests:
+                  memory: "32Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "64Mi"
+                  cpu: "100m"
+# ── CapRover(현행 배포) 대안 ─────────────────────────────────────────────
+# k8s 미사용 환경(홈서버 CapRover)에서는 외부 스케줄러가 5분 주기로 호출:
+#   curl -fsS -H "Authorization: Bearer $CRON_SECRET" \
+#     https://go.pickket.kr/api/cron/reconcile-deliveries

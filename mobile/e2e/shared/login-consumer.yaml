@@ -1,0 +1,66 @@
+# 일반 소비자 계정 로그인 서브플로우
+# 호출 전 조건: Me 탭 진입 상태에서 게스트 화면(me.guest.loginButton 보임)
+# 처리 흐름: Me guest → Login form → Consent → Onboarding skip → Home
+appId: kr.pickket.app
+---
+
+# 1) Me 게스트 화면이면 로그인 버튼 탭
+- runFlow:
+    when:
+      visible:
+        id: "me.guest.loginButton"
+    commands:
+      - tapOn:
+          id: "me.guest.loginButton"
+
+# 2) 로그인 폼 입력
+- extendedWaitUntil:
+    visible:
+      id: "email-input"
+    timeout: 10000
+
+- tapOn:
+    id: "email-input"
+- inputText: "fan1@test.pickket.kr"
+
+- tapOn:
+    id: "password-input"
+- inputText: "PickketTest2026!"
+
+- tapOn:
+    id: "login-button"
+
+# 3) Consent 화면이 뜨면 처리 (R1 AuthGate consent race 수정 후 등장)
+- runFlow:
+    when:
+      visible:
+        id: "consent.screen"
+    commands:
+      - tapOn:
+          id: "consent.toggleAll"
+      - tapOn:
+          id: "consent.submit"
+
+# 4) Onboarding step 0 (welcome) → next
+- runFlow:
+    when:
+      visible:
+        id: "onboarding.welcome.next"
+    commands:
+      - tapOn:
+          id: "onboarding.welcome.next"
+
+# 5) Onboarding step 1+ → skip
+- runFlow:
+    when:
+      visible:
+        id: "onboarding.skip"
+    commands:
+      - tapOn:
+          id: "onboarding.skip"
+
+# 6) 홈 도달 확인
+- extendedWaitUntil:
+    visible:
+      id: "nav.tonight"
+    timeout: 15000

@@ -1,0 +1,64 @@
+name: Deploy to Railway
+
+on:
+  # push 트리거 비활성화 — RAILWAY_TOKEN 설정 후 아래 주석 해제
+  # push:
+  #   branches: [main]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service to deploy (all/backend/consumer/studio/admin)"
+        required: true
+        default: "all"
+
+env:
+  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+jobs:
+  deploy-backend:
+    if: github.event.inputs.service == 'all' || github.event.inputs.service == 'backend' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Deploy Backend
+        run: railway up --service backend --detach
+      - name: Smoke Test
+        run: |
+          sleep 30
+          curl -f https://api.pickket.kr/health || exit 1
+
+  deploy-consumer:
+    if: github.event.inputs.service == 'all' || github.event.inputs.service == 'consumer' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Deploy Consumer
+        run: railway up --service consumer --detach
+      - name: Smoke Test
+        run: |
+          sleep 30
+          curl -f https://www.pickket.kr/ || exit 1
+
+  deploy-studio:
+    if: github.event.inputs.service == 'all' || github.event.inputs.service == 'studio' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Deploy Studio
+        run: railway up --service studio --detach
+
+  deploy-admin:
+    if: github.event.inputs.service == 'all' || github.event.inputs.service == 'admin' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Deploy Admin
+        run: railway up --service admin --detach

@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pickket-go-dispatch-invitations
+  namespace: pickket-go
+  labels:
+    app: pickket-go
+    component: dispatch-invitations
+spec:
+  # F2 초대권 발송 큐 드레인(1분) — invitation_dispatch 의 queued 를 클레임해서 알림톡 배치 발송.
+  # 미정의 시 대량 초대권이 queued 로 잔류해 발송되지 않는다(실발송은 게이트2 NCP 자격 후, dev=stub).
+  schedule: "* * * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 30
+  failedJobsHistoryLimit: 5
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 90
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: pickket-go
+            component: dispatch-invitations
+        spec:
+          serviceAccountName: pickket-go-cron
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          containers:
+            - name: dispatch-invitations
+              image: curlimages/curl:8.10.1
+              imagePullPolicy: IfNotPresent
+              command:
+                - sh
+                - -c
+                - >
+                  curl --connect-timeout 5 --max-time 75 -fsS -H "Authorization: Bearer $CRON_SECRET"
+                  -H "x-cron-timestamp: $(date -u +%FT%TZ)"
+                  "$GO_BASE_URL/api/cron/dispatch-invitations"
+              env:
+                - name: GO_BASE_URL
+                  value: "http://pickket-go.pickket-go.svc.cluster.local:3000"
+              envFrom:
+                - secretRef:
+                    name: pickket-go-stg-secrets
+              resources:
+                requests:
+                  memory: "32Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "64Mi"
+                  cpu: "100m"
+# ── CapRover(현행 배포) 대안 ─────────────────────────────────────────────
+# k8s 미사용 환경(홈서버 CapRover)에서는 위 CronJob 대신 외부 스케줄러가 1분 주기로 호출:
+#   curl -fsS -H "Authorization: Bearer $CRON_SECRET" \
+#     -H "x-cron-timestamp: $(date -u +%FT%TZ)" \
+#     https://go.pickket.kr/api/cron/dispatch-invitations

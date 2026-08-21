@@ -1,0 +1,171 @@
+name: E2E Crawler Nightly
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # 03:00 KST = 18:00 UTC
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "크롤링 대상 URL"
+        default: "https://staging.pickket.kr"
+        type: string
+
+concurrency:
+  group: e2e-crawler-nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TARGET_URL: ${{ inputs.target_url || vars.E2E_TARGET_URL || 'https://staging.pickket.kr' }}
+
+jobs:
+  site-crawler:
+    name: 사이트 크롤러
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: apps/consumer
+        run: npx playwright install chromium --with-deps
+
+      - name: Run site crawler
+        id: crawler
+        working-directory: apps/consumer
+        env:
+          CI: true
+          E2E_BASE_URL: ${{ env.TARGET_URL }}
+        run: |
+          mkdir -p test-results
+
+          # Playwright 크롤러 실행 (기본 리포터 사용)
+          if npx playwright test site-crawler \
+            --project=crawler \
+            --output=test-results \
+            2>&1 | tee test-results/crawler.log; then
+            echo "status=pass" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=fail" >> "$GITHUB_OUTPUT"
+          fi
+        continue-on-error: true
+
+      - name: API Health Check
+        id: health
+        run: |
+          API_URL="${TARGET_URL/staging.pickket.kr/api-staging.pickket.kr}"
+          API_URL="${API_URL/www.pickket.kr/api.pickket.kr}"
+          API_URL="${API_URL/pickket.kr/api.pickket.kr}"
+
+          echo "Checking: ${API_URL}/health"
+          HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "${API_URL}/health" --max-time 10 || echo "000")
+
+          if [ "$HEALTH" = "200" ]; then
+            echo "api_status=healthy" >> "$GITHUB_OUTPUT"
+            HEALTH_BODY=$(curl -s "${API_URL}/health" --max-time 10)
+            echo "api_detail=${HEALTH_BODY}" >> "$GITHUB_OUTPUT"
+          else
+            echo "api_status=unhealthy" >> "$GITHUB_OUTPUT"
+            echo "api_detail=HTTP ${HEALTH}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Security Headers Check
+        id: headers
+        run: |
+          HEADERS=$(curl -s -I "${TARGET_URL}" --max-time 10 2>/dev/null || echo "")
+          MISSING=""
+
+          for H in "content-security-policy" "strict-transport-security" "x-content-type-options" "x-frame-options"; do
+            if ! echo "$HEADERS" | grep -qi "$H"; then
+              MISSING="${MISSING}${H}, "
+            fi
+          done
+
+          if [ -z "$MISSING" ]; then
+            echo "headers_status=pass" >> "$GITHUB_OUTPUT"
+          else
+            echo "headers_status=fail" >> "$GITHUB_OUTPUT"
+            echo "headers_missing=${MISSING}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crawler-results
+          path: apps/consumer/test-results/
+          retention-days: 14
+
+      - name: Publish job summary
+        if: always()
+        run: |
+          echo "## 🕷️ Pickket 나이틀리 크롤러 리포트" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**대상:** \`${TARGET_URL}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**시간:** $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M KST')" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          # 크롤러 결과
+          if [ "${{ steps.crawler.outputs.status }}" = "pass" ]; then
+            echo "### ✅ 사이트 크롤러: PASS" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ❌ 사이트 크롤러: FAIL" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # API 헬스
+          if [ "${{ steps.health.outputs.api_status }}" = "healthy" ]; then
+            echo "### ✅ API 헬스: ${{ steps.health.outputs.api_detail }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ❌ API 헬스: ${{ steps.health.outputs.api_detail }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # 보안 헤더
+          if [ "${{ steps.headers.outputs.headers_status }}" = "pass" ]; then
+            echo "### ✅ 보안 헤더: 전부 OK" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ⚠️ 보안 헤더 누락: ${{ steps.headers.outputs.headers_missing }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          # 크롤러 상세 로그
+          if [ -f apps/consumer/test-results/crawl-report.json ]; then
+            echo "<details><summary>크롤러 상세 결과</summary>" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat apps/consumer/test-results/crawl-report.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "</details>" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Notify Telegram
+        if: always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          STATUS="${{ steps.crawler.outputs.status }}"
+
+          # API가 죽어있으면 무조건 fail
+          if [ "${{ steps.health.outputs.api_status }}" = "unhealthy" ]; then
+            STATUS="fail"
+          fi
+
+          REPORT_FILE=""
+          if [ -f apps/consumer/test-results/crawl-report.json ]; then
+            REPORT_FILE="apps/consumer/test-results/crawl-report.json"
+          fi
+
+          bash scripts/e2e/notify-telegram.sh "$REPORT_FILE" "$STATUS"

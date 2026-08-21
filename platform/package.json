@@ -1,0 +1,69 @@
+{
+  "name": "pickket",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:consumer": "turbo run dev --filter=@pickket/consumer",
+    "dev:admin": "turbo run dev --filter=@pickket/admin",
+    "health:quick": "bash scripts/project-health-dashboard.sh quick",
+    "health:full": "bash scripts/project-health-dashboard.sh full",
+    "dashboard": "bash scripts/open-health-dashboard.sh quick",
+    "dashboard:full": "bash scripts/open-health-dashboard.sh full",
+    "security:gate": "bash scripts/security/security_gate.sh",
+    "security:dast": "bash scripts/security/run_dast.sh",
+    "security:dast:diff": "python3 scripts/security/dast_diff.py --current-dir security-reports --out-json security-reports/nightly-dast-summary.json --out-md security-reports/nightly-dast-diff.md",
+    "security:branch:verify": "bash scripts/security/branch_protection_dast.sh verify",
+    "security:branch:apply": "bash scripts/security/branch_protection_dast.sh apply",
+    "drill:backup-restore": "bash scripts/backup_restore_drill.sh",
+    "test:core-regression": "bash scripts/e2e/core_regression.sh",
+    "test:release-gate": "bash scripts/e2e/release_gate.sh",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "test:consumer": "turbo run test --filter=@pickket/consumer",
+    "test:admin": "turbo run test --filter=@pickket/admin",
+    "dashboard:generate": "node scripts/generate-dashboard-data.mjs",
+    "prepare": "husky",
+    "i18n:validate": "node scripts/validate-i18n.js",
+    "audit:security": "node scripts/audit.mjs",
+    "audit:strict": "node scripts/audit.mjs --strict",
+    "audit:changed": "node scripts/audit.mjs --changed",
+    "audit:staged": "node scripts/audit.mjs --staged",
+    "audit:baseline:update": "node scripts/audit.mjs --update-baseline",
+    "check": "turbo run lint && turbo run build && node scripts/audit.mjs && turbo run test",
+    "check:strict": "turbo run lint && turbo run build && node scripts/audit.mjs --strict && turbo run test",
+    "crawl": "cd apps/consumer && npx playwright test site-crawler --project=crawler",
+    "crawl:staging": "cd apps/consumer && E2E_BASE_URL=https://staging.pickket.kr npx playwright test site-crawler --project=crawler",
+    "watch:test": "bash scripts/e2e/watch-and-test.sh"
+  },
+  "devDependencies": {
+    "husky": "^9",
+    "lint-staged": "^15",
+    "prettier": "^3.8.1",
+    "turbo": "^2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,json,md}": [
+      "prettier --write"
+    ]
+  },
+  "pnpm": {
+    "overrides": {
+      "serialize-javascript": "7.0.3",
+      "hono": ">=4.12.4",
+      "@hono/node-server": ">=1.19.10",
+      "express-rate-limit": "8.3.0"
+    },
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "@sentry/cli",
+      "@swc/core",
+      "esbuild",
+      "msw",
+      "sharp",
+      "unrs-resolver"
+    ]
+  },
+  "packageManager": "pnpm@9.15.0"
+}

@@ -1,0 +1,11 @@
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS fraud_score INT DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS fraud_flags JSONB DEFAULT '[]';
+
+CREATE TABLE IF NOT EXISTS fraud_rules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  rule_type TEXT NOT NULL,
+  config JSONB NOT NULL DEFAULT '{}',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

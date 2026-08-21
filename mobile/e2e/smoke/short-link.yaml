@@ -1,0 +1,34 @@
+# 숏링크 /e/[slug] 딥링크 진입 E2E — 티켓오픈 랜딩 페이지 검증
+# 태그: smoke
+appId: kr.pickket.app
+tags:
+  - smoke
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── 숏링크 딥링크로 /e/[slug] 진입 ──
+- openLink: "pickket://e/test-event-slug"
+
+- extendedWaitUntil:
+    visible:
+      id: "event.open.screen"
+    timeout: 10000
+    optional: true
+
+# slug가 유효하지 않으면 에러 화면일 수 있음 — 둘 다 허용
+- runFlow:
+    when:
+      visible:
+        id: "event.open.screen"
+    commands:
+      - takeScreenshot: short_link_landing
+      - assertVisible:
+          id: "event.open.cta"
+
+# ── 홈 복귀 ──
+- openLink: "pickket:///(tabs)"
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 8000

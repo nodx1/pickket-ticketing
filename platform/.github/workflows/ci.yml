@@ -1,0 +1,1216 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Backend — Lint (ruff check + format)
+  # ---------------------------------------------------------------------------
+  backend-lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Ruff check
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+  # ---------------------------------------------------------------------------
+  # Backend — Tests (SQLite in-memory, no Postgres needed)
+  # ---------------------------------------------------------------------------
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      SECRET_KEY: ci-backend-test-secret-key-0123456789abcdef
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .[dev]
+          pip install ../engine
+
+      - name: Run tests with coverage
+        run: pytest app/tests/ -v --tb=short --cov=app --cov-report=term-missing --cov-fail-under=60
+
+  # ---------------------------------------------------------------------------
+  # Backend — Contract tests (go-dependent API + refund + payment + SSE)
+  # ---------------------------------------------------------------------------
+  contract-tests:
+    name: Contract Tests
+    runs-on: ubuntu-latest
+    needs: [backend-test]
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      SECRET_KEY: ci-contract-test-secret-key-0123456789abcdef
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .[dev]
+          pip install ../engine
+
+      - name: Run contract tests
+        run: |
+          pytest app/tests/test_api_contracts.py \
+                 app/tests/test_refund_edge_cases.py \
+                 app/tests/test_payment_mock_flow.py \
+                 app/tests/test_config_validation.py \
+                 app/tests/test_sse.py \
+                 app/tests/test_staging_smoke.py \
+                 -v --tb=short --no-cov
+
+  # ---------------------------------------------------------------------------
+  # Backend — targeted security regressions
+  # ---------------------------------------------------------------------------
+  backend-security-regression:
+    name: Backend Security Regression
+    runs-on: ubuntu-latest
+    needs: [backend-test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install --upgrade pip
+          pip install .[dev]
+          pip install ../engine
+
+      - name: Run targeted security regressions
+        run: bash scripts/ci/security_regression.sh
+
+  # ---------------------------------------------------------------------------
+  # Backend — SAST (Bandit)
+  # ---------------------------------------------------------------------------
+  backend-security-sast:
+    name: Backend Security SAST
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install . bandit
+          pip install ../engine
+
+      - name: Run bandit
+        run: bandit -c .bandit -r app -l -i
+
+  # ---------------------------------------------------------------------------
+  # Engine — Tests (pure Python, no external deps)
+  # ---------------------------------------------------------------------------
+  engine-test:
+    name: Engine Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .[dev]
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+  # ---------------------------------------------------------------------------
+  # Backend — API hot-path load smoke (PostgreSQL + Redis)
+  # ---------------------------------------------------------------------------
+  api-load-smoke:
+    name: API Load Smoke
+    runs-on: ubuntu-latest
+    needs: [backend-test, backend-security-regression]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: pickket_ci_load
+          POSTGRES_USER: pickket_ci
+          POSTGRES_PASSWORD: pickket_ci_2026
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pickket_ci -d pickket_ci_load"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      SECRET_KEY: ci-load-smoke-secret-key-0123456789abcdef
+      DATABASE_URL: postgresql+asyncpg://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_load
+      DATABASE_URL_SYNC: postgresql://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_load
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      CORS_ORIGINS: http://localhost:3020,http://localhost:3021
+      E2E_TEST_MODE: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .[dev]
+          pip install ../engine
+
+      - name: Apply migrations
+        run: |
+          alembic -x sqlalchemy.url="${DATABASE_URL_SYNC}" upgrade head
+
+      - name: Start API server
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8001 >/tmp/api-load-smoke.log 2>&1 &
+          echo $! >/tmp/api-load-smoke.pid
+
+      - name: Wait for API healthy
+        run: |
+          for i in {1..30}; do
+            if curl -fsS "http://127.0.0.1:8001/health" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start"
+          cat /tmp/api-load-smoke.log || true
+          exit 1
+
+      - name: Run load smoke
+        run: |
+          LOAD_TOTAL_REQUESTS=180 \
+          LOAD_CONCURRENCY=30 \
+          LOAD_LOGIN_RATIO=12 \
+          LOAD_SEARCH_RATIO=2 \
+          LOAD_MAX_P95_MS=2000 \
+          LOAD_MAX_P99_MS=3000 \
+          python scripts/load_test_api_hotpath.py
+
+      - name: Stop API server
+        if: always()
+        run: |
+          if [ -f /tmp/api-load-smoke.pid ]; then
+            kill "$(cat /tmp/api-load-smoke.pid)" || true
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Backend — k6 performance regression gate (main/develop PRs only)
+  # ---------------------------------------------------------------------------
+  k6-perf-gate:
+    name: k6 Performance Gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [backend-test, backend-security-regression]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: pickket_ci_k6
+          POSTGRES_USER: pickket_ci
+          POSTGRES_PASSWORD: pickket_ci_2026
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pickket_ci -d pickket_ci_k6"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      SECRET_KEY: ci-k6-perf-gate-secret-key-0123456789abcdef
+      DATABASE_URL: postgresql+asyncpg://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_k6
+      DATABASE_URL_SYNC: postgresql://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_k6
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      CORS_ORIGINS: http://localhost:3020,http://localhost:3021
+      E2E_TEST_MODE: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .[dev]
+          pip install ../engine
+
+      - name: Apply migrations
+        run: alembic -x sqlalchemy.url="${DATABASE_URL_SYNC}" upgrade head
+
+      - name: Start API server
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8001 >/tmp/api-k6.log 2>&1 &
+          echo $! >/tmp/api-k6.pid
+
+      - name: Wait for API healthy
+        run: |
+          for i in {1..30}; do
+            if curl -fsS "http://127.0.0.1:8001/health" >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo "API failed to start"; cat /tmp/api-k6.log || true; exit 1
+
+      - name: Install k6
+        run: |
+          curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update && sudo apt-get install -y k6
+
+      - name: Run k6 cart-flow (lightweight)
+        working-directory: .
+        run: |
+          k6 run tests/load/cart-flow.js \
+            --vus 10 --duration 1m \
+            --env BASE_URL=http://127.0.0.1:8001 \
+            --summary-export=/tmp/k6-summary.json \
+            --out json=/tmp/k6-results.json
+
+      - name: Check performance thresholds
+        run: |
+          if [ -f /tmp/k6-summary.json ]; then
+            python3 -c "
+          import json, sys
+          data = json.load(open('/tmp/k6-summary.json'))
+          metrics = data.get('metrics', {})
+          p95 = metrics.get('http_req_duration', {}).get('values', {}).get('p(95)', 0)
+          err_rate = metrics.get('http_req_failed', {}).get('values', {}).get('rate', 0)
+          print(f'p95={p95:.1f}ms, error_rate={err_rate:.4f}')
+          if p95 > 1000:
+              print('::error::p95 latency exceeds 1000ms threshold')
+              sys.exit(1)
+          if err_rate > 0.05:
+              print('::error::Error rate exceeds 5% threshold')
+              sys.exit(1)
+          print('Performance gate PASSED')
+          "
+          fi
+
+      - name: Stop API server
+        if: always()
+        run: |
+          if [ -f /tmp/api-k6.pid ]; then kill "$(cat /tmp/api-k6.pid)" || true; fi
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Lint + Test + Build (pnpm monorepo)
+  # ---------------------------------------------------------------------------
+  frontend-lint-test-build:
+    name: Frontend Lint + Test + Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint all apps
+        run: pnpm turbo run lint
+
+      - name: Test all apps
+        run: pnpm turbo run test
+
+      - name: Generate dashboard data
+        run: node scripts/generate-dashboard-data.mjs
+
+      - name: Build all apps
+        run: pnpm turbo run build
+
+      - name: Static audit (security)
+        run: node scripts/audit.mjs
+
+      - name: Upload consumer build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: consumer-next-build
+          path: apps/consumer/.next/
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # Contract — shared type drift + banned terms check
+  # ---------------------------------------------------------------------------
+  contract-drift:
+    name: Contract Drift + Banned Terms
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 모바일 소스(api.ts 타입 재정의 검사 대상) 확보.
+      # MOBILE_DIR=. (v2 only)였을 때 스크립트의 모바일 contract-drift 검사가
+      # 어떤 CI에서도 수행되지 않던 공백을 메운다.
+      # 모노레포(v3)에서는 ../mobile 가 sibling으로 존재하고, 분리 레포 CI에서는
+      # MOBILE_REPO를 체크아웃해 _mobile 경로로 받는다.
+      - name: Checkout mobile source (for contract-drift)
+        if: ${{ vars.MOBILE_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.MOBILE_REPO }}
+          ref: ${{ vars.MOBILE_REF || 'main' }}
+          path: _mobile
+          token: ${{ secrets.CROSS_REPO_TOKEN || github.token }}
+
+      - name: Check contract drift + banned terms (incl. mobile api.ts)
+        run: |
+          # 우선순위: 명시 MOBILE_DIR > 모노레포 sibling(../mobile) > 체크아웃본(_mobile)
+          if [ -n "${MOBILE_DIR:-}" ] && [ -d "$MOBILE_DIR/src/config" ]; then
+            :
+          elif [ -d "../mobile/src/config" ]; then
+            export MOBILE_DIR="../mobile"
+          elif [ -d "$GITHUB_WORKSPACE/_mobile/src/config" ]; then
+            export MOBILE_DIR="$GITHUB_WORKSPACE/_mobile"
+          else
+            echo "::error::모바일 소스를 찾지 못함 — contract-drift의 모바일 api.ts 검사를 건너뛸 수 없음. MOBILE_REPO 변수 또는 모노레포 ../mobile 필요."
+            exit 1
+          fi
+          echo "MOBILE_DIR=$MOBILE_DIR"
+          bash scripts/ci/check-contract-drift.sh
+
+      - name: Check PII leaks in logs
+        run: bash scripts/ci/check-pii-logs.sh
+
+      - name: Check FK ondelete policy (new FKs only)
+        run: python3 scripts/ci/check-fk-ondelete.py
+
+      - name: Check CREATE INDEX CONCURRENTLY (new migrations only)
+        run: bash scripts/ci/check-concurrent-index.sh
+
+  # ---------------------------------------------------------------------------
+  # Redis key audit — enforce v2: prefix on all Redis keys (DOMAIN_MODEL_STANDARD §7)
+  # ---------------------------------------------------------------------------
+  redis-key-audit:
+    name: Redis Key Prefix Audit
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install redis client
+        run: pip install "redis>=5"
+
+      - name: Seed test keys (simulate the services we just migrated)
+        env:
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          python - <<'PY'
+          import os, redis
+          r = redis.from_url(os.environ['REDIS_URL'], decode_responses=True)
+          # Only seed v2-prefixed keys — audit must PASS
+          r.set('v2:feature_flags:test', 'ok')
+          r.set('v2:activity:u1', 'ok')
+          r.set('v2:sse:stream-token:abc', 'ok')
+          print('seeded v2 keys:', r.keys('*'))
+          PY
+
+      - name: Run redis key audit
+        env:
+          REDIS_URL: redis://localhost:6379/0
+        run: python scripts/ci/redis_key_audit.py --verbose
+
+  # ---------------------------------------------------------------------------
+  # i18n — Translation key validation
+  # ---------------------------------------------------------------------------
+  i18n-validate:
+    name: i18n Translation Validation
+    runs-on: ubuntu-latest
+    needs: [frontend-lint-test-build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate i18n keys
+        run: node scripts/validate-i18n.js
+
+  # ---------------------------------------------------------------------------
+  # API Schema — drift detection (OpenAPI types stay in sync)
+  # ---------------------------------------------------------------------------
+  api-schema-drift:
+    name: API Schema Drift Check
+    runs-on: ubuntu-latest
+    # Promoted 2026-04-21: advisory → blocking after codegen pipeline stabilized
+    # (see scripts/codegen/generate_ts_contracts.py + test_contract_parity.py).
+    needs: [backend-test]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: pickket_ci_schema
+          POSTGRES_USER: pickket_ci
+          POSTGRES_PASSWORD: pickket_ci_2026
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pickket_ci -d pickket_ci_schema"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      SECRET_KEY: ci-schema-drift-secret-key-0123456789abcdef
+      DATABASE_URL: postgresql+asyncpg://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_schema
+      DATABASE_URL_SYNC: postgresql://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_schema
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      CORS_ORIGINS: http://localhost:3020
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install backend dependencies
+        run: |
+          pip install --upgrade pip
+          pip install ./backend
+          pip install ./engine
+
+      - name: Apply migrations
+        run: |
+          cd backend && alembic -x sqlalchemy.url="${DATABASE_URL_SYNC}" upgrade head
+
+      - name: Start API server
+        run: |
+          cd backend && nohup uvicorn app.main:app --host 127.0.0.1 --port 8001 >/tmp/api-schema.log 2>&1 &
+          echo $! >/tmp/api-schema.pid
+
+      - name: Wait for API healthy
+        run: |
+          for i in {1..30}; do
+            if curl -fsS "http://127.0.0.1:8001/health" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start"
+          cat /tmp/api-schema.log || true
+          exit 1
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate API types from live schema
+        run: |
+          API_URL=http://127.0.0.1:8001 bash scripts/generate-api-types.sh
+
+      - name: Generate shared contract enums (Python → TS)
+        run: |
+          python scripts/codegen/generate_ts_contracts.py
+
+      - name: Check for schema drift (API + contracts)
+        run: |
+          set -euo pipefail
+
+          GEN_API="packages/lib/src/generated/api-types.ts"
+
+          # ── Guard: the generated OpenAPI types MUST be committed ──────────────
+          # 과거 이 게이트는 api-types.ts가 한 번도 커밋된 적 없는(untracked) 상태라
+          # `git diff`(추적 파일만 비교)가 항상 빈 결과를 반환 → 무력한 no-op이었다.
+          # 생성물이 추적되지 않으면 드리프트 검사 자체가 성립하지 않으므로 즉시 실패시킨다.
+          if [ ! -f "$GEN_API" ]; then
+            echo "ERROR: ${GEN_API} 가 생성되지 않았습니다 (codegen 실패)."
+            exit 1
+          fi
+          if ! git ls-files --error-unmatch "$GEN_API" >/dev/null 2>&1; then
+            echo "ERROR: ${GEN_API} 가 git에 추적되고 있지 않습니다."
+            echo "  → 이 파일을 반드시 커밋해야 스키마 드리프트 검사가 동작합니다."
+            echo "    bash scripts/generate-api-types.sh && git add ${GEN_API} 후 커밋하세요."
+            exit 1
+          fi
+
+          # ── Drift 비교 ────────────────────────────────────────────────────────
+          # `git add -N`(intent-to-add)로 새로 생성된 untracked 파일도 diff 대상에
+          # 포함시켜, 추적 파일의 필드 변경뿐 아니라 신규 생성물 누락도 잡는다.
+          git add -N packages/lib/src/generated/ packages/lib/src/contracts/generated/
+          git diff --exit-code \
+            packages/lib/src/generated/ \
+            packages/lib/src/contracts/generated/
+          echo "No schema drift detected."
+
+      - name: Stop API server
+        if: always()
+        run: |
+          if [ -f /tmp/api-schema.pid ]; then
+            kill "$(cat /tmp/api-schema.pid)" || true
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Release — unified release gate (health + core regression)
+  # ---------------------------------------------------------------------------
+  release-gate:
+    name: Release Gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    needs:
+      - backend-test
+      - frontend-lint-test-build
+      - backend-security-sast
+      - dependency-audit
+      - secret-scan
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install backend dev dependencies in backend/.venv
+        run: |
+          python -m venv backend/.venv
+          source backend/.venv/bin/activate
+          pip install --upgrade pip
+          pip install "./backend[dev]"
+          pip install ./engine
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run release gate
+        # Promoted 2026-04-21: advisory → blocking. Release-gate regressions
+        # now fail the CI run. Revert to `continue-on-error: true` only with
+        # explicit ops approval.
+        run: pnpm test:release-gate
+
+      - name: Upload health dashboard artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gate-health-dashboard
+          path: docs/status/PROJECT_HEALTH_DASHBOARD.*
+
+  # ---------------------------------------------------------------------------
+  # Security — dependency audit (backend/engine/frontend)
+  # ---------------------------------------------------------------------------
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Audit backend dependencies
+        run: |
+          python -m venv /tmp/venv-backend
+          source /tmp/venv-backend/bin/activate
+          pip install --upgrade pip
+          pip install -r ./backend/requirements.lock pip-audit
+          pip-audit --strict --progress-spinner off
+
+      - name: Audit engine dependencies
+        run: |
+          python -m venv /tmp/venv-engine
+          source /tmp/venv-engine/bin/activate
+          pip install --upgrade pip
+          pip install -r ./engine/requirements.lock pip-audit
+          pip-audit --strict --progress-spinner off
+
+      - name: Audit frontend dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm audit --audit-level=high
+
+  # ---------------------------------------------------------------------------
+  # Security — secret scanning
+  # ---------------------------------------------------------------------------
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_ENABLE_COMMENTS: false
+
+  # ---------------------------------------------------------------------------
+  # Security — SBOM + filesystem CRITICAL vulnerability gate
+  # ---------------------------------------------------------------------------
+  sbom-and-vuln-gate:
+    name: SBOM + Vulnerability Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+
+      - name: Trivy filesystem CRITICAL gate
+        uses: aquasecurity/trivy-action@0.25.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL
+          ignore-unfixed: true
+          format: table
+          exit-code: "1"
+
+  # ---------------------------------------------------------------------------
+  # Security — runtime DAST baseline (backend health endpoint)
+  # ---------------------------------------------------------------------------
+  runtime-dast-backend:
+    name: Runtime DAST (Backend)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: pickket_ci_dast
+          POSTGRES_USER: pickket_ci
+          POSTGRES_PASSWORD: pickket_ci_2026
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pickket_ci -d pickket_ci_dast"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      SECRET_KEY: ci-dast-secret-key-0123456789abcdef
+      DATABASE_URL: postgresql+asyncpg://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_dast
+      DATABASE_URL_SYNC: postgresql://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_dast
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      CORS_ORIGINS: http://localhost:3020,http://localhost:3021,http://localhost:3002
+      DAST_FAIL_ON_MEDIUM: "true"
+      DAST_IGNORE_RULE_IDS: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .
+          pip install ../engine
+
+      - name: Apply migrations
+        run: |
+          alembic -x sqlalchemy.url="${DATABASE_URL_SYNC}" upgrade head
+
+      - name: Start API server
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8001 >/tmp/api-dast.log 2>&1 &
+          echo $! >/tmp/api-dast.pid
+
+      - name: Wait for API healthy
+        run: |
+          for i in {1..30}; do
+            if curl -fsS "http://127.0.0.1:8001/health" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start"
+          cat /tmp/api-dast.log || true
+          exit 1
+
+      - name: Run DAST script (backend only, CI strict profile)
+        working-directory: .
+        run: |
+          DAST_MINUTES=2 \
+          DAST_BACKEND_URL="http://127.0.0.1:8001/health" \
+          DAST_ADMIN_URL="" \
+          bash scripts/security/run_dast.sh
+
+      - name: Upload DAST artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-backend-report
+          path: security-reports/
+
+      - name: Stop API server
+        if: always()
+        run: |
+          if [ -f /tmp/api-dast.pid ]; then
+            kill "$(cat /tmp/api-dast.pid)" || true
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Security — runtime DAST baseline (admin)
+  # ---------------------------------------------------------------------------
+  runtime-dast-admin:
+    name: Runtime DAST (Admin)
+    runs-on: ubuntu-latest
+    env:
+      DAST_FAIL_ON_MEDIUM: "true"
+      DAST_IGNORE_RULE_IDS: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate dashboard data
+        run: node scripts/generate-dashboard-data.mjs
+
+      - name: Build admin
+        run: pnpm --filter @pickket/admin build
+
+      - name: Start admin app
+        run: |
+          nohup pnpm --filter @pickket/admin start >/tmp/admin-dast.log 2>&1 &
+          echo $! >/tmp/admin-dast.pid
+
+      - name: Wait for admin healthy
+        run: |
+          for i in {1..60}; do
+            if curl -fsS "http://127.0.0.1:3002" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Admin failed to start"
+          cat /tmp/admin-dast.log || true
+          exit 1
+
+      - name: Run DAST script (admin only, CI strict profile)
+        run: |
+          DAST_MINUTES=2 \
+          DAST_BACKEND_URL="" \
+          DAST_ADMIN_URL="http://127.0.0.1:3002" \
+          bash scripts/security/run_dast.sh
+
+      - name: Upload DAST artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-admin-report
+          path: security-reports/
+
+      - name: Stop admin app
+        if: always()
+        run: |
+          if [ -f /tmp/admin-dast.pid ]; then
+            kill "$(cat /tmp/admin-dast.pid)" || true
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Quality — Accessibility audit (axe-core via @axe-core/cli)
+  # ---------------------------------------------------------------------------
+  a11y-audit:
+    name: Accessibility Audit
+    runs-on: ubuntu-latest
+    needs: [frontend-lint-test-build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download consumer build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: consumer-next-build
+          path: apps/consumer/.next/
+
+      - name: Start consumer app
+        run: |
+          nohup pnpm --filter @pickket/consumer start >/tmp/consumer-a11y.log 2>&1 &
+          echo $! >/tmp/consumer-a11y.pid
+
+      - name: Wait for consumer healthy
+        run: |
+          for i in {1..60}; do
+            if curl -fsS "http://127.0.0.1:3000" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Consumer failed to start"
+          cat /tmp/consumer-a11y.log || true
+          exit 1
+
+      - name: Install axe-core CLI
+        run: pnpm add -g @axe-core/cli
+
+      - name: Run axe accessibility audit
+        run: |
+          npx @axe-core/cli \
+            http://127.0.0.1:3000 \
+            http://127.0.0.1:3000/events \
+            http://127.0.0.1:3000/guide \
+            http://127.0.0.1:3000/about \
+            --exit \
+            --tags wcag2a,wcag2aa,wcag21aa \
+            || echo "::warning::Accessibility issues found — see output above"
+
+      - name: Stop consumer app
+        if: always()
+        run: |
+          if [ -f /tmp/consumer-a11y.pid ]; then
+            kill "$(cat /tmp/consumer-a11y.pid)" || true
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Quality — Bundle size check (consumer .next/static)
+  # ---------------------------------------------------------------------------
+  bundle-size:
+    name: Bundle Size Check
+    runs-on: ubuntu-latest
+    needs: [frontend-lint-test-build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download consumer build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: consumer-next-build
+          path: apps/consumer/.next/
+
+      - name: Check bundle size
+        run: bash scripts/ci/bundle-size-check.sh apps/consumer/.next/static
+
+      - name: Check total bundle threshold
+        run: |
+          BUNDLE_SIZE=$(du -sb apps/consumer/.next/static | cut -f1)
+          echo "Bundle size: $BUNDLE_SIZE bytes ($(echo "scale=2; $BUNDLE_SIZE/1048576" | bc) MB)"
+          if [ "$BUNDLE_SIZE" -gt 2097152 ]; then
+            echo "::warning::Consumer bundle size exceeds 2MB threshold ($BUNDLE_SIZE bytes)"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Quality — Lighthouse CI audit (consumer)
+  # ---------------------------------------------------------------------------
+  lighthouse-audit:
+    name: Lighthouse CI Audit
+    runs-on: ubuntu-latest
+    needs: [frontend-lint-test-build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download consumer build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: consumer-next-build
+          path: apps/consumer/.next/
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+
+      - name: Start consumer app
+        run: |
+          nohup pnpm --filter @pickket/consumer start >/tmp/consumer-lhci.log 2>&1 &
+          echo $! >/tmp/consumer-lhci.pid
+
+      - name: Wait for consumer healthy
+        run: |
+          for i in {1..60}; do
+            if curl -fsS "http://127.0.0.1:3000" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Consumer failed to start"
+          cat /tmp/consumer-lhci.log || true
+          exit 1
+
+      - name: Run Lighthouse CI
+        run: |
+          lhci autorun \
+            --collect.url=http://127.0.0.1:3000 \
+            --collect.numberOfRuns=3 \
+            --collect.settings.chromeFlags="--no-sandbox --headless" \
+            --collect.settings.budgetPath=./lighthouse-budget.json \
+            --assert.assertions.categories:performance=warn:85 \
+            --assert.assertions.categories:accessibility=warn:90 \
+            --assert.assertions.categories:best-practices=warn:90 \
+            --assert.assertions.categories:seo=warn:90 \
+            --upload.target=temporary-public-storage \
+            || echo "::warning::Lighthouse scores below threshold — see output above"
+
+      - name: Upload Lighthouse report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/
+
+      - name: Stop consumer app
+        if: always()
+        run: |
+          if [ -f /tmp/consumer-lhci.pid ]; then
+            kill "$(cat /tmp/consumer-lhci.pid)" || true
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Docker — Build images (main/develop only, not on PRs)
+  # ---------------------------------------------------------------------------
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    needs:
+      [
+        backend-lint,
+        backend-test,
+        contract-tests,
+        api-load-smoke,
+        backend-security-sast,
+        engine-test,
+        frontend-lint-test-build,
+        release-gate,
+        dependency-audit,
+        secret-scan,
+        sbom-and-vuln-gate,
+        runtime-dast-backend,
+        runtime-dast-admin,
+        a11y-audit,
+        bundle-size,
+        lighthouse-audit,
+      ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t pickket-backend:${{ github.sha }} -f backend/Dockerfile .
+
+      - name: Build consumer image
+        run: docker build -t pickket-consumer:${{ github.sha }} -f apps/consumer/Dockerfile .

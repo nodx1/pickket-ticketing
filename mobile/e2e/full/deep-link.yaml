@@ -1,0 +1,24 @@
+# 딥링크 진입 E2E
+# 검증: pickket://event/{id} 커스텀 스킴 + https Universal Link
+# NOTE: clearState 사용 안 함 (dev client 호환)
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── 커스텀 스킴 딥링크 (공개 /e slug) ──
+- openLink: "pickket://e/seventeen-world-tour-follow-again"
+- extendedWaitUntil:
+    visible:
+      id: "event.open.screen"
+    timeout: 10000
+- takeScreenshot: deep_link_custom_scheme
+- assertVisible:
+    id: "event.open.cta"
+- back
+
+# ── Universal Link (https) ──
+# NOTE: assetlinks.json 미배포 상태 → Chrome으로 열리는게 정상 동작
+# 배포 후엔 앱으로 자동 진입 검증으로 변경 필요

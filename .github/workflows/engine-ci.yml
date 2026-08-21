@@ -1,0 +1,31 @@
+# 루트 CI (감사 P1): 공정 추첨 엔진(talkfile_engine) 단위테스트. 결정론·VCG·오버셀 방어 등
+# 사업 크리티컬 로직의 회귀를 자동 검출한다(감사 P0-C 오버셀 회귀 테스트 포함).
+name: engine-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "platform/engine/**"
+      - ".github/workflows/engine-ci.yml"
+  pull_request:
+    paths:
+      - "platform/engine/**"
+      - ".github/workflows/engine-ci.yml"
+
+defaults:
+  run:
+    working-directory: platform/engine
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install engine (+dev)
+        run: pip install -e ".[dev]"
+      - name: Pytest
+        run: pytest -q

@@ -1,0 +1,52 @@
+Pickket — Your daily companion for live music and shows
+
+Not just another ticket app. Pickket turns ticket buying into an experience: swipe through a personalized Discover feed, chat with an AI concierge, book together with friends, count down to show day, and keep every ticket in a digital wallet — all in one place.
+
+■ Key Features
+
+• Discover Feed
+A TikTok-style full-screen vertical pager. Double-tap to favorite, long-press to share, swipe to dive into details.
+
+• AI Concierge
+"Find me a jazz show in Gangnam this weekend" — ask in plain language, by voice or text. The more you use it, the better it learns your taste.
+
+• Group Booking
+Hold 4 seats, share an invite link, and let friends pay their own tickets.
+
+• D-Day Countdown
+From booking to show day: daily countdowns, setlist previews, venue routes, and entry guides.
+
+• Digital Wallet
+Tickets, memberships, and points in one hub. Apple Wallet and Google Pay pass support.
+
+• Active Notifications
+Location-based alerts, price drop watch, weekly curation, friend activity — all opt-in. Choose exactly what reaches you.
+
+• Biometric Payment
+Face ID / fingerprint authentication at checkout. Tokens stored securely in SecureStore.
+
+• Store-ready
+Apple Sign-In, Privacy Manifest, explicit consent screens, crash reporting, update enforcement — all compliance work completed.
+
+■ Why Pickket
+
+- Fair ticketing — queue system, idempotency keys, rotating TOTP QR codes to block illegal resale
+- Automatic refunds — instant reversal on failed or cancelled payments
+- Privacy-first — every active notification is opt-in
+- Accessible — 44pt touch targets, VoiceOver/TalkBack support
+
+■ Supported Languages
+
+Korean, English
+
+■ Privacy Policy
+
+https://pickket.kr/privacy
+
+■ Terms of Service
+
+https://pickket.kr/terms
+
+■ Support
+
+support@pickket.kr

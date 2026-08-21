@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pickket-go-reminders
+  namespace: pickket-go
+  labels:
+    app: pickket-go
+    component: reminders
+spec:
+  # 공연 리마인더 D-7/D-1 (매일 오전 KST). 참석자에게 정보성 알림.
+  # 미정의 시 조직자가 보낸 단체메시지가 queued 로 잔류해 발송되지 않는다.
+  # ⚠️ W5-MSG(2026-07-27) 이후 이 라우트는 **v2 위임 스텁**이다(항상 200 no-op).
+  #    실제 리마인더 = v2 Celery beat `messaging-reminders`(15:00 UTC = 00:00 KST).
+  #    go/v2 양쪽이 보내면 수신자에게 2회 나가므로 go 는 flag 와 무관하게 보내지 않는다.
+  schedule: "0 0 * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 30
+  failedJobsHistoryLimit: 5
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 90
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: pickket-go
+            component: reminders
+        spec:
+          serviceAccountName: pickket-go-cron
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          containers:
+            - name: reminders
+              image: curlimages/curl:8.10.1
+              imagePullPolicy: IfNotPresent
+              command:
+                - sh
+                - -c
+                - >
+                  curl --connect-timeout 5 --max-time 75 -fsS -H "Authorization: Bearer $CRON_SECRET"
+                  -H "x-cron-timestamp: $(date -u +%FT%TZ)"
+                  "$GO_BASE_URL/api/cron/reminders"
+              env:
+                - name: GO_BASE_URL
+                  value: "http://pickket-go.pickket-go.svc.cluster.local:3000"
+              envFrom:
+                - secretRef:
+                    name: pickket-go-stg-secrets
+              resources:
+                requests:
+                  memory: "32Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "64Mi"
+                  cpu: "100m"
+# ── CapRover(현행 배포) 대안 ─────────────────────────────────────────────
+# k8s 미사용 환경(홈서버 CapRover)에서는 위 CronJob 대신 외부 스케줄러가 **매일 1회(KST 오전)** 호출:
+#   (리마인더는 D-7/D-1 날짜 매칭 — 1분 주기 호출 금지. 발송원장(reminder_sends)이 중복은 막지만
+#    하루 1회로 충분하며 불필요한 부하를 줄인다.)
+#   # crontab (KST 09:00 = UTC 00:00): 0 0 * * *
+#   curl -fsS -H "Authorization: Bearer $CRON_SECRET" \
+#     -H "x-cron-timestamp: $(date -u +%FT%TZ)" \
+#     https://go.pickket.kr/api/cron/reminders

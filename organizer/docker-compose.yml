@@ -1,0 +1,97 @@
+# PICKKET.GO 로컬 개발/통합 테스트용 docker-compose
+#
+# 사용:
+#   docker compose up -d          # 전체 기동
+#   docker compose logs -f app    # 앱 로그
+#   docker compose down           # 전체 종료
+#
+# 프로덕션 배포는 docker-compose.prod.yml 오버라이드 사용
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pickket-go:dev
+    container_name: pickket-go-app
+    ports:
+      - "3013:3003"
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      HOSTNAME: 0.0.0.0
+      # DB
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: pickket
+      PG_PASSWORD: ${PG_PASSWORD:-pickket_dev_local}
+      PG_DATABASE: pickket_go
+      # Redis
+      REDIS_URL: redis://redis:6379
+      # RISE 엔진 (선택)
+      RISE_ENGINE_URL: ${RISE_ENGINE_URL:-http://rise-engine:8100}
+      # 보안
+      SESSION_SECRET: ${SESSION_SECRET:-change_me_in_production}
+      # 결제 (mock 기본)
+      PORTONE_MOCK_MODE: "true"
+      # 좌석 홀드
+      SEAT_HOLD_TTL_SECONDS: "600"
+      # 웹훅 타임스탬프 허용
+      WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS: "60"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3003/api/health/ready').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: pickket-go-postgres
+    environment:
+      POSTGRES_USER: pickket
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-pickket_dev_local}
+      POSTGRES_DB: pickket_go
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "pickket", "-d", "pickket_go"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: pickket-go-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+
+  # RISE 엔진은 선택 (rise-engine/ 디렉토리 존재 시만 사용)
+  # rise-engine:
+  #   build: ./rise-engine
+  #   container_name: pickket-go-rise
+  #   ports:
+  #     - "8100:8100"
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

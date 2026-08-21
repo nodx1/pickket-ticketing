@@ -1,0 +1,23 @@
+# 로그인 보장 서브플로우 — 이미 로그인 되어 있으면 no-op, 아니면 consumer 로그인
+# 호출 전 조건: 부트 직후 (tab.index 보임), 탭바 기본 expanded
+appId: kr.pickket.app
+---
+
+# Me 탭 접근 (탭바 기본 expanded)
+- tapOn:
+    id: "tab.me"
+
+- runFlow:
+    when:
+      notVisible:
+        id: "me.menu.orders"
+    commands:
+      - runFlow: login-consumer.yaml
+      - runFlow: restore-tabbar.yaml
+      - tapOn:
+          id: "tab.me"
+
+- extendedWaitUntil:
+    visible:
+      id: "me.menu.orders"
+    timeout: 10000

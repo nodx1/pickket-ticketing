@@ -1,0 +1,98 @@
+# 회원가입 화면 검증 E2E
+# 검증: 회원가입 화면 진입 → 검증 에러 (빈 입력/잘못된 이메일/약한 비밀번호/불일치)
+# NOTE: 실제 가입은 백엔드 상태 오염 방지를 위해 건너뜀
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── 회원가입 화면 진입 (Me → Login → Sign up) ──
+- runFlow: ../shared/restore-tabbar.yaml
+- tapOn:
+    id: "tab.me"
+- runFlow:
+    when:
+      notVisible: "Login required"
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: ".*(Logout|로그아웃).*"
+          direction: DOWN
+      - tapOn:
+          text: ".*(Logout|로그아웃).*"
+      - extendedWaitUntil:
+          visible:
+            text: ".*(Confirm|확인).*"
+          timeout: 5000
+      - tapOn:
+          text: ".*(Confirm|확인).*"
+
+# 게스트 상태에서 Me 탭 직접 이동
+- openLink: "pickket:///(tabs)/me"
+- extendedWaitUntil:
+    visible: "Login required"
+    timeout: 10000
+- tapOn: "Login"
+
+- extendedWaitUntil:
+    visible: "Email"
+    timeout: 5000
+- tapOn: "Sign up"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*Sign up.*|.*Create.*|.*가입.*"
+    timeout: 5000
+- takeScreenshot: signup_form_empty
+
+# ── 검증 에러 — 빈 입력 ──
+- tapOn:
+    id: "register-button"
+- waitForAnimationToEnd
+- takeScreenshot: signup_validation_empty
+
+# ── 잘못된 이메일 ──
+- tapOn:
+    id: "register-name-input"
+- inputText: "Test User"
+- tapOn:
+    id: "register-email-input"
+- inputText: "invalid-email"
+# register-button이 키보드 뒤에 숨겨진 경우 스크롤로 찾기
+- scrollUntilVisible:
+    element:
+      id: "register-button"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "register-button"
+- waitForAnimationToEnd
+- takeScreenshot: signup_validation_email
+
+# ── 약한 비밀번호 ──
+- tapOn:
+    id: "register-email-input"
+- eraseText: 20
+- inputText: "test@pickket.kr"
+- tapOn:
+    id: "register-password-input"
+- inputText: "weak"
+# 키보드 위 제출 버튼(체크마크) 누르기 → 키보드 닫힘
+- pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: "register-button"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "register-button"
+- waitForAnimationToEnd
+- takeScreenshot: signup_validation_password
+
+# 백엔드 호출 없이 종료 (실제 가입 안 함)
+- tapOn:
+    text: "Login|로그인"
+    index: 0
+- back

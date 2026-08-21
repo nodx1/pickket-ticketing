@@ -1,0 +1,217 @@
+{
+  "family": "pickket-prod-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "794562054294.dkr.ecr.ap-northeast-2.amazonaws.com/pickket-backend:prod-latest",
+      "portMappings": [{ "containerPort": 8000, "protocol": "tcp" }],
+      "essential": true,
+      "environment": [
+        { "name": "ENVIRONMENT", "value": "production" },
+        { "name": "PORT", "value": "8000" },
+        { "name": "WEB_CONCURRENCY", "value": "4" },
+        { "name": "LOG_LEVEL", "value": "INFO" },
+        {
+          "name": "CORS_ORIGINS",
+          "value": "https://www.pickket.kr,https://pickket.kr,https://go.pickket.kr,https://admin.pickket.kr"
+        },
+        { "name": "REFRESH_COOKIE_SECURE", "value": "true" },
+        { "name": "REFRESH_COOKIE_SAMESITE", "value": "lax" },
+        { "name": "REFRESH_COOKIE_DOMAIN", "value": ".pickket.kr" },
+        { "name": "ACCESS_COOKIE_NAME", "value": "pickket_access" },
+        { "name": "REFRESH_COOKIE_NAME", "value": "pickket_refresh" },
+        { "name": "PORTONE_MOCK_MODE", "value": "false" },
+        { "name": "PAYMENT_MANUAL_API_ENABLED", "value": "false" },
+        {
+          "name": "PAYMENT_SUCCESS_URL",
+          "value": "https://www.pickket.kr/payment/success"
+        },
+        {
+          "name": "PAYMENT_FAIL_URL",
+          "value": "https://www.pickket.kr/payment/fail"
+        },
+        { "name": "IDENTITY_PROVIDER", "value": "pass" },
+        { "name": "EMAIL_PROVIDER", "value": "ses" },
+        { "name": "SMS_PROVIDER", "value": "ncp" },
+        { "name": "DB_REQUIRE_SSL", "value": "true" },
+        { "name": "DB_POOL_SIZE", "value": "3" },
+        { "name": "DB_MAX_OVERFLOW", "value": "7" },
+        { "name": "DB_PGBOUNCER_MODE", "value": "true" },
+        { "name": "ENABLE_METRICS_ENDPOINT", "value": "true" },
+        { "name": "OTEL_ENABLED", "value": "true" },
+        { "name": "OTEL_SERVICE_NAME", "value": "pickket-backend" },
+        { "name": "OTEL_EXPORTER_ENDPOINT", "value": "http://localhost:4317" },
+        { "name": "UPLOAD_PROVIDER", "value": "s3" },
+        { "name": "S3_BUCKET", "value": "pickket-uploads" },
+        { "name": "S3_REGION", "value": "auto" },
+        {
+          "name": "S3_ENDPOINT_URL",
+          "value": "https://9fa16ac13c7beb314b0a0ddc0f374c22.r2.cloudflarestorage.com"
+        },
+        {
+          "name": "S3_PUBLIC_URL",
+          "value": "https://pub-e2742c598b854b65960d364f90957772.r2.dev"
+        },
+        { "name": "REDIS_CLUSTER_MODE", "value": "true" },
+        { "name": "TOTP_ENABLED", "value": "true" },
+        { "name": "ADMIN_MFA_REQUIRED", "value": "true" },
+        { "name": "GEOIP_ENABLED", "value": "true" },
+        { "name": "GEOIP_DB_PATH", "value": "/app/data/GeoLite2-Country.mmdb" },
+        { "name": "GO_INTERNAL_BASE_URL", "value": "https://go.pickket.kr" },
+        { "name": "TRUSTED_PROXY_CIDRS", "value": "10.0.0.0/16" },
+        { "name": "PORTONE_WEBHOOK_REQUIRE_TIMESTAMP", "value": "true" }
+      ],
+      "secrets": [
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/secret-key"
+        },
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/database-url"
+        },
+        {
+          "name": "DATABASE_URL_SYNC",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/database-url-sync"
+        },
+        {
+          "name": "DATABASE_READ_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/database-read-url"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/redis-url"
+        },
+        {
+          "name": "CELERY_BROKER_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/celery-broker-url"
+        },
+        {
+          "name": "CELERY_RESULT_BACKEND",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/celery-result-backend"
+        },
+        {
+          "name": "S3_ACCESS_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/s3-access-key"
+        },
+        {
+          "name": "S3_SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/s3-secret-key"
+        },
+        {
+          "name": "PORTONE_API_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/portone-api-secret"
+        },
+        {
+          "name": "PORTONE_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/portone-webhook-secret"
+        },
+        {
+          "name": "SENTRY_DSN",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/sentry-dsn"
+        },
+        {
+          "name": "REDIS_CLUSTER_NODES",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/redis-cluster-nodes"
+        },
+        {
+          "name": "TOTP_ENCRYPTION_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/totp-encryption-key"
+        },
+        {
+          "name": "PII_ENCRYPTION_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/pii-encryption-key"
+        },
+        {
+          "name": "GO_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/go-webhook-secret"
+        },
+        {
+          "name": "SNS_ORDER_TOPIC_ARN",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/sns-order-topic-arn"
+        },
+        {
+          "name": "SNS_PAYMENT_TOPIC_ARN",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/sns-payment-topic-arn"
+        },
+        {
+          "name": "SNS_TICKET_TOPIC_ARN",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/sns-ticket-topic-arn"
+        },
+        {
+          "name": "SNS_SEAT_TOPIC_ARN",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/sns-seat-topic-arn"
+        },
+        {
+          "name": "SNS_QUEUE_TOPIC_ARN",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/sns-queue-topic-arn"
+        },
+        {
+          "name": "SQS_ORDER_PROCESSING_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/sqs-order-processing-url"
+        },
+        {
+          "name": "SQS_PAYMENT_PROCESSING_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/sqs-payment-processing-url"
+        },
+        {
+          "name": "SQS_SEAT_SYNC_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/sqs-seat-sync-url"
+        },
+        {
+          "name": "SQS_TICKET_NOTIFICATIONS_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/sqs-ticket-notifications-url"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket-prod/backend",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8000/health/live || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    },
+    {
+      "name": "otel-collector",
+      "image": "public.ecr.aws/aws-observability/aws-otel-collector:v0.41.1",
+      "essential": false,
+      "command": ["--config", "env:AOT_CONFIG_CONTENT"],
+      "portMappings": [
+        { "containerPort": 4317, "protocol": "tcp" },
+        { "containerPort": 4318, "protocol": "tcp" }
+      ],
+      "environment": [
+        {
+          "name": "AOT_CONFIG_CONTENT",
+          "value": "receivers:\n  otlp:\n    protocols:\n      grpc:\n        endpoint: 0.0.0.0:4317\n      http:\n        endpoint: 0.0.0.0:4318\n  prometheus:\n    config:\n      scrape_configs:\n        - job_name: pickket-backend\n          scrape_interval: 30s\n          static_configs:\n            - targets: ['localhost:8000']\n          metrics_path: /metrics\nprocessors:\n  batch:\n    timeout: 5s\n    send_batch_size: 256\nexporters:\n  awsxray:\n    region: ap-northeast-2\n  awsemf:\n    region: ap-northeast-2\n    namespace: Pickket/Application\n    log_group_name: /pickket/metrics\nservice:\n  pipelines:\n    traces:\n      receivers: [otlp]\n      processors: [batch]\n      exporters: [awsxray]\n    metrics:\n      receivers: [prometheus]\n      processors: [batch]\n      exporters: [awsemf]"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket-prod/otel-collector",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "memory": 256
+    }
+  ]
+}

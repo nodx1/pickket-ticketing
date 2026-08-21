@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# main 직접 push 차단 (가드레일 #1 기계적 강제) — 설치: scripts/ops/install-git-hooks.sh
+# 의도적 우회: PICKKET_ALLOW_MAIN_PUSH=1 git push ... (대표 승인 하에서만)
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ] && [ "${PICKKET_ALLOW_MAIN_PUSH:-0}" != "1" ]; then
+    echo "🚫 main 직접 push 차단됨 (pickket 가드레일)."
+    echo "   PR 경유가 원칙. 대표 승인 하에 우회하려면: PICKKET_ALLOW_MAIN_PUSH=1 git push ..."
+    exit 1
+  fi
+done
+exit 0

@@ -1,0 +1,62 @@
+{
+  "family": "pickket-prod-mcp-dev-server",
+  "taskRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-task-role",
+  "executionRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-execution-role",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "containerDefinitions": [
+    {
+      "name": "mcp-dev-server",
+      "image": "794562054294.dkr.ecr.ap-northeast-2.amazonaws.com/pickket-mcp-dev-server:prod-latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8022,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "STORAGE_BACKEND", "value": "redis" },
+        { "name": "REDIS_DB", "value": "2" },
+        { "name": "PORT", "value": "8022" },
+        { "name": "MCP_LOCK_MODE", "value": "soft" }
+      ],
+      "secrets": [
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/redis-url-VzE0Zt"
+        },
+        {
+          "name": "TELEGRAM_BOT_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/telegram-bot-token-BYaeW1"
+        },
+        {
+          "name": "TELEGRAM_CHAT_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/telegram-chat-id-SLSB7Q"
+        },
+        {
+          "name": "MCP_AUTH_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/mcp-auth-token-0l9Iqa"
+        },
+        {
+          "name": "MCP_ADMIN_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/mcp-admin-key-iy9TBJ"
+        },
+        {
+          "name": "GITHUB_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/github-webhook-secret-Hx1Fcd"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket-prod/mcp-dev-server",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

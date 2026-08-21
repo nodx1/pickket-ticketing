@@ -1,0 +1,10 @@
+title = "Pickket gitleaks config"
+
+[allowlist]
+description = "Allow JWT-like placeholder token in API docs examples"
+paths = [
+  '''docs/API\.md''',
+]
+regexes = [
+  '''"access_token":\s*"eyJhbGciOiJIUzI1NiIs\.\.\."''',
+]

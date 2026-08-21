@@ -1,0 +1,70 @@
+# 언어 전환 + i18n 매트릭스 검증 — ko ↔ en 라벨 회귀 감지
+appId: kr.pickket.app
+tags:
+  - full
+  - i18n
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── 언어 설정 진입 ──
+- tapOn:
+    id: "tab.me"
+- scrollUntilVisible:
+    element:
+      id: "me.menu.language"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "me.menu.language"
+- extendedWaitUntil:
+    visible:
+      id: "language.screen"
+    timeout: 5000
+
+# ── 한국어 선택 ──
+- tapOn:
+    id: "language.option.ko"
+- waitForAnimationToEnd
+- takeScreenshot: lang_korean
+- back
+
+# 한국어 라벨 검증 (Me 메뉴)
+- assertVisible:
+    id: "me.menu.orders"
+- assertVisible:
+    id: "me.menu.favorites"
+
+# ── 다시 언어 설정 → English ──
+- scrollUntilVisible:
+    element:
+      id: "me.menu.language"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "me.menu.language"
+- extendedWaitUntil:
+    visible:
+      id: "language.screen"
+    timeout: 5000
+- tapOn:
+    id: "language.option.en"
+- waitForAnimationToEnd
+- takeScreenshot: lang_english
+- back
+
+# 영어 라벨 복원 검증
+- assertVisible:
+    id: "me.menu.orders"
+- assertVisible:
+    id: "me.menu.favorites"
+
+# 홈 복귀
+- runFlow: ../shared/restore-tabbar.yaml
+- tapOn:
+    id: "tab.index"
+- extendedWaitUntil:
+    visible:
+      id: "nav.tonight"
+    timeout: 5000

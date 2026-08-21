@@ -1,0 +1,39 @@
+{
+  "family": "pickket-prod-db-migration",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "db-migration",
+      "image": "postgres:16-alpine",
+      "essential": true,
+      "command": [
+        "sh",
+        "-c",
+        "echo 'Terminating existing connections...' && PGPASSWORD=$DB_PASSWORD psql -h pickket-db.cnoy08w8c4nc.ap-northeast-2.rds.amazonaws.com -U pickket_admin -d postgres -c \"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='pickket_v2' AND pid <> pg_backend_pid();\" && sleep 2 && echo 'Dropping existing pickket_v2 on target...' && PGPASSWORD=$DB_PASSWORD psql -h pickket-db.cnoy08w8c4nc.ap-northeast-2.rds.amazonaws.com -U pickket_admin -d postgres -c \"DROP DATABASE IF EXISTS pickket_v2;\" && echo 'Creating fresh pickket_v2...' && PGPASSWORD=$DB_PASSWORD psql -h pickket-db.cnoy08w8c4nc.ap-northeast-2.rds.amazonaws.com -U pickket_admin -d postgres -c \"CREATE DATABASE pickket_v2;\" && echo 'Dumping pickket_v2 from temp instance...' && PGPASSWORD=$STG_DB_PASSWORD pg_dump -h pickket-remigration-temp.cnoy08w8c4nc.ap-northeast-2.rds.amazonaws.com -U pickket_admin -d pickket_v2 --no-owner --no-privileges -Fc -f /tmp/dump.sql && echo 'Restoring to pickket-db/pickket_v2...' && PGPASSWORD=$DB_PASSWORD pg_restore -h pickket-db.cnoy08w8c4nc.ap-northeast-2.rds.amazonaws.com -U pickket_admin -d pickket_v2 --no-owner --no-privileges /tmp/dump.sql && echo 'Migration complete!' && PGPASSWORD=$DB_PASSWORD psql -h pickket-db.cnoy08w8c4nc.ap-northeast-2.rds.amazonaws.com -U pickket_admin -d pickket_v2 -c 'SELECT count(*) FROM events;' && PGPASSWORD=$DB_PASSWORD psql -h pickket-db.cnoy08w8c4nc.ap-northeast-2.rds.amazonaws.com -U pickket_admin -d pickket_v2 -c 'SELECT count(*) FROM alembic_version;'"
+      ],
+      "secrets": [
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/db-password"
+        },
+        {
+          "name": "STG_DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-prod/stg-db-password"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket-prod/db-migration",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+# 피처플래그 OFF 화면 E2E — coming soon 상태 검증
+# 목적: OFF 상태 피처의 EmptyState가 올바르게 표시되는지 확인
+# 태그: full
+# 참고: dev client에서 딥링크 불안정 → Expo dev URL 형식 사용
+appId: kr.pickket.app
+tags:
+  - full
+  - feature-flags
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── Vote 화면 (DAILY_VOTE: OFF) ──
+- openLink: "pickket:///vote"
+- extendedWaitUntil:
+    visible:
+      id: "vote.comingSoon"
+    timeout: 8000
+- takeScreenshot: vote_coming_soon
+- back
+
+# ── Quiz 화면 (DAILY_QUIZ: OFF) ──
+- openLink: "pickket:///quiz"
+- extendedWaitUntil:
+    visible:
+      id: "quiz.comingSoon"
+    timeout: 8000
+- takeScreenshot: quiz_coming_soon
+- back
+
+# ── PhotoCard 화면 (PHOTO_CARDS: OFF) ──
+- openLink: "pickket:///photocard"
+- extendedWaitUntil:
+    visible:
+      id: "photocard.comingSoon"
+    timeout: 8000
+- takeScreenshot: photocard_coming_soon
+- back
+
+# ── Trading 화면 (PHOTO_CARD_TRADING: OFF) ──
+- openLink: "pickket:///trading"
+- extendedWaitUntil:
+    visible:
+      id: "trading.comingSoon"
+    timeout: 8000
+- takeScreenshot: trading_coming_soon
+- back
+
+# ── League 화면 (FAN_SCORE_LEAGUE: OFF) ──
+- openLink: "pickket:///league"
+- extendedWaitUntil:
+    visible:
+      id: "league.comingSoon"
+    timeout: 8000
+- takeScreenshot: league_coming_soon
+- back
+
+# ── OCR 화면 (OCR_IMPORT: OFF) ──
+- openLink: "pickket:///ocr"
+- extendedWaitUntil:
+    visible:
+      id: "ocr.comingSoon"
+    timeout: 8000
+- takeScreenshot: ocr_coming_soon
+- back
+
+# ── 홈 복귀 확인 ──
+- runFlow: ../shared/restore-tabbar.yaml
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 5000

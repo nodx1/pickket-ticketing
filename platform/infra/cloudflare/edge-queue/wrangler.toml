@@ -1,0 +1,37 @@
+name = "pickket-edge-queue"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# ── Staging ──────────────────────────────────────────────────────────────────
+[env.staging]
+name = "pickket-edge-queue-staging"
+routes = [
+  { pattern = "api-staging.pickket.kr/queue/*", zone_name = "pickket.kr" },
+]
+
+[env.staging.vars]
+ORIGIN_URL = "https://api-staging.pickket.kr"
+
+[[env.staging.kv_namespaces]]
+binding = "QUEUE_KV"
+id = "40f72919671e4c64bf234f81f7d7822d"
+
+[env.staging.triggers]
+crons = ["*/1 * * * *"]
+
+# ── Production ───────────────────────────────────────────────────────────────
+[env.production]
+name = "pickket-edge-queue"
+routes = [
+  { pattern = "api.pickket.kr/queue/*", zone_name = "pickket.kr" },
+]
+
+[env.production.vars]
+ORIGIN_URL = "https://api.pickket.kr"
+
+[[env.production.kv_namespaces]]
+binding = "QUEUE_KV"
+id = "88dca33ca4ba4ba799e4d423fc77be34"
+
+[env.production.triggers]
+crons = ["*/1 * * * *"]

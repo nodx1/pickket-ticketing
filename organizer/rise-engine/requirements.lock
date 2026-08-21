@@ -1,0 +1,3 @@
+# Minimal runtime dependencies for engine security auditing
+numpy>=1.26.0
+ortools>=9.8

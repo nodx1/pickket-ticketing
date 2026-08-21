@@ -1,0 +1,426 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`EventCard snapshot + perf compact variant snapshot 1`] = `
+<View
+  accessibilityLabel="Test Event, "
+  accessibilityRole="button"
+  accessibilityState={
+    {
+      "busy": undefined,
+      "checked": undefined,
+      "disabled": undefined,
+      "expanded": undefined,
+      "selected": undefined,
+    }
+  }
+  accessibilityValue={
+    {
+      "max": undefined,
+      "min": undefined,
+      "now": undefined,
+      "text": undefined,
+    }
+  }
+  accessible={true}
+  collapsable={false}
+  focusable={true}
+  onClick={[Function]}
+  onResponderGrant={[Function]}
+  onResponderMove={[Function]}
+  onResponderRelease={[Function]}
+  onResponderTerminate={[Function]}
+  onResponderTerminationRequest={[Function]}
+  onStartShouldSetResponder={[Function]}
+  style={
+    {
+      "borderRadius": 24,
+      "opacity": 1,
+      "overflow": "hidden",
+      "position": "relative",
+      "width": 200,
+    }
+  }
+  testID="event.card.compact.evt-1"
+>
+  <View />
+  <View />
+  <View
+    style={
+      {
+        "bottom": 0,
+        "left": 0,
+        "padding": 12,
+        "position": "absolute",
+        "right": 0,
+      }
+    }
+  >
+    <Text
+      numberOfLines={2}
+      style={
+        [
+          {
+            "fontFamily": "Pretendard-SemiBold",
+            "fontSize": 14,
+            "fontWeight": "600",
+            "lineHeight": 20,
+          },
+          {
+            "color": "#FFFFFF",
+          },
+        ]
+      }
+    >
+      Test Event
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "fontFamily": "Pretendard-SemiBold",
+            "fontSize": 14,
+            "fontWeight": "600",
+            "lineHeight": 20,
+          },
+          {
+            "color": "#1E2A78",
+            "marginTop": 4,
+          },
+        ]
+      }
+    >
+      ₩55500 ~ ₩55500
+      <Text
+        style={
+          [
+            {
+              "fontFamily": "Pretendard-Regular",
+              "fontSize": 12,
+              "fontWeight": "400",
+              "lineHeight": 16,
+            },
+            {
+              "color": "rgba(255,255,255,0.8)",
+            },
+          ]
+        }
+      >
+         
+        event.allInPrice
+      </Text>
+    </Text>
+  </View>
+</View>
+`;
+
+exports[`EventCard snapshot + perf large variant snapshot 1`] = `
+<View
+  entering={BaseAnimationMock {}}
+>
+  <View
+    accessibilityLabel="Test Event, , "
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": undefined,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onClick={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      {
+        "borderRadius": 24,
+        "opacity": 1,
+        "overflow": "hidden",
+        "position": "relative",
+      }
+    }
+    testID="event.card.large.evt-1"
+  >
+    <View />
+    <View />
+    <View
+      style={
+        {
+          "bottom": 0,
+          "left": 0,
+          "padding": 24,
+          "paddingBottom": 32,
+          "position": "absolute",
+          "right": 0,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Pretendard-Regular",
+                "fontSize": 12,
+                "fontWeight": "400",
+                "lineHeight": 16,
+              },
+              {
+                "color": "rgba(255,255,255,0.8)",
+                "fontFamily": "Pretendard-Medium",
+              },
+            ]
+          }
+        >
+          concert
+        </Text>
+      </View>
+      <Text
+        numberOfLines={2}
+        style={
+          [
+            {
+              "fontFamily": "Pretendard-Black",
+              "fontSize": 36,
+              "letterSpacing": -1,
+              "lineHeight": 42,
+            },
+            {
+              "color": "#FFFFFF",
+              "fontWeight": "700",
+            },
+            {
+              "marginTop": 8,
+            },
+          ]
+        }
+      >
+        Test Event
+      </Text>
+      <View
+        style={
+          [
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+            },
+            {
+              "marginTop": 8,
+            },
+          ]
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+              },
+              {
+                "marginLeft": "auto",
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Pretendard-SemiBold",
+                  "fontSize": 16,
+                  "fontWeight": "600",
+                  "lineHeight": 24,
+                },
+                {
+                  "color": "#1E2A78",
+                },
+              ]
+            }
+          >
+            ₩55500 ~ ₩55500
+          </Text>
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Pretendard-Regular",
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                  "lineHeight": 16,
+                },
+                {
+                  "color": "rgba(255,255,255,0.8)",
+                },
+                {
+                  "marginLeft": 4,
+                },
+              ]
+            }
+          >
+            event.allInPrice
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          [
+            {
+              "flexDirection": "row",
+              "flexWrap": "wrap",
+              "gap": 8,
+            },
+            {
+              "marginTop": 12,
+            },
+          ]
+        }
+      >
+        <View
+          entering={BaseAnimationMock {}}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 9999,
+                "flexDirection": "row",
+                "gap": 4,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              {
+                "backgroundColor": "#10B9811F",
+              },
+            ]
+          }
+        >
+          <Text>
+            cash-outline
+          </Text>
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Pretendard-Regular",
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                  "lineHeight": 16,
+                },
+                {
+                  "color": "#10B981",
+                },
+              ]
+            }
+          >
+            promise.fairPrice
+          </Text>
+        </View>
+        <View
+          entering={BaseAnimationMock {}}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 9999,
+                "flexDirection": "row",
+                "gap": 4,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              {
+                "backgroundColor": "#3B82F61F",
+              },
+            ]
+          }
+        >
+          <Text>
+            lock-closed
+          </Text>
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Pretendard-Regular",
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                  "lineHeight": 16,
+                },
+                {
+                  "color": "#3B82F6",
+                },
+              ]
+            }
+          >
+            promise.lockedTicket
+          </Text>
+        </View>
+        <View
+          entering={BaseAnimationMock {}}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 9999,
+                "flexDirection": "row",
+                "gap": 4,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              {
+                "backgroundColor": "#8B5CF61F",
+              },
+            ]
+          }
+        >
+          <Text>
+            heart
+          </Text>
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Pretendard-Regular",
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                  "lineHeight": 16,
+                },
+                {
+                  "color": "#8B5CF6",
+                },
+              ]
+            }
+          >
+            promise.proofOfFan
+          </Text>
+        </View>
+      </View>
+      <View
+        testID="friends-mock"
+      />
+    </View>
+  </View>
+</View>
+`;

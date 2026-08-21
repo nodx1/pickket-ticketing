@@ -1,0 +1,73 @@
+# Schedule 탭 E2E — 일정 피드 탐색 + 필터 전환 + 카드 확인
+# 태그: full
+# 피처플래그: SCHEDULE_TAB (ON)
+appId: kr.pickket.app
+tags:
+  - full
+  - schedule
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── Schedule 탭 진입 ──
+- tapOn:
+    id: "tab.schedule"
+- extendedWaitUntil:
+    visible:
+      id: "schedule.header"
+    timeout: 5000
+- takeScreenshot: schedule_tab_home
+
+# ── 일정 카드 존재 확인 ──
+- assertVisible:
+    id: "schedule.card.s-1"
+
+# ── 필터 전환 (텍스트 탭) ──
+- tapOn:
+    text: "Concert"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: schedule_filter_concert
+
+# ── 필터 전환: all (초기화) ──
+- tapOn:
+    text: "All"
+    optional: true
+- waitForAnimationToEnd
+
+# ── 스크롤 다운 → 내일/모레 일정 확인 ──
+- swipe:
+    direction: UP
+    duration: 500
+- swipe:
+    direction: UP
+    duration: 500
+- takeScreenshot: schedule_scroll_down
+
+# ── 일정 카드 터치 ──
+- swipe:
+    direction: DOWN
+    duration: 500
+- swipe:
+    direction: DOWN
+    duration: 500
+- tapOn:
+    id: "schedule.card.s-1"
+# 예약 가능 일정은 이벤트 상세로 이동 (목 데이터 → 페이지 존재 여부 무관하게 터치만 확인)
+- waitForAnimationToEnd
+- takeScreenshot: schedule_card_tapped
+
+# ── 뒤로가기 → Schedule 탭 복귀 ──
+- back
+- extendedWaitUntil:
+    visible:
+      id: "schedule.header"
+    timeout: 5000
+- takeScreenshot: schedule_back
+
+# ── Home 탭 복귀 ──
+- tapOn:
+    id: "tab.index"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "nav.tonight"

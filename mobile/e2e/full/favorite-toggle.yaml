@@ -1,0 +1,66 @@
+# 즐겨찾기 토글 E2E
+# 검증: 이벤트 상세 진입 → 즐겨찾기 ON → Me 즐겨찾기 목록 확인
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── 홈으로 이동 ──
+- openLink: "pickket:///(tabs)"
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 5000
+
+# ── 트렌딩 첫 번째 이벤트 진입 ──
+- scrollUntilVisible:
+    element:
+      id: "home.trending.section"
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: "event\\.card\\.compact\\..*"
+    index: 0
+
+- extendedWaitUntil:
+    visible:
+      id: "event.detail.bookNow"
+    timeout: 8000
+
+# ── 즐겨찾기 토글 ──
+- tapOn:
+    id: "event.detail.favorite"
+- waitForAnimationToEnd
+- takeScreenshot: favorite_toggled
+
+# ── Me → 즐겨찾기 진입 ──
+- openLink: "pickket:///(tabs)/me"
+- extendedWaitUntil:
+    visible:
+      id: "me.menu.favorites"
+    timeout: 8000
+
+# LogBox 오버레이 자동 닫기
+- runFlow:
+    when:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+
+- tapOn:
+    id: "me.menu.favorites"
+- extendedWaitUntil:
+    visible:
+      id: "favorites.screen"
+    timeout: 5000
+- takeScreenshot: favorite_list
+
+# ── 홈 복귀 ──
+- openLink: "pickket:///(tabs)"
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 5000

@@ -1,0 +1,80 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pickket-go-expire-orders
+  namespace: pickket-go
+  labels:
+    app: pickket-go
+    component: expire-orders
+spec:
+  # 만료 주문/홀드 정리(감사 P2). v2 reapInventory 위임 + go 앵커(orders/attendees) 표시 동기화.
+  # 미정의 시 만료 주문이 go 에서 pending 으로 잔류해 대시보드 집계가 어긋난다.
+  schedule: "*/5 * * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 60
+  failedJobsHistoryLimit: 5
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 90
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: pickket-go
+            component: expire-orders
+        spec:
+          serviceAccountName: pickket-go-cron
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          containers:
+            - name: expire-orders
+              image: curlimages/curl:8.10.1
+              imagePullPolicy: IfNotPresent
+              # 라우트의 207(degraded = v2 만료는 성공했으나 go 앵커 sweep 실패)도 명시적으로
+              # 실패 처리한다. fail-fast 플래그는 207 이 2xx 라 그대로 통과시켜 **만료 참석자가
+              # confirmed 로 남아 체크인 가능한 상태**를 경보 없이 묻어버린다(W3-OPS).
+              # → 상태코드를 직접 파싱해 200 이 아니면 Job 실패로 전파한다.
+              command:
+                - sh
+                - -c
+                - |-
+                  response_file="$(mktemp)"
+                  trap 'rm -f "$response_file"' EXIT
+                  http_code="$(
+                    curl --connect-timeout 5 --max-time 75 -sS
+                    -o "$response_file" -w '%{http_code}'
+                    -H "Authorization: Bearer $CRON_SECRET"
+                    -H "x-cron-timestamp: $(date -u +%FT%TZ)"
+                    "$GO_BASE_URL/api/cron/expire-orders"
+                  )" || {
+                    cat "$response_file" >&2
+                    exit 1
+                  }
+                  cat "$response_file"
+                  if [ "$http_code" != "200" ]; then
+                    echo "expire-orders returned HTTP $http_code" >&2
+                    exit 1
+                  fi
+              env:
+                - name: GO_BASE_URL
+                  value: "http://pickket-go.pickket-go.svc.cluster.local:3000"
+              envFrom:
+                - secretRef:
+                    name: pickket-go-stg-secrets
+              resources:
+                requests:
+                  memory: "32Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "64Mi"
+                  cpu: "100m"
+# ── CapRover(현행 배포) 대안 ─────────────────────────────────────────────
+# k8s 미사용 환경(홈서버 CapRover)에서는 위 CronJob 대신 외부 스케줄러가 5분 주기로
+# HTTP 라우트를 호출한다. ⚠️ `-f` 만 쓰면 207(degraded)이 성공으로 통과하므로 상태코드를 직접 판정할 것:
+#   code=$(curl -sS -o /tmp/expire-orders.out -w '%{http_code}' \
+#     -H "Authorization: Bearer $CRON_SECRET" \
+#     -H "x-cron-timestamp: $(date -u +%FT%TZ)" \
+#     https://go.pickket.kr/api/cron/expire-orders)
+#   [ "$code" = "200" ] || { echo "expire-orders HTTP $code" >&2; exit 1; }

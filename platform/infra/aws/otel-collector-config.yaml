@@ -1,0 +1,39 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+      http:
+        endpoint: "0.0.0.0:4318"
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: pickket-backend
+          scrape_interval: 30s
+          static_configs:
+            - targets: ["localhost:8000"]
+          metrics_path: /metrics
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 256
+
+exporters:
+  awsxray:
+    region: ap-northeast-2
+  awsemf:
+    region: ap-northeast-2
+    namespace: Pickket/Application
+    log_group_name: /pickket/metrics
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [awsxray]
+    metrics:
+      receivers: [prometheus]
+      processors: [batch]
+      exporters: [awsemf]

@@ -1,0 +1,72 @@
+{
+  "family": "pickket-v2-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "794562054294.dkr.ecr.ap-northeast-2.amazonaws.com/pickket-backend:staging-latest",
+      "portMappings": [{ "containerPort": 8000, "protocol": "tcp" }],
+      "essential": true,
+      "environment": [
+        { "name": "ENVIRONMENT", "value": "staging" },
+        { "name": "PORT", "value": "8000" },
+        { "name": "WEB_CONCURRENCY", "value": "4" },
+        { "name": "LOG_LEVEL", "value": "INFO" },
+        {
+          "name": "CORS_ORIGINS",
+          "value": "https://www.pickket.kr,https://go.pickket.kr,https://admin.pickket.kr"
+        },
+        { "name": "REFRESH_COOKIE_DOMAIN", "value": ".pickket.kr" }
+      ],
+      "secrets": [
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-v2/secret-key"
+        },
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-v2/database-url"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-v2/redis-url"
+        },
+        {
+          "name": "CELERY_BROKER_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-v2/celery-broker-url"
+        },
+        {
+          "name": "PORTONE_API_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-v2/portone-api-secret"
+        },
+        {
+          "name": "DATABASE_READ_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-v2/database-read-url"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket-v2/backend",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8000/health/live || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}

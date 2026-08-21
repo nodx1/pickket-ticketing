@@ -1,0 +1,45 @@
+version: "3.9"
+
+# Chaos testing infrastructure with ToxiProxy
+# Usage: docker compose -f tests/chaos/docker-compose.chaos.yml up -d
+
+services:
+  # Real PostgreSQL for chaos tests
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pickket_chaos
+      POSTGRES_USER: pickket_ci
+      POSTGRES_PASSWORD: pickket_chaos_2026
+    ports:
+      - "5436:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "pickket_ci", "-d", "pickket_chaos"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Real Redis for chaos tests
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass pickket_chaos_redis
+    ports:
+      - "6382:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "pickket_chaos_redis", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ToxiProxy — sits between app and DB/Redis
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    ports:
+      - "8474:8474"   # ToxiProxy API
+      - "5437:5437"   # Proxied PostgreSQL
+      - "6383:6383"   # Proxied Redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

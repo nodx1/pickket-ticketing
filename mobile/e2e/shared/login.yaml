@@ -1,0 +1,29 @@
+# 공유 로그인 서브플로우
+# 다른 테스트에서 runFlow: file 로 재사용
+# 호출 전 조건: Me 탭 또는 "Login required" 화면
+appId: kr.pickket.app
+---
+
+- extendedWaitUntil:
+    visible:
+      id: "email-input"
+    timeout: 5000
+
+- tapOn:
+    id: "email-input"
+- inputText: "fan1@test.pickket.kr"
+
+- tapOn:
+    id: "password-input"
+- inputText: "PickketTest2026!"
+
+- pressKey: Enter
+
+- tapOn:
+    text: "Login"
+    index: 0
+
+- extendedWaitUntil:
+    visible:
+      id: "nav.tonight"
+    timeout: 10000

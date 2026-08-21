@@ -1,0 +1,112 @@
+name: E2E (Maestro)
+
+# T2.1 — Android 에뮬레이터 기반 smoke 실행
+# 현재는 manual trigger + nightly 만. 백엔드 APP_ENV=e2e 인프라 완성 후
+# pull_request 트리거 추가하여 PR 차단으로 승격 예정.
+# 의존: docs/v2-team-requests/2026-04-09-e2e-infra.md
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "실행 태그 (smoke | full)"
+        default: "smoke"
+        required: true
+  schedule:
+    # 매일 새벽 3시 KST (18:00 UTC 전날)
+    - cron: "0 18 * * *"
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-smoke:
+    name: Android Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Verify Maestro
+        run: maestro --version
+
+      # TODO: APK 획득 경로 확정 필요
+      # 옵션 A — EAS preview build artifact 다운로드 (권장)
+      # 옵션 B — Expo prebuild + gradle assembleRelease (self-hosted 필요)
+      # 현재는 플레이스홀더: EAS build URL 을 secret 으로 주입
+      - name: Download APK from EAS
+        if: ${{ vars.E2E_APK_URL != '' }}
+        env:
+          APK_URL: ${{ vars.E2E_APK_URL }}
+        run: |
+          curl -L -o app.apk "$APK_URL"
+          ls -la app.apk
+
+      - name: Enable KVM (emulator acceleration)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run smoke tests on Android emulator
+        if: ${{ vars.E2E_APK_URL != '' }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          avd-name: pickket-e2e
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb install -r app.apk
+            adb shell monkey -p kr.pickket.app -c android.intent.category.LAUNCHER 1
+            sleep 5
+            maestro test e2e/smoke/ e2e/full/ --include-tags=${{ github.event.inputs.tag || 'smoke' }} --format=junit --output=maestro-report.xml
+
+      - name: Skip notice (no APK configured)
+        if: ${{ vars.E2E_APK_URL == '' }}
+        run: |
+          echo "⚠️ E2E_APK_URL repository variable 가 설정되지 않았습니다."
+          echo "EAS build:download URL 또는 artifact 경로를 Settings → Variables 에 추가하세요."
+          echo "이 job 은 현재 skip 상태로 성공 처리됩니다 (PR 차단 전 준비 단계)."
+
+      - name: Upload Maestro report
+        if: always() && vars.E2E_APK_URL != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-report
+          path: |
+            maestro-report.xml
+            ~/.maestro/tests/**/screenshots/
+          retention-days: 7
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-failure-screenshots
+          path: ~/.maestro/tests/
+          retention-days: 14

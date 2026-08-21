@@ -1,0 +1,75 @@
+# 게스트 모드 E2E — 로그인 없이 DICE 구조 홈 + 4탭 탐색
+# 태그: smoke (PR 차단 대상)
+appId: kr.pickket.app
+tags:
+  - smoke
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── 홈 화면 검증 (DICE 구조) ──
+# 네비 아이콘 행 확인
+- assertVisible:
+    id: "nav.tonight"
+- assertVisible:
+    id: "nav.thisWeek"
+- assertVisible:
+    id: "nav.trending"
+- takeScreenshot: guest_home
+
+# 스크롤 다운 → 트렌딩 확인
+- scrollUntilVisible:
+    element:
+      id: "home.trending.section"
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: guest_home_trending
+
+# 스크롤 복원 (탭바 다시 등장 + 자동 expand)
+- swipe:
+    direction: DOWN
+    duration: 500
+- waitForAnimationToEnd
+
+# ── 4탭 네비게이션 ──
+
+# Schedule 탭
+- tapOn:
+    id: "tab.schedule"
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+- takeScreenshot: guest_schedule
+
+# Tickets 탭
+- tapOn:
+    id: "tab.tickets"
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+- takeScreenshot: guest_tickets
+
+# Me 탭
+- tapOn:
+    id: "tab.me"
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+- takeScreenshot: guest_me
+
+# Home 복귀
+- tapOn:
+    id: "tab.index"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "nav.tonight"
+
+# ── 필터 전환 테스트 ──
+- tapOn:
+    id: "nav.trending"
+- takeScreenshot: guest_filter_trending
+
+# Tonight 복귀
+- tapOn:
+    id: "nav.tonight"
+- takeScreenshot: guest_filter_tonight

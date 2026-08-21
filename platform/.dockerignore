@@ -1,0 +1,52 @@
+.git
+.github
+.pytest_cache
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.DS_Store
+
+# Build artifacts
+**/node_modules
+**/.next
+**/.turbo
+**/.cache
+**/out
+**/dist
+**/coverage
+.turbo
+.cache
+dist
+playwright-report
+test-results
+
+# Backend (not needed for frontend image)
+backend/.venv
+engine/.venv
+.venv
+venv
+
+# Secrets & config — never include in build context
+**/.env
+**/.env.*
+.gitleaks.toml
+.pre-commit-config.yaml
+docs/plans/
+docs/legal/
+.claude/
+
+# §31 P1: Backend test / seed / load-test files — must not ship to production image
+backend/tests/
+backend/app/tests/
+backend/scripts/
+backend/seed_*.py
+backend/locustfile.py
+backend/k6/
+backend/load_test*
+backend/conftest.py
+backend/*.md
+
+# Misc
+tmp
+*.log
+security-reports

@@ -1,0 +1,223 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "HTTP Request Rate (RPS)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[5m])) by (method)",
+          "legendFormat": "{{method}}"
+        }
+      ]
+    },
+    {
+      "title": "HTTP Latency (p50/p95/p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "Error Rate (5xx)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m])) * 100",
+          "legendFormat": "Error %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Active Requests",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+      "targets": [
+        {
+          "expr": "http_active_requests",
+          "legendFormat": "Active"
+        }
+      ]
+    },
+    {
+      "title": "DB Query Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (le, operation))",
+          "legendFormat": "{{operation}} p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "Celery Tasks (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "sum(rate(celery_tasks_total[5m])) by (task_name, status)",
+          "legendFormat": "{{task_name}} [{{status}}]"
+        }
+      ]
+    },
+    {
+      "title": "Celery Task Duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(celery_task_duration_seconds_bucket[5m])) by (le, task_name))",
+          "legendFormat": "{{task_name}} p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "Cache Hit/Miss Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "expr": "sum(rate(cache_hits_total[5m])) by (key_prefix)",
+          "legendFormat": "HIT {{key_prefix}}"
+        },
+        {
+          "expr": "sum(rate(cache_misses_total[5m])) by (key_prefix)",
+          "legendFormat": "MISS {{key_prefix}}"
+        }
+      ]
+    },
+    {
+      "title": "Business Metrics",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        {
+          "expr": "sum(rate(tickets_sold_total[5m]))",
+          "legendFormat": "Tickets Sold/s"
+        },
+        {
+          "expr": "sum(rate(payment_total[5m])) by (status)",
+          "legendFormat": "Payment {{status}}/s"
+        },
+        {
+          "expr": "sum(rate(booking_total[5m])) by (result)",
+          "legendFormat": "Booking {{result}}/s"
+        }
+      ]
+    },
+    {
+      "title": "Queue & Resale",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "expr": "queue_active_users",
+          "legendFormat": "Queue Active Users"
+        },
+        {
+          "expr": "sum(rate(queue_join_total[5m])) by (result)",
+          "legendFormat": "Queue Join {{result}}/s"
+        },
+        {
+          "expr": "sum(rate(resale_match_total[5m])) by (result)",
+          "legendFormat": "Resale {{result}}/s"
+        }
+      ]
+    },
+    {
+      "title": "Bot Traffic Ratio",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "targets": [
+        {
+          "expr": "sum(rate(pickket_requests_by_class_total[5m])) by (traffic_class)",
+          "legendFormat": "{{traffic_class}}"
+        }
+      ]
+    },
+    {
+      "title": "Active Bids",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "expr": "active_bids_total",
+          "legendFormat": "Bids"
+        }
+      ]
+    },
+    {
+      "title": "Kill Switch Blocks",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 36 },
+      "targets": [
+        {
+          "expr": "sum(rate(kill_switch_blocked_total[5m])) by (feature)",
+          "legendFormat": "{{feature}}"
+        }
+      ]
+    },
+    {
+      "title": "Webhook Received",
+      "type": "timeseries",
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 36 },
+      "targets": [
+        {
+          "expr": "sum(rate(webhook_received_total[5m])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["pickket", "overview"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "Asia/Seoul",
+  "title": "Pickket Overview",
+  "uid": "pickket-overview",
+  "version": 1
+}

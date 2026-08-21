@@ -1,0 +1,106 @@
+{
+  "family": "pickket-stg-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::794562054294:role/pickket-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "794562054294.dkr.ecr.ap-northeast-2.amazonaws.com/pickket-backend:staging-latest",
+      "portMappings": [{ "containerPort": 8000, "protocol": "tcp" }],
+      "essential": true,
+      "environment": [
+        { "name": "ENVIRONMENT", "value": "staging" },
+        { "name": "PORT", "value": "8000" },
+        { "name": "WEB_CONCURRENCY", "value": "2" },
+        { "name": "LOG_LEVEL", "value": "INFO" },
+        {
+          "name": "CORS_ORIGINS",
+          "value": "https://staging.pickket.kr,https://go-staging.pickket.kr,https://admin-staging.pickket.kr"
+        },
+        { "name": "REFRESH_COOKIE_SECURE", "value": "true" },
+        { "name": "REFRESH_COOKIE_SAMESITE", "value": "none" },
+        { "name": "PORTONE_MOCK_MODE", "value": "true" },
+        { "name": "ENABLE_METRICS_ENDPOINT", "value": "true" },
+        { "name": "OTEL_ENABLED", "value": "false" },
+        { "name": "OTEL_SERVICE_NAME", "value": "pickket-backend-stg" },
+        { "name": "OTEL_EXPORTER_ENDPOINT", "value": "http://localhost:4317" },
+        { "name": "UPLOAD_PROVIDER", "value": "local" },
+        { "name": "REDIS_CLUSTER_MODE", "value": "false" },
+        { "name": "TOTP_ENABLED", "value": "false" }
+      ],
+      "secrets": [
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/secret-key"
+        },
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/database-url"
+        },
+        {
+          "name": "DATABASE_URL_SYNC",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/database-url-sync"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/redis-url"
+        },
+        {
+          "name": "CELERY_BROKER_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/celery-broker-url"
+        },
+        {
+          "name": "CELERY_RESULT_BACKEND",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-2:794562054294:secret:pickket-stg/celery-result-backend"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket-stg-backend",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8000/health/live || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    },
+    {
+      "name": "otel-collector",
+      "image": "public.ecr.aws/aws-observability/aws-otel-collector:v0.41.1",
+      "essential": false,
+      "command": ["--config", "env:AOT_CONFIG_CONTENT"],
+      "portMappings": [
+        { "containerPort": 4317, "protocol": "tcp" },
+        { "containerPort": 4318, "protocol": "tcp" }
+      ],
+      "environment": [
+        {
+          "name": "AOT_CONFIG_CONTENT",
+          "value": "receivers:\n  otlp:\n    protocols:\n      grpc:\n        endpoint: 0.0.0.0:4317\n      http:\n        endpoint: 0.0.0.0:4318\n  prometheus:\n    config:\n      scrape_configs:\n        - job_name: pickket-backend\n          scrape_interval: 30s\n          static_configs:\n            - targets: ['localhost:8000']\n          metrics_path: /metrics\nprocessors:\n  batch:\n    timeout: 5s\n    send_batch_size: 256\nexporters:\n  awsxray:\n    region: ap-northeast-2\n  awsemf:\n    region: ap-northeast-2\n    namespace: Pickket/Application\n    log_group_name: /pickket/metrics\nservice:\n  pipelines:\n    traces:\n      receivers: [otlp]\n      processors: [batch]\n      exporters: [awsxray]\n    metrics:\n      receivers: [prometheus]\n      processors: [batch]\n      exporters: [awsemf]"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/pickket-stg/otel-collector",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "memory": 256
+    }
+  ]
+}

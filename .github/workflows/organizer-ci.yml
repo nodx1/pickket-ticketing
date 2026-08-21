@@ -1,0 +1,35 @@
+# 루트 CI (감사 P1): GitHub 은 저장소 루트의 .github/workflows 만 실행한다. 워크플로가
+# platform/.github/workflows 에만 있어 모노레포 전체 게이트가 미실행이던 것을 루트로 끌어올림.
+# organizer 는 자체 npm 툴링(별도 lockfile) 유지 — typecheck + lint 게이트.
+name: organizer-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "organizer/**"
+      - ".github/workflows/organizer-ci.yml"
+  pull_request:
+    paths:
+      - "organizer/**"
+      - ".github/workflows/organizer-ci.yml"
+
+defaults:
+  run:
+    working-directory: organizer
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: organizer/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npm run lint

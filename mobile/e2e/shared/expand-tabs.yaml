@@ -1,0 +1,9 @@
+# 탭바 확장 서브플로우 — collapsed pill 탭바를 expand하여 모든 탭 접근 가능하게
+# AnimatedTabBar는 기본 collapsed 상태에서 Home 버튼만 표시
+# Home 버튼(tab.index)을 탭하면 나머지 탭이 나타남
+appId: kr.pickket.app
+---
+
+- tapOn:
+    id: "tab.index"
+- waitForAnimationToEnd

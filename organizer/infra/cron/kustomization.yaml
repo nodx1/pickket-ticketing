@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Kubernetes CronJobs are the authoritative scheduler for organizer recovery.
+# Do not enable the CapRover curl examples in the individual manifests at the
+# same time; duplicate schedules are prevented by CronJob concurrencyPolicy and
+# by the validation script below, but duplicate external schedulers still add
+# unnecessary load.
+resources:
+  - service-account.yaml
+  - dispatch-campaigns.yaml
+  - dispatch-invitations.yaml
+  - dispatch-messages.yaml
+  - drain-audit-outbox.yaml
+  - drain-waitlist-recovery.yaml
+  - expire-orders.yaml
+  - payment-reconcile.yaml
+  - reconcile-deliveries.yaml
+  - reminders.yaml
+  - retry-order-webhooks.yaml
+  - seat-hold-reaper.yaml
+  - ops-cleanup.yaml

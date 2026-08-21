@@ -1,0 +1,14 @@
+import * as Sentry from "@sentry/nextjs";
+
+const sentryInitOptions = {
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || "",
+  tracesSampleRate: 0.1,
+  environment: process.env.NODE_ENV,
+  enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
+};
+
+export async function register(): Promise<void> {
+  Sentry.init(sentryInitOptions);
+}
+
+export const onRequestError = Sentry.captureRequestError;

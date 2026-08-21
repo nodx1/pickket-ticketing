@@ -1,0 +1,53 @@
+# 일정 상세 화면 E2E — Schedule 탭 카드 → 상세 진입 검증
+# 참고: 백엔드 미연결 시 Event Detail 에러 화면 → 정상 동작으로 간주
+appId: kr.pickket.app
+tags:
+  - full
+  - schedule
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── Schedule 탭 진입 ──
+- openLink: "pickket:///(tabs)/schedule"
+- extendedWaitUntil:
+    visible:
+      id: "schedule.header"
+    timeout: 8000
+
+- takeScreenshot: schedule_tab_loaded
+
+# ── 첫 번째 일정 카드 탭 ──
+- scrollUntilVisible:
+    element:
+      id: "schedule.card.s-1"
+    direction: DOWN
+    timeout: 8000
+    optional: true
+
+- runFlow:
+    when:
+      visible:
+        id: "schedule.card.s-1"
+    commands:
+      - tapOn:
+          id: "schedule.card.s-1"
+      # 상세 화면 또는 서버 에러 — 둘 다 허용
+      - extendedWaitUntil:
+          visible: "Event Detail"
+          timeout: 8000
+      - takeScreenshot: schedule_detail_or_error
+      - back
+
+# ── Schedule 탭 복귀 확인 ──
+- extendedWaitUntil:
+    visible:
+      id: "schedule.header"
+    timeout: 5000
+
+# ── 홈 복귀 ──
+- openLink: "pickket:///(tabs)"
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 5000

@@ -1,0 +1,133 @@
+# Me 메뉴 전체 탐색 E2E — 메뉴 항목 + 설정 + 법률 문서
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── Me 탭 ──
+- tapOn:
+    id: "tab.me"
+
+- extendedWaitUntil:
+    visible:
+      id: "me.menu.orders"
+    timeout: 5000
+- assertVisible: "fan1@test.pickket.kr"
+
+# ── 주문 내역 ──
+- tapOn:
+    id: "me.menu.orders"
+- extendedWaitUntil:
+    visible:
+      id: "orders.screen"
+    timeout: 5000
+- takeScreenshot: orders_list
+- back
+
+# ── 즐겨찾기 ──
+- tapOn:
+    id: "me.menu.favorites"
+- extendedWaitUntil:
+    visible:
+      id: "favorites.screen"
+    timeout: 5000
+- takeScreenshot: favorites
+- back
+
+# ── 언어 설정 ──
+- scrollUntilVisible:
+    element:
+      id: "me.menu.language"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "me.menu.language"
+- extendedWaitUntil:
+    visible:
+      id: "language.screen"
+    timeout: 5000
+- assertVisible:
+    id: "language.option.en"
+- takeScreenshot: language_settings
+- back
+
+# ── 알림 설정 ──
+- scrollUntilVisible:
+    element:
+      id: "me.menu.notifications"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "me.menu.notifications"
+- extendedWaitUntil:
+    visible:
+      id: "notifications.screen"
+    timeout: 5000
+- assertVisible:
+    id: "notification.toggle.allocation_result"
+- assertVisible:
+    id: "notification.toggle.payment_reminder"
+- assertVisible:
+    id: "notification.toggle.event_update"
+- takeScreenshot: notification_settings
+- back
+
+# ── 스크롤 다운 → 법률 문서 ──
+- scrollUntilVisible:
+    element:
+      text: ".*(Privacy Policy|개인정보).*"
+    direction: DOWN
+    timeout: 5000
+
+# 개인정보처리방침
+- tapOn:
+    text: ".*(Privacy Policy|개인정보).*"
+- extendedWaitUntil:
+    visible:
+      id: "legal.privacy.screen"
+    timeout: 10000
+- takeScreenshot: privacy
+- back
+
+# 이용약관
+- scrollUntilVisible:
+    element:
+      text: ".*(Terms of Service|이용약관).*"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    text: ".*(Terms of Service|이용약관).*"
+- extendedWaitUntil:
+    visible:
+      id: "legal.terms.screen"
+    timeout: 10000
+- takeScreenshot: terms
+- back
+
+# 환불정책
+- scrollUntilVisible:
+    element:
+      text: ".*(Refund Policy|환불).*"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    text: ".*(Refund Policy|환불).*"
+- extendedWaitUntil:
+    visible:
+      id: "legal.refund.screen"
+    timeout: 10000
+- takeScreenshot: refund
+- back
+
+# ── 앱 버전 확인 ──
+- scrollUntilVisible:
+    element:
+      text: ".*(App Version|버전).*"
+    direction: DOWN
+    timeout: 5000
+- assertVisible:
+    text: ".*(App Version|버전).*"
+- takeScreenshot: profile_complete

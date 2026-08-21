@@ -1,0 +1,28 @@
+# Pickket Mobile — CODEOWNERS
+#
+# 기본 규칙:
+# - Standards/ADR 영역은 mobile-tech-lead 승인 필수
+# - 인증/보안/스토리지 계열은 v2 tech-lead 크로스리뷰 권장
+
+# 전역 기본
+*                                       @mobile-tech-lead
+
+# Standards / ADR — 변경 시 반드시 mobile-tech-lead 리뷰
+/docs/adr/                              @mobile-tech-lead
+/docs/architecture/standards/           @mobile-tech-lead
+/docs/archive/                          @mobile-tech-lead
+/CLAUDE.md                              @mobile-tech-lead
+/MOBILE_MASTER_PLAN.md                  @mobile-tech-lead
+/README.md                              @mobile-tech-lead
+/CONTRIBUTING.md                        @mobile-tech-lead
+
+# 인증 / 토큰 스토리지 — v2 tech-lead 크로스리뷰 권장
+/src/config/api.ts                      @mobile-tech-lead @v2-tech-lead
+/src/lib/storage.ts                     @mobile-tech-lead @v2-tech-lead
+/src/lib/ssl-pinning.ts                 @mobile-tech-lead @v2-tech-lead
+/app/(auth)/                            @mobile-tech-lead @v2-tech-lead
+
+# CI / 빌드 파이프라인
+/.github/                               @mobile-tech-lead
+/eas.json                               @mobile-tech-lead
+/app.json                               @mobile-tech-lead

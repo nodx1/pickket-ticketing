@@ -1,0 +1,10 @@
+# Maestro workspace config
+# 실행: maestro test e2e/ --include-tags=smoke
+# 전체: maestro test e2e/
+flows:
+  - "smoke/*.yaml"
+  - "full/*.yaml"
+
+# 서브플로우는 단독 실행 제외
+executionOrder:
+  continueOnFailure: false

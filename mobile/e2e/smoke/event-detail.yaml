@@ -1,0 +1,61 @@
+# 이벤트 상세 E2E — 홈에서 이벤트 터치 → 상세 화면 요소 검증
+# 태그: smoke
+appId: kr.pickket.app
+tags:
+  - smoke
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── 트렌딩 섹션까지 스크롤 ──
+- swipe:
+    direction: UP
+    duration: 500
+- swipe:
+    direction: UP
+    duration: 500
+- swipe:
+    direction: UP
+    duration: 500
+- extendedWaitUntil:
+    visible:
+      id: "home.trending.section"
+    timeout: 8000
+
+# ── 트렌딩 compact 카드 첫 번째 진입 ──
+- tapOn:
+    id: "event\\.card\\.compact\\..*"
+    index: 0
+
+# ── 상세 화면 요소 검증 ──
+- extendedWaitUntil:
+    visible:
+      id: "event.detail.bookNow"
+    timeout: 8000
+
+- assertVisible:
+    id: "event.detail.date"
+- assertVisible:
+    id: "event.detail.venue"
+# description은 이벤트에 따라 없을 수 있음 (conditional render)
+- takeScreenshot: event_detail_top
+
+# 스크롤 다운 → 하단 정보 확인
+- swipe:
+    direction: UP
+    duration: 500
+- takeScreenshot: event_detail_bottom
+
+# ── 뒤로가기 → 홈 복귀 검증 ──
+- back
+- swipe:
+    direction: DOWN
+    duration: 500
+- swipe:
+    direction: DOWN
+    duration: 500
+- extendedWaitUntil:
+    visible:
+      id: "nav.tonight"
+    timeout: 5000
+- takeScreenshot: back_to_home

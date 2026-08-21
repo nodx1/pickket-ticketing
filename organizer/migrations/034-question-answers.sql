@@ -1,0 +1,2 @@
+ALTER TABLE attendees
+ADD COLUMN IF NOT EXISTS answers JSONB NOT NULL DEFAULT '{}'::jsonb;

@@ -1,0 +1,63 @@
+# 검색 + 필터 E2E — ChatFAB → 검색, 홈 네비 필터 전환
+appId: kr.pickket.app
+tags:
+  - full
+---
+
+- runFlow: ../shared/boot.yaml
+
+# ── ChatFAB → 챗 검색 화면 ──
+- tapOn:
+    id: "chat.fab"
+- extendedWaitUntil:
+    visible:
+      id: "search-input"
+    timeout: 10000
+
+# ── 텍스트 검색 ──
+- tapOn:
+    id: "search-input"
+- inputText: "concert"
+- pressKey: Enter
+- takeScreenshot: search_concert_results
+
+# ── 검색어 변경 ──
+- tapOn:
+    id: "search-input"
+- eraseText: 7
+- inputText: "musical"
+- pressKey: Enter
+- takeScreenshot: search_musical_results
+
+# ── 검색어 클리어 후 홈 복귀 ──
+- tapOn:
+    id: "search-input"
+- eraseText: 7
+- hideKeyboard
+
+# 딥링크로 홈 탭 직접 이동 (back이 앱 탈출하는 문제 방지)
+- openLink: "pickket:///(tabs)"
+- extendedWaitUntil:
+    visible:
+      id: "tab.index"
+    timeout: 10000
+
+# ── 홈 네비 필터 전환 ──
+- scrollUntilVisible:
+    element:
+      id: "nav.tonight"
+    direction: UP
+    timeout: 5000
+
+- tapOn:
+    id: "nav.trending"
+- takeScreenshot: nav_filter_trending
+
+# 토글: 같은 필터 다시 누르면 forYou로 복귀
+- tapOn:
+    id: "nav.trending"
+- takeScreenshot: nav_filter_foryou
+
+- tapOn:
+    id: "nav.tonight"
+- takeScreenshot: nav_filter_tonight

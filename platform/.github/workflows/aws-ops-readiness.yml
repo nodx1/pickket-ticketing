@@ -1,0 +1,74 @@
+name: AWS Ops Readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+      service:
+        description: "Service scope for readiness checks"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - backend
+          - consumer
+          - admin
+          - celery-worker
+          - celery-beat
+      run_backup_restore_drill:
+        description: "Run backup/restore drill inside backend ECS task"
+        required: true
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECS_CLUSTER: ${{ inputs.environment == 'production' && 'pickket' || 'pickket-stg' }}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run AWS readiness smoke
+        env:
+          TARGET_SERVICE: ${{ inputs.service }}
+        run: |
+          ./scripts/ci/aws_post_deploy_smoke.sh
+
+  backup-restore-drill:
+    needs: smoke
+    if: inputs.run_backup_restore_drill == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run backup/restore drill inside ECS
+        env:
+          ECS_SERVICE: backend
+          AWS_RUN_COMMAND: python scripts/backup_restore_drill.py
+        run: |
+          ./scripts/ci/aws_run_backend_task.sh

@@ -1,0 +1,173 @@
+name: Security Nightly
+
+on:
+  schedule:
+    - cron: "20 17 * * *" # 02:20 KST
+  workflow_dispatch:
+
+concurrency:
+  group: security-nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nightly-dast:
+    name: Nightly DAST + Diff
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: pickket_ci_dast
+          POSTGRES_USER: pickket_ci
+          POSTGRES_PASSWORD: pickket_ci_2026
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pickket_ci -d pickket_ci_dast"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      SECRET_KEY: nightly-dast-secret-key-0123456789abcdef
+      DATABASE_URL: postgresql+asyncpg://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_dast
+      DATABASE_URL_SYNC: postgresql://pickket_ci:pickket_ci_2026@localhost:5432/pickket_ci_dast
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      CORS_ORIGINS: http://localhost:3020,http://localhost:3021,http://localhost:3022
+      DAST_FAIL_ON_MEDIUM: "true"
+      DAST_IGNORE_RULE_IDS: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install .
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply backend migrations
+        run: |
+          cd backend
+          alembic -x sqlalchemy.url="${DATABASE_URL_SYNC}" upgrade head
+
+      - name: Build admin for production DAST
+        run: |
+          pnpm --filter @pickket/admin build
+
+      - name: Start services
+        run: |
+          nohup bash -lc 'cd backend && uvicorn app.main:app --host 127.0.0.1 --port 8001' >/tmp/nightly-backend.log 2>&1 &
+          echo $! >/tmp/nightly-backend.pid
+          nohup pnpm --filter @pickket/admin start >/tmp/nightly-admin.log 2>&1 &
+          echo $! >/tmp/nightly-admin.pid
+
+      - name: Wait for all services healthy
+        run: |
+          for i in {1..90}; do
+            ok=0
+            curl -fsS "http://127.0.0.1:8001/health" >/dev/null && ok=$((ok+1)) || true
+            curl -fsS "http://127.0.0.1:3022" >/dev/null && ok=$((ok+1)) || true
+            if [ "$ok" -eq 2 ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Service startup failed"
+          tail -n 120 /tmp/nightly-backend.log || true
+          tail -n 120 /tmp/nightly-admin.log || true
+          exit 1
+
+      - name: Run strict DAST (backend + admin)
+        run: |
+          CI=true \
+          DAST_MINUTES=2 \
+          DAST_BACKEND_URL="http://127.0.0.1:8001/health" \
+          DAST_ADMIN_URL="http://127.0.0.1:3022" \
+          bash scripts/security/run_dast.sh
+
+      - name: Download previous nightly artifact (if exists)
+        id: previous
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PREV_RUN_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security-nightly.yml/runs?status=success&per_page=20" \
+            --jq ".workflow_runs[] | select(.id != ${GITHUB_RUN_ID}) | .id" | head -n1 || true)"
+          if [ -z "${PREV_RUN_ID}" ]; then
+            echo "previous_dir=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p /tmp/nightly-prev
+          if gh run download "${PREV_RUN_ID}" --repo "${GITHUB_REPOSITORY}" --name "nightly-dast-reports" --dir /tmp/nightly-prev; then
+            echo "previous_dir=/tmp/nightly-prev/security-reports" >> "$GITHUB_OUTPUT"
+          else
+            echo "previous_dir=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate DAST diff report
+        run: |
+          mkdir -p security-reports
+          if [ -n "${{ steps.previous.outputs.previous_dir }}" ]; then
+            python3 scripts/security/dast_diff.py \
+              --current-dir security-reports \
+              --previous-dir "${{ steps.previous.outputs.previous_dir }}" \
+              --out-json security-reports/nightly-dast-summary.json \
+              --out-md security-reports/nightly-dast-diff.md \
+              --fail-on-regression
+          else
+            python3 scripts/security/dast_diff.py \
+              --current-dir security-reports \
+              --out-json security-reports/nightly-dast-summary.json \
+              --out-md security-reports/nightly-dast-diff.md
+          fi
+
+      - name: Publish job summary
+        if: always()
+        run: |
+          if [ -f security-reports/nightly-dast-diff.md ]; then
+            cat security-reports/nightly-dast-diff.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload nightly DAST artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-dast-reports
+          path: security-reports/
+
+      - name: Stop services
+        if: always()
+        run: |
+          for pid_file in /tmp/nightly-backend.pid /tmp/nightly-admin.pid; do
+            if [ -f "${pid_file}" ]; then
+              kill "$(cat "${pid_file}")" || true
+            fi
+          done

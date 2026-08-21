@@ -1,0 +1,386 @@
+@import "tailwindcss";
+
+:root {
+  /* ── 배경 5단계 (Dub.co 패턴) ── */
+  --background: #fafbff;
+  --bg-muted: #f4f5fb;
+  --bg-subtle: #eceef8;
+  --bg-emphasis: #e2e5f0;
+  --bg-inverted: #1a1d2e;
+
+  /* ── 카드/표면 ── */
+  --card: #ffffff;
+  --card-foreground: #1a1d2e;
+  --surface: #f8f9fd;
+  --surface-foreground: #3a3f5c;
+
+  /* ── 시맨틱 배경 ── */
+  --bg-info: #eef2ff;
+  --bg-success: #ecfdf5;
+  --bg-attention: #fff7ed;
+  --bg-warning: #fefce8;
+  --bg-error: #fef2f2;
+
+  /* ── 텍스트 4단계 ── */
+  --foreground: #1a1d2e;
+  --content-emphasis: #1a1d2e;
+  --content-default: #3a3f5c;
+  --content-subtle: #5d6382;
+  --content-muted: #9ba3c7;
+  --muted-foreground: #5d6382;
+
+  /* ── 시맨틱 텍스트 ── */
+  --content-info: #4f46e5;
+  --content-success: #059669;
+  --content-attention: #ea580c;
+  --content-error: #dc2626;
+
+  /* ── 보더 4단계 ── */
+  --border: #d8dcf0;
+  --border-emphasis: #9ba3c7;
+  --border-subtle: #e4e7f4;
+  --border-muted: #f4f5fb;
+
+  /* ── 브랜드 ── */
+  --primary: #6c5ce7;
+  --primary-foreground: #ffffff;
+  --primary-50: #f5f3ff;
+  --primary-100: #ede9fe;
+  --primary-200: #ddd6fe;
+  --primary-400: #a78bfa;
+  --primary-500: #8b5cf6;
+  --primary-600: #6c5ce7;
+  --primary-700: #5b4bd4;
+  --accent: #8b5cf6;
+  --accent-foreground: #ffffff;
+
+  /* ── 상태 컬러 ── */
+  --success: #059669;
+  --success-foreground: #ffffff;
+  --warning: #f59e0b;
+  --warning-foreground: #ffffff;
+  --info: #3b82f6;
+  --info-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --gold: #f59e0b;
+
+  /* ── 입력/링/뮤트 ── */
+  --input: #e7eaf8;
+  --ring: rgba(108, 92, 231, 0.3);
+  --muted: #f4f5fb;
+
+  /* ── 사이드바 ── */
+  --sidebar: #f8f9fd;
+  --sidebar-foreground: #3a3f5c;
+  --sidebar-primary: #6c5ce7;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f5fb;
+  --sidebar-accent-foreground: #1a1d2e;
+  --sidebar-border: #e4e7f4;
+
+  /* ── 차트 7색 ── */
+  --chart-1: #6c5ce7;
+  --chart-2: #059669;
+  --chart-3: #f59e0b;
+  --chart-4: #3b82f6;
+  --chart-5: #ec4899;
+  --chart-6: #8b5cf6;
+  --chart-7: #14b8a6;
+
+  /* ── Border Radius (Linear 기준) ── */
+  --radius: 0.5rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 100px;
+
+  /* ── Shadow ── */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.08), 0 10px 10px rgba(0, 0, 0, 0.03);
+  --shadow-card-hover: 0 8px 12px #222a350d, 0 32px 80px #2f30370f;
+  --shadow-glow: 0 8px 32px rgba(108, 92, 231, 0.25);
+
+  /* ── 그라데이션 ── */
+  --gradient-primary: linear-gradient(135deg, #6c5ce7, #8b5cf6);
+  --gradient-hero: linear-gradient(135deg, #6c5ce7 0%, #8b5cf6 50%, #059669 100%);
+
+  /* ── 애니메이션 토큰 ── */
+  --ease-fluid: cubic-bezier(0.3, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.2s;
+  --duration-slow: 0.3s;
+  --duration-slower: 0.5s;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-gold: var(--gold);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-emphasis: var(--border-emphasis);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-muted: var(--border-muted);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-bg-muted: var(--bg-muted);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-emphasis: var(--bg-emphasis);
+  --color-bg-inverted: var(--bg-inverted);
+  --color-bg-info: var(--bg-info);
+  --color-bg-success: var(--bg-success);
+  --color-bg-attention: var(--bg-attention);
+  --color-bg-warning: var(--bg-warning);
+  --color-bg-error: var(--bg-error);
+  --color-content-emphasis: var(--content-emphasis);
+  --color-content-default: var(--content-default);
+  --color-content-subtle: var(--content-subtle);
+  --color-content-muted: var(--content-muted);
+  --color-content-info: var(--content-info);
+  --color-content-success: var(--content-success);
+  --color-content-attention: var(--content-attention);
+  --color-content-error: var(--content-error);
+  /* `text-error`/`border-error` 별칭 — content-error(#dc2626)로 매핑(흰 배경 대비 양호). 미정의 시 silent no-op 방지. */
+  --color-error: var(--content-error);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --font-sans: var(--font-pretendard);
+}
+
+/* ── Keyframes ── */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-up-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fade-in-blur {
+  from { opacity: 0; filter: blur(4px); }
+  to { opacity: 1; filter: blur(0); }
+}
+
+@keyframes count-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes accordion-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+
+@keyframes spinner {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Global Styles ── */
+
+* {
+  border-color: var(--border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+html {
+  font-feature-settings: "ss01", "ss02", "cv01";
+  font-variant-numeric: tabular-nums;
+  /* 한국어 어절 단위 줄바꿈 — 어절 중간에서 끊기지 않도록 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* 본문 단락·카피는 마지막 줄 위도우 방지 (고립된 짧은 단어 회피) */
+p,
+h1,
+h2,
+h3,
+h4,
+blockquote {
+  text-wrap: pretty;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(108, 92, 231, 0.04), transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.03), transparent 30%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-pretendard), sans-serif;
+}
+
+::selection {
+  background: rgba(108, 92, 231, 0.15);
+}
+
+/* ── Utility Classes ── */
+
+.btn-gradient {
+  background: var(--gradient-primary);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-glow);
+}
+
+.card-hover {
+  transition:
+    transform var(--duration-slow) var(--ease-fluid),
+    box-shadow var(--duration-slow) var(--ease-fluid),
+    border-color var(--duration-slow) var(--ease-fluid);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* ── Animation Utilities ── */
+
+.animate-fade-in {
+  animation: fade-in var(--duration-slower) var(--ease-fluid);
+}
+
+.animate-slide-up {
+  animation: slide-up var(--duration-slower) var(--ease-fluid);
+}
+
+.animate-scale-in {
+  animation: scale-in var(--duration-slow) var(--ease-spring);
+}
+
+.animate-stagger-in {
+  opacity: 0;
+  animation: stagger-in var(--duration-slower) var(--ease-fluid) forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right var(--duration-slow) var(--ease-fluid);
+}
+
+.animate-slide-up-fade {
+  animation: slide-up-fade var(--duration-normal) var(--ease-out-expo);
+}
+
+.animate-slide-down-fade {
+  animation: slide-down-fade var(--duration-normal) var(--ease-out-expo);
+}
+
+.animate-fade-in-blur {
+  animation: fade-in-blur var(--duration-slower) var(--ease-fluid);
+}
+
+.animate-count-pulse {
+  animation: count-pulse var(--duration-slow) var(--ease-spring);
+}
+
+/* ── Tutorial ── */
+
+@keyframes coachmark-ping {
+  0% { transform: scale(1); opacity: 1; }
+  75% { transform: scale(2.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+@keyframes spotlight-pulse {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(108, 92, 231, 0.3)); }
+  50% { filter: drop-shadow(0 0 24px rgba(108, 92, 231, 0.5)); }
+}
+
+.animate-coachmark-ping {
+  animation: coachmark-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* ── Accessibility ── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Mobile ── */
+
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}

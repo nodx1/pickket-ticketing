@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pickket-go-seat-hold-reaper
+  namespace: pickket-go
+  labels:
+    app: pickket-go
+    component: seat-hold-reaper
+spec:
+  schedule: "*/5 * * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 60
+  failedJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 90
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: pickket-go
+            component: seat-hold-reaper
+        spec:
+          serviceAccountName: pickket-go-cron
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          containers:
+            - name: reaper
+              image: 794562054294.dkr.ecr.ap-northeast-2.amazonaws.com/pickket-go:latest
+              imagePullPolicy: IfNotPresent
+              command: ["npx", "tsx", "scripts/seat-hold-reaper.ts"]
+              envFrom:
+                - secretRef:
+                    name: pickket-go-stg-secrets
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "256Mi"
+                  cpu: "200m"

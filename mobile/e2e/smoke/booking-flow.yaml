@@ -1,0 +1,77 @@
+# 예매 플로우 E2E — 이벤트 상세 → 예매 화면 → UI 요소 검증 (결제 미진행)
+# 태그: smoke
+appId: kr.pickket.app
+tags:
+  - smoke
+---
+
+- runFlow: ../shared/boot.yaml
+- runFlow: ../shared/ensure-logged-in.yaml
+
+# ── 홈 → 이벤트 진입 ──
+# ensure-logged-in 후 Me 탭에 있을 수 있으므로 홈으로 이동
+- runFlow: ../shared/restore-tabbar.yaml
+- tapOn:
+    id: "tab.index"
+- waitForAnimationToEnd
+
+- swipe:
+    direction: UP
+    duration: 500
+- swipe:
+    direction: UP
+    duration: 500
+- extendedWaitUntil:
+    visible:
+      id: "home.trending.section"
+    timeout: 5000
+
+# 트렌딩 첫 compact 카드 (testID 패턴 매칭)
+- tapOn:
+    id: "event\\.card\\.compact\\..*"
+    index: 0
+
+- extendedWaitUntil:
+    visible:
+      id: "event.detail.bookNow"
+    timeout: 8000
+
+# ── Book Now 버튼 터치 ──
+- tapOn:
+    id: "event.detail.bookNow"
+
+# 예매 화면 요소 검증
+- extendedWaitUntil:
+    visible:
+      id: "booking.selectTier"
+    timeout: 5000
+- takeScreenshot: booking_tier_select
+
+# 첫 티어 선택 (가격 텍스트 패턴)
+- tapOn:
+    text: "₩.*"
+    index: 0
+- waitForAnimationToEnd
+
+# 티어 선택 후 환불정책 동의 + 결제 버튼 노출 확인
+- extendedWaitUntil:
+    visible:
+      id: "booking.refundAgree"
+    timeout: 5000
+- takeScreenshot: booking_after_tier_select
+
+# 결제 없이 뒤로가기
+- back
+
+# ── 복귀 ──
+- back
+- swipe:
+    direction: DOWN
+    duration: 500
+- swipe:
+    direction: DOWN
+    duration: 500
+- extendedWaitUntil:
+    visible:
+      id: "nav.tonight"
+    timeout: 5000

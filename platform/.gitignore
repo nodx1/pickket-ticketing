@@ -1,0 +1,106 @@
+# ==============================================================================
+# Pickket v2 .gitignore
+# ==============================================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+.venv/
+venv/
+
+# --- Node ---
+node_modules/
+.next/
+out/
+.turbo/
+
+# --- Environment (secrets) ---
+.env
+.env.local
+.env.production
+.env.e2e
+*.env.e2e
+docker/.env
+!.env.example
+!.env.production.example
+!docker/.env.example
+!*.env.e2e.example
+
+# --- Claude Code (MCP config contains credentials) ---
+.claude/mcp.json
+
+# --- 업무보고 (개인 문서) ---
+업무보고.md
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Docker ---
+docker/data/
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Test artifacts ---
+htmlcov/
+.coverage
+coverage.xml
+playwright-report/
+test-results/
+blob-report/
+e2e/.auth/
+security-reports/
+
+# --- Build artifacts ---
+*.tgz
+.build-trigger
+
+# --- Docs (internal plans) ---
+docs/plans/
+
+# --- MCP Dev Coordination ---
+mcp-team.yml
+.mcp-cache.json
+.mcp-dev.db
+.mcp-dev.db-shm
+.mcp-dev.db-wal
+.mcp-dev.db-journal
+
+# --- Playwright E2E local artifacts ---
+apps/*/e2e/.auth/
+apps/*/e2e/.seed-state.json
+
+# --- Auto-generated (rebuilt at Docker build time / CI) ---
+apps/admin/src/app/dev/_data/generated.json
+
+# --- System / build artifacts ---
+squashfs-root/
+backend/=12.0.0
+*.tsbuildinfo
+
+# --- Terraform ---
+infra/terraform/**/.terraform/
+infra/terraform/**/.terraform.lock.hcl
+infra/terraform/**/terraform.tfstate*
+
+# --- Claude Code settings (local only) ---
+.claude/
+k6-v0.49.0-linux-amd64/
+.gstack/
+backend/.hypothesis/
+
+# Celery beat 런타임 스케줄 파일
+celerybeat-schedule*
