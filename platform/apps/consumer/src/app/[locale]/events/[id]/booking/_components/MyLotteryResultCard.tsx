@@ -11,7 +11,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { getMyLotteryEntries, type MyLotteryEntry } from "@pickket/lib/api";
-import { formatKRW } from "@pickket/lib";
+import { api, formatKRW } from "@pickket/lib";
 import { useTranslations } from "next-intl";
 
 interface Props {
@@ -188,6 +188,47 @@ export default function MyLotteryResultCard({
           </div>
         );
       })}
+      <FairnessCertificateLinks eventId={eventId} poolIds={entries.map((e) => e.pool_id)} />
+    </div>
+  );
+}
+
+/**
+ * 과업 WP9: 추첨이 끝나 공정성 증명서가 발급된 등급이면 공개 검증 페이지로 바로 가는 링크를 단다.
+ * 증명서 페이지에서 '내 응모 확인'으로 내 응모가 명단·결과에 그대로 들어 있는지 직접 확인할 수 있다.
+ */
+function FairnessCertificateLinks({ eventId, poolIds }: { eventId: string; poolIds: string[] }) {
+  const [certs, setCerts] = useState<Array<{ cert_no: string; pool_id: string; tier_name: string }>>([]);
+  const key = poolIds.join(",");
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get(`/fairness/events/${eventId}/certificates`)
+      .then((res) => {
+        if (cancelled) return;
+        const wanted = new Set(key.split(","));
+        setCerts((res.data.certificates ?? []).filter((c: { pool_id: string }) => wanted.has(c.pool_id)));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, key]);
+  if (certs.length === 0) return null;
+  return (
+    <div className="space-y-1.5">
+      {certs.map((c) => (
+        <Link
+          key={c.cert_no}
+          href={`/fairness/certificates/${c.cert_no}`}
+          className="flex items-center justify-between rounded-lg border border-border px-4 py-3 text-sm font-semibold hover:bg-muted"
+        >
+          <span>
+            {c.tier_name} 추첨 공정성 증명서 <span className="font-mono text-xs text-muted-foreground">{c.cert_no}</span>
+          </span>
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      ))}
     </div>
   );
 }
