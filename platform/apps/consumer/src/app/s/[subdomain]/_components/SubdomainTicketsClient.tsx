@@ -243,7 +243,7 @@ export function SubdomainTicketsClient({ event }: { event: EventData }) {
                               pct >= 80
                                 ? "#DC2626"
                                 : pct >= 50
-                                  ? "hsl(var(--primary))"
+                                  ? "var(--primary)"
                                   : "#00A882",
                           }}
                         />

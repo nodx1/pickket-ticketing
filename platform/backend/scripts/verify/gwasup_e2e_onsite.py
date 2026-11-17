@@ -38,7 +38,7 @@ from app.models.event import Event
 from app.models.ticket import Ticket, TicketStatus
 from app.models.user import User
 from app.realtime.gateway import issue_monitor_token
-from app.services.direct_settlement import DirectSettlementService
+from app.services.direct_settlement import DirectSettlementError, DirectSettlementService
 from app.services.integration_ledger import verify_chain
 from app.services.onsite_service import OnsiteService
 from app.services.sanction_service import SanctionService
@@ -251,13 +251,16 @@ async def main(out_dir: Path) -> int:
             event = await s.get(Event, event_id)
             svc = DirectSettlementService(s)
             wrong = await svc.register_account(event.organizer_id, client_key="test_ck_wrongwrongwrong1", secret_key="test_sk_wrongwrongwrong1", label="틀린 키", actor="e2e")
-            docs = await svc.register_account(event.organizer_id, client_key=TOSS_DOCS_WIDGET_CLIENT, secret_key=TOSS_DOCS_WIDGET_SECRET, label="토스 문서용 공개 위젯 키", actor="e2e")
             await s.commit()
             wrong = await svc.verify_account(wrong.id)
-            docs = await svc.verify_account(docs.id)
             await s.commit()
             check("토스 샌드박스: 틀린 키 → 실패로 판정", wrong.status == "failed", wrong.last_error or "")
-            check("토스 샌드박스: 상점 없는 공개 문서 키 → 실패로 판정(NOT_FOUND_MERCHANT 오판 방지)", docs.status == "failed", docs.last_error or "")
+            try:
+                await svc.register_account(event.organizer_id, client_key=TOSS_DOCS_WIDGET_CLIENT, secret_key=TOSS_DOCS_WIDGET_SECRET, label="위젯 키", actor="e2e")
+                check("직결은 API 개별 연동 키만 — 위젯 키 등록 거부", False, "등록됨")
+            except DirectSettlementError as exc:
+                await s.rollback()
+                check("직결은 API 개별 연동 키만 — 위젯 키 등록 거부", True, str(exc)[:60])
             if TOSS_TEST_SECRET_KEY:
                 good = await svc.register_account(event.organizer_id, client_key=TOSS_TEST_CLIENT_KEY, secret_key=TOSS_TEST_SECRET_KEY, label="주최사 테스트 키", actor="e2e")
                 await s.commit()

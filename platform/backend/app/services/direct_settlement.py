@@ -43,6 +43,8 @@ session_factory = async_session
 
 DIRECT_PROVIDER = "toss_direct"
 CLIENT_KEY_RE = re.compile(r"^(test|live)_(ck|gck)_[A-Za-z0-9_]{8,}$")
+# 직결 결제창은 토스 표준 결제창(payment())이라 API 개별 연동 키(ck/sk)만 쓴다. 위젯 키(gck/gsk)는 거부.
+DIRECT_KEY_KINDS = ("ck", "sk")
 SECRET_KEY_RE = re.compile(r"^(test|live)_(sk|gsk)_[A-Za-z0-9_]{8,}$")
 
 
@@ -244,6 +246,8 @@ class DirectSettlementService:
             raise DirectSettlementError("클라이언트 키와 시크릿 키의 테스트/운영 구분이 다릅니다")
         if (cm.group(2) == "gck") != (sm.group(2) == "gsk"):
             raise DirectSettlementError("결제위젯 키(gck/gsk)와 API 개별 연동 키(ck/sk)를 섞을 수 없습니다")
+        if cm.group(2) != DIRECT_KEY_KINDS[0] or sm.group(2) != DIRECT_KEY_KINDS[1]:
+            raise DirectSettlementError("주최사 직결은 ‘API 개별 연동 키’(test_ck_/test_sk_ 또는 live_ck_/live_sk_)만 지원합니다")
         account = OrganizerPgAccount(
             organizer_id=organizer_id,
             provider="toss",

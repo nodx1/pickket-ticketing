@@ -472,9 +472,9 @@ export default function VenueMap({
                 width={240}
                 height={50}
                 rx={10}
-                fill="hsl(var(--primary))"
+                fill="var(--primary)"
                 fillOpacity={0.25}
-                stroke="hsl(var(--primary))"
+                stroke="var(--primary)"
                 strokeWidth={1.5}
                 strokeOpacity={0.4}
                 className="pointer-events-none"
@@ -483,7 +483,7 @@ export default function VenueMap({
                 x={mapW / 2}
                 y={46}
                 textAnchor="middle"
-                fill="hsl(var(--primary) / 0.7)"
+                fill="color-mix(in srgb, var(--primary) 70%, transparent)"
                 fontSize="16"
                 fontWeight="bold"
                 pointerEvents="none"
@@ -510,14 +510,14 @@ export default function VenueMap({
                   width={rectW}
                   height={36}
                   rx={8}
-                  fill="hsl(var(--primary))"
+                  fill="var(--primary)"
                   fillOpacity={0.2}
                 />
                 <text
                   x={mapW / 2}
                   y={34}
                   textAnchor="middle"
-                  fill="hsl(var(--primary) / 0.7)"
+                  fill="color-mix(in srgb, var(--primary) 70%, transparent)"
                   fontSize="14"
                   fontWeight="bold"
                 >
@@ -528,7 +528,7 @@ export default function VenueMap({
                     x={mapW * 0.15}
                     y={34}
                     textAnchor="middle"
-                    fill="hsl(var(--primary) / 0.7)"
+                    fill="color-mix(in srgb, var(--primary) 70%, transparent)"
                     fontSize="11"
                     opacity={0.8}
                   >
@@ -540,7 +540,7 @@ export default function VenueMap({
                     x={mapW * 0.85}
                     y={34}
                     textAnchor="middle"
-                    fill="hsl(var(--primary) / 0.7)"
+                    fill="color-mix(in srgb, var(--primary) 70%, transparent)"
                     fontSize="11"
                     opacity={0.8}
                   >
@@ -573,9 +573,9 @@ export default function VenueMap({
                   {section.svg_path ? (
                     <path
                       d={section.svg_path}
-                      fill="hsl(var(--muted))"
+                      fill="var(--muted)"
                       fillOpacity={0.6}
-                      stroke="hsl(var(--muted-foreground))"
+                      stroke="var(--muted-foreground)"
                       strokeWidth={1.5}
                       strokeOpacity={0.4}
                       strokeDasharray="4 3"
@@ -587,9 +587,9 @@ export default function VenueMap({
                       width={sw}
                       height={sh}
                       rx={6}
-                      fill="hsl(var(--muted))"
+                      fill="var(--muted)"
                       fillOpacity={0.6}
-                      stroke="hsl(var(--muted-foreground))"
+                      stroke="var(--muted-foreground)"
                       strokeWidth={1.5}
                       strokeOpacity={0.4}
                       strokeDasharray="4 3"
@@ -599,7 +599,7 @@ export default function VenueMap({
                     x={section.center_x}
                     y={section.center_y + 4}
                     textAnchor="middle"
-                    fill="hsl(var(--muted-foreground))"
+                    fill="var(--muted-foreground)"
                     fontSize="12"
                     fontWeight="600"
                     style={{ letterSpacing: "0.05em" }}
@@ -627,9 +627,9 @@ export default function VenueMap({
                   {section.svg_path ? (
                     <path
                       d={section.svg_path}
-                      fill="hsl(var(--primary))"
+                      fill="var(--primary)"
                       fillOpacity={0.25}
-                      stroke="hsl(var(--primary))"
+                      stroke="var(--primary)"
                       strokeWidth={1.5}
                       strokeOpacity={0.4}
                     />
@@ -640,9 +640,9 @@ export default function VenueMap({
                       width={sw}
                       height={sh}
                       rx={8}
-                      fill="hsl(var(--primary))"
+                      fill="var(--primary)"
                       fillOpacity={0.25}
-                      stroke="hsl(var(--primary))"
+                      stroke="var(--primary)"
                       strokeWidth={1.5}
                       strokeOpacity={0.4}
                     />
@@ -651,7 +651,7 @@ export default function VenueMap({
                     x={section.center_x}
                     y={section.center_y + 4}
                     textAnchor="middle"
-                    fill="hsl(var(--primary) / 0.8)"
+                    fill="color-mix(in srgb, var(--primary) 80%, transparent)"
                     fontSize="14"
                     fontWeight="bold"
                     style={{ letterSpacing: "0.2em" }}
@@ -714,7 +714,7 @@ export default function VenueMap({
                     x={section.center_x}
                     y={section.center_y - 4}
                     textAnchor="middle"
-                    fill="hsl(var(--foreground))"
+                    fill="var(--foreground)"
                     fontSize="12"
                     fontWeight="600"
                     pointerEvents="none"
@@ -725,7 +725,7 @@ export default function VenueMap({
                     x={section.center_x}
                     y={section.center_y + 12}
                     textAnchor="middle"
-                    fill="hsl(var(--muted-foreground))"
+                    fill="var(--muted-foreground)"
                     fontSize="10"
                     pointerEvents="none"
                   >
@@ -838,7 +838,7 @@ export default function VenueMap({
                   x={labelX}
                   y={labelY + 4}
                   textAnchor="middle"
-                  fill={isSelected ? "#fff" : "hsl(var(--foreground))"}
+                  fill={isSelected ? "#fff" : "var(--foreground)"}
                   fontSize="12"
                   fontWeight="600"
                   pointerEvents="none"
@@ -851,7 +851,7 @@ export default function VenueMap({
                   x={labelX}
                   y={labelY + 16}
                   textAnchor="middle"
-                  fill="hsl(var(--muted-foreground))"
+                  fill="var(--muted-foreground)"
                   fontSize="10"
                   pointerEvents="none"
                 >

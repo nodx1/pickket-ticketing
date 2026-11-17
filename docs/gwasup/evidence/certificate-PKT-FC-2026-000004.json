@@ -1,0 +1,67 @@
+{
+  "cert_no": "PKT-FC-2026-000004",
+  "payload": {
+    "v": 1,
+    "tier": {
+      "id": "7f144607-e083-462b-9da5-38042e7de854",
+      "name": "R석"
+    },
+    "type": "pickket.fairness_certificate",
+    "event": {
+      "id": "f9934a81-d4e2-4387-8541-498a5bf2fc99",
+      "title": "과업 검증 콘서트 1117092546"
+    },
+    "counts": {
+      "winners": 5,
+      "capacity": 5,
+      "applicants": 15,
+      "waitlisted": 10,
+      "excluded_by_sanction": 1
+    },
+    "issuer": "Pickket",
+    "policy": {
+      "ap_cap": 3000,
+      "version": 1,
+      "ap_scale": 15.0,
+      "fan_coef": 100.0,
+      "algorithm": "weighted_lottery",
+      "pity_coef": 150.0,
+      "base_weight": 100.0,
+      "tenure_coef": 0.0,
+      "vcg_stabilization_lambda": 0.0
+    },
+    "cert_no": "PKT-FC-2026-000004",
+    "pool_id": "98bbda58-da5d-4a80-9b09-519dfa15d455",
+    "drawn_at": "2026-11-17T09:25:53.043697+00:00",
+    "algorithm": "efraimidis_spirakis_weighted_sampling",
+    "issued_at": "2026-11-17T09:25:53.183312+00:00",
+    "seed_used": "7660990557080897802",
+    "verify_url": "https://www.pickket.kr/fairness/certificates/PKT-FC-2026-000004",
+    "policy_hash": "8dfc37f600504047b8866c0d4648c1d6d37bdbcfa87e3f4331731963b05f555f",
+    "result_hash": "c431b1ea9c6065678690ec66bd61d9cf35b35786af168f3fa9c956377a8c20b9",
+    "server_seed": "7660990557080897802",
+    "committed_at": "2026-11-17T09:25:47.740233+00:00",
+    "entries_root": "0da1765a64b63408ac04d3b563d18b32824135c0ce6b908a4ae3f743fcef636b",
+    "results_root": "ca5fa8b239cd8d479523454c8e845b1346625b8b99856643f9b846a4ddc99dbf",
+    "tree_algorithm": "sha256-merkle-rfc6962-promote-v1",
+    "entries_root_at": "2026-11-17T09:25:52.876981+00:00",
+    "seed_commitment": "5986e74f6c8c85f6d603508c1fef3e83a1763276f2096ba2f3fe9cf7540df25b",
+    "policy_locked_at": "2026-11-17T09:25:47.750437+00:00"
+  },
+  "canonical_payload": "{\"algorithm\":\"efraimidis_spirakis_weighted_sampling\",\"cert_no\":\"PKT-FC-2026-000004\",\"committed_at\":\"2026-11-17T09:25:47.740233+00:00\",\"counts\":{\"applicants\":15,\"capacity\":5,\"excluded_by_sanction\":1,\"waitlisted\":10,\"winners\":5},\"drawn_at\":\"2026-11-17T09:25:53.043697+00:00\",\"entries_root\":\"0da1765a64b63408ac04d3b563d18b32824135c0ce6b908a4ae3f743fcef636b\",\"entries_root_at\":\"2026-11-17T09:25:52.876981+00:00\",\"event\":{\"id\":\"f9934a81-d4e2-4387-8541-498a5bf2fc99\",\"title\":\"과업 검증 콘서트 1117092546\"},\"issued_at\":\"2026-11-17T09:25:53.183312+00:00\",\"issuer\":\"Pickket\",\"policy\":{\"algorithm\":\"weighted_lottery\",\"ap_cap\":3000,\"ap_scale\":15.0,\"base_weight\":100.0,\"fan_coef\":100.0,\"pity_coef\":150.0,\"tenure_coef\":0.0,\"vcg_stabilization_lambda\":0.0,\"version\":1},\"policy_hash\":\"8dfc37f600504047b8866c0d4648c1d6d37bdbcfa87e3f4331731963b05f555f\",\"policy_locked_at\":\"2026-11-17T09:25:47.750437+00:00\",\"pool_id\":\"98bbda58-da5d-4a80-9b09-519dfa15d455\",\"result_hash\":\"c431b1ea9c6065678690ec66bd61d9cf35b35786af168f3fa9c956377a8c20b9\",\"results_root\":\"ca5fa8b239cd8d479523454c8e845b1346625b8b99856643f9b846a4ddc99dbf\",\"seed_commitment\":\"5986e74f6c8c85f6d603508c1fef3e83a1763276f2096ba2f3fe9cf7540df25b\",\"seed_used\":\"7660990557080897802\",\"server_seed\":\"7660990557080897802\",\"tier\":{\"id\":\"7f144607-e083-462b-9da5-38042e7de854\",\"name\":\"R석\"},\"tree_algorithm\":\"sha256-merkle-rfc6962-promote-v1\",\"type\":\"pickket.fairness_certificate\",\"v\":1,\"verify_url\":\"https://www.pickket.kr/fairness/certificates/PKT-FC-2026-000004\"}",
+  "payload_hash": "69263a2accc07439e9339e22aecf39e3875d9b187b232c1fef45663d3ecc89be",
+  "signature": "uyE4G9VkNUFcgfpVoj9RZp59ZMJZV2/b0GKyg+cYC4sOP9sw5XV8M62RJTekMt+wobL2DE9tKWTCtJwIjXrPDA==",
+  "signature_algorithm": "Ed25519",
+  "key_id": "b752993afe081a44",
+  "public_key": "8f4ItdXE6ZivoOVOEuXaNsLoSiYthyJD0vAUm2/yso8=",
+  "issued_at": "2026-11-17T09:25:53.183312+00:00",
+  "checks": {
+    "payload_hash_matches": true,
+    "signature_valid": true,
+    "entries_root_matches": true,
+    "results_root_matches": true,
+    "entries_root_before_draw": true,
+    "commit_before_draw": true,
+    "all_valid": true
+  }
+}

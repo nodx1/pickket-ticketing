@@ -16,13 +16,15 @@
 "use client";
 
 import { prepareOrderPayment, type PaymentPrepareResponse } from "@pickket/lib/api";
-import { isTossLive, mockRedirectToSuccess, type TossWidgetHandle } from "@/lib/toss";
+import { isTossLive, mockRedirectToSuccess, requestDirectTossPayment, type TossWidgetHandle } from "@/lib/toss";
 import { startNicePayment } from "@/lib/nice";
 
 /** provider 리터럴(v2 prepare.provider). 미지정/미상은 **나이스** 폴백. */
-export type PaymentProvider = "toss" | "nicepay";
+export type PaymentProvider = "toss" | "nicepay" | "toss_direct";
 
 export function resolveProvider(raw: string | null | undefined): PaymentProvider {
+  // 과업 WP7: 주최사 PG 직결(무경유) — 결제창을 주최사 상점 키로 띄운다.
+  if (raw === "toss_direct") return "toss_direct";
   // 🔴 폴백 "toss" → "nicepay" (2026-07-28 대표 결정: 나이스 **구형/정규**로만 간다. 토스는 dormant(기존 주문 라우팅용).)
   //    v2 prepare 가 provider 를 내리므로 보통은 이 폴백을 타지 않지만,
   //    타는 순간 결제창이 통째로 다른 PG 로 열리므로 기본값이 결정된 PG 여야 한다.
@@ -111,6 +113,27 @@ export async function startPayment(params: StartPaymentParams): Promise<void> {
       params.onNiceError?.(message);
       throw err;
     }
+    return;
+  }
+
+  // 2-D) 주최사 PG 직결 — 서버가 내려준 주최사 클라이언트 키로 토스 표준 결제창.
+  //      성공 리다이렉트·confirm 은 기존 토스 success 경로 그대로(서버가 주문의 pg_provider 로 직결 게이트웨이 라우팅).
+  if (provider === "toss_direct") {
+    const clientKey = (prepared.data.provider_params as { clientKey?: string } | null)?.clientKey;
+    if (!clientKey) {
+      throw new Error("주최사 결제 정보를 받지 못했습니다. 잠시 후 다시 시도해주세요.");
+    }
+    await requestDirectTossPayment({
+      clientKey,
+      orderId: paymentId,
+      orderName: params.orderName,
+      amount: params.amount,
+      successUrl: params.successUrl,
+      failUrl: params.failUrl,
+      customerEmail: params.buyer?.email,
+      customerName: params.buyer?.name,
+      customerMobilePhone: params.buyer?.tel,
+    });
     return;
   }
 

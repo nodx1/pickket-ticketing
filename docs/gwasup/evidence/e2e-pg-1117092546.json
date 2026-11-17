@@ -1,17 +1,17 @@
 {
-  "run": "1117082852",
-  "ran_at": "2026-11-17T08:28:58.283165+00:00",
-  "seconds": 6.0,
-  "event_id": "228a3222-b470-4ece-9e23-2686e4660bb8",
-  "pool_id": "68250c29-e140-499b-a926-ed06bedd166a",
-  "certificate": "PKT-FC-2026-000001",
-  "passed": 19,
+  "run": "1117092546",
+  "ran_at": "2026-11-17T09:25:53.361080+00:00",
+  "seconds": 6.6,
+  "event_id": "f9934a81-d4e2-4387-8541-498a5bf2fc99",
+  "pool_id": "98bbda58-da5d-4a80-9b09-519dfa15d455",
+  "certificate": "PKT-FC-2026-000004",
+  "passed": 20,
   "failed": 0,
   "checks": [
     {
       "check": "준비: 주최사·이벤트·추첨 등급·가중치 정책(fan_first)",
       "ok": true,
-      "detail": "event=228a3222-b470-4ece-9e23-2686e4660bb8"
+      "detail": "event=f9934a81-d4e2-4387-8541-498a5bf2fc99"
     },
     {
       "check": "Redis 분산 락: 동시 응모 30건 → 1건만 접수, AP 1회 차감",
@@ -31,7 +31,7 @@
     {
       "check": "추첨 실행",
       "ok": true,
-      "detail": "{\"pool_id\":\"68250c29-e140-499b-a926-ed06bedd166a\",\"winners\":5,\"waitlisted\":9,\"seed_used\":7833440286981747007}"
+      "detail": "{\"pool_id\":\"98bbda58-da5d-4a80-9b09-519dfa15d455\",\"winners\":5,\"waitlisted\":9,\"seed_used\":7660990557080897802}"
     },
     {
       "check": "commit-reveal 검증 API is_valid",
@@ -39,9 +39,14 @@
       "detail": "{\"reveal_complete\": true, \"commitment_valid\": true, \"entries_digest_valid\": true, \"winners_match\": true, \"waitlist_match\": true, \"result_hash_valid\": true, \"is_valid\": true, \"commit_precedes_draw\": true}"
     },
     {
+      "check": "공개 Merkle 루트 조회(응모·결과)",
+      "ok": true,
+      "detail": "entries=0da1765a64b63408…"
+    },
+    {
       "check": "응모 Merkle 루트가 추첨보다 먼저 확정",
       "ok": true,
-      "detail": "루트 2026-11-17T08:28:57.859947+00:00 < 추첨 2026-11-17T08:28:58.025515+00:00"
+      "detail": "루트 2026-11-17T09:25:52.876981+00:00 < 추첨 2026-11-17T09:25:53.043697+00:00"
     },
     {
       "check": "결과 트리에 제재 제외 1건 기록",
@@ -51,17 +56,17 @@
     {
       "check": "응모자 본인 포함 증명(응모·결과 트리)",
       "ok": true,
-      "detail": "index=11"
+      "detail": "index=1"
     },
     {
       "check": "공정성 증명서 발급·서명·루트 대조",
       "ok": true,
-      "detail": "PKT-FC-2026-000001 {\"payload_hash_matches\": true, \"signature_valid\": true, \"entries_root_matches\": true, \"results_root_matches\": true, \"entries_root_before_draw\": true, \"commit_before_draw\": true, \"all_valid\": true}"
+      "detail": "PKT-FC-2026-000004 {\"payload_hash_matches\": true, \"signature_valid\": true, \"entries_root_matches\": true, \"results_root_matches\": true, \"entries_root_before_draw\": true, \"commit_before_draw\": true, \"all_valid\": true}"
     },
     {
       "check": "증명서 PDF",
       "ok": true,
-      "detail": "7,385 bytes"
+      "detail": "40,999 bytes"
     },
     {
       "check": "append-only 거부: fairness_certificates",

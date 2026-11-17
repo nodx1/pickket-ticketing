@@ -39,7 +39,7 @@ const strengthColors = [
   "#DC2626",
   "#D97706",
   "#00A882",
-  "hsl(var(--primary))",
+  "var(--primary)",
 ] as const;
 
 /* ── Main Page ──────────────────────────────────────────────────────── */

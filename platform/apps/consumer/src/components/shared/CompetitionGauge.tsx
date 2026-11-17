@@ -17,8 +17,8 @@ function getGaugeColor(ratio: number) {
     };
   if (ratio >= 0.5)
     return {
-      bar: "hsl(var(--primary))",
-      glow: "hsl(var(--primary) / 0.15))",
+      bar: "var(--primary)",
+      glow: "color-mix(in srgb, var(--primary) 15%, transparent))",
     };
   return {
     bar: "#00A882",

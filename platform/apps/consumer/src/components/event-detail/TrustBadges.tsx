@@ -13,14 +13,14 @@ const BADGES = [
   },
   {
     icon: "/icons/trust/price-guarantee.svg",
-    color: "hsl(var(--primary))",
+    color: "var(--primary)",
     glowColor: "rgba(10,10,10,0.15)",
     titleKey: "priceGuarantee",
     subtitleKey: "priceGuaranteeDesc",
   },
   {
     icon: "/icons/trust/safe-payment.svg",
-    color: "hsl(var(--primary))",
+    color: "var(--primary)",
     glowColor: "rgba(10,10,10,0.15)",
     titleKey: "safePayment",
     subtitleKey: "safePaymentDesc",

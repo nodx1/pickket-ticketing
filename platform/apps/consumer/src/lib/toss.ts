@@ -60,8 +60,12 @@ interface TossWidgetsInstance {
   renderAgreement(opts: { selector: string; variantKey?: string }): Promise<unknown>;
   requestPayment(params: Record<string, unknown>): Promise<void>;
 }
+interface TossPaymentWindow {
+  requestPayment(params: Record<string, unknown>): Promise<void>;
+}
 interface TossPaymentsInstance {
   widgets(options: { customerKey: string }): TossWidgetsInstance;
+  payment(options: { customerKey: string }): TossPaymentWindow;
 }
 type TossPaymentsFactory = (clientKey: string) => TossPaymentsInstance;
 
@@ -162,4 +166,41 @@ export function mockRedirectToSuccess(orderId: string, amount: number, successUr
   url.searchParams.set("orderId", orderId);
   url.searchParams.set("amount", String(amount));
   window.location.assign(url.toString());
+}
+
+
+/**
+ * 과업 WP7 — 주최사 PG 직결(무경유) 결제창.
+ *
+ * 결제위젯(플랫폼 키로 미리 렌더)과 달리 **주최사의 클라이언트 키**는 서버 prepare 응답
+ * (provider_params.clientKey)으로만 알 수 있다. 그래서 위젯이 아니라 토스 표준 결제창
+ * (`payment().requestPayment`)을 그 키로 띄운다 — API 개별 연동 키(ck/sk) 전용.
+ * 결제 대금은 주최사 상점으로 바로 들어가고, 승인(confirm)은 서버가 주최사 시크릿 키로 한다.
+ */
+export async function requestDirectTossPayment(opts: {
+  clientKey: string;
+  orderId: string;
+  orderName: string;
+  amount: number;
+  successUrl: string;
+  failUrl: string;
+  customerEmail?: string;
+  customerName?: string;
+  customerMobilePhone?: string;
+}): Promise<void> {
+  await loadTossSdk();
+  const factory = window.TossPayments;
+  if (!factory) throw new Error("토스 SDK 를 사용할 수 없습니다");
+  const payment = factory(opts.clientKey).payment({ customerKey: guestCustomerKey() });
+  await payment.requestPayment({
+    method: "CARD",
+    amount: { currency: "KRW", value: opts.amount },
+    orderId: opts.orderId,
+    orderName: opts.orderName,
+    successUrl: opts.successUrl,
+    failUrl: opts.failUrl,
+    ...(opts.customerEmail ? { customerEmail: opts.customerEmail } : {}),
+    ...(opts.customerName ? { customerName: opts.customerName } : {}),
+    ...(opts.customerMobilePhone ? { customerMobilePhone: opts.customerMobilePhone.replace(/\D/g, "") } : {}),
+  });
 }

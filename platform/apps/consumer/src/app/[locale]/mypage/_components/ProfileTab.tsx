@@ -249,18 +249,18 @@ export default function ProfileTab({ user, bidHistory }: ProfileTabProps) {
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
                 <PolarGrid
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="var(--muted-foreground)"
                   strokeOpacity={0.2}
                 />
                 <PolarAngleAxis
                   dataKey="subject"
-                  tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }}
+                  tick={{ fill: "var(--foreground)", fontSize: 12 }}
                 />
                 <PolarRadiusAxis
                   angle={90}
                   domain={[0, 100]}
                   tick={{
-                    fill: "hsl(var(--muted-foreground))",
+                    fill: "var(--muted-foreground)",
                     fontSize: 10,
                   }}
                   tickCount={5}
@@ -268,14 +268,14 @@ export default function ProfileTab({ user, bidHistory }: ProfileTabProps) {
                 <Radar
                   name={t("radar_name")}
                   dataKey="value"
-                  stroke="hsl(var(--primary))"
-                  fill="hsl(var(--primary))"
+                  stroke="var(--primary)"
+                  fill="var(--primary)"
                   fillOpacity={0.2}
                   strokeWidth={2}
                 />
                 <RechartsTooltip
                   contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
+                    backgroundColor: "var(--card)",
                     borderRadius: "12px",
                     fontSize: "13px",
                     boxShadow: "0 2px 16px rgba(0,0,0,0.06)",

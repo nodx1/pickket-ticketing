@@ -141,7 +141,7 @@ export function MobileStickyBottom({
       ? competitionRatio >= 0.8
         ? "#DC2626"
         : competitionRatio >= 0.5
-          ? "hsl(var(--primary))"
+          ? "var(--primary)"
           : "#00A882"
       : null;
 

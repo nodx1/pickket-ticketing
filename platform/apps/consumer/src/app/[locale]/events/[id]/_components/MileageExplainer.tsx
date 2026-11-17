@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { CARD } from "@/lib/styles";
 
 const STEP_ICONS = [Clock, TrendingUp, CheckCircle] as const;
-const STEP_ACCENTS = ["#D97706", "hsl(var(--primary))", "#00A882"] as const;
+const STEP_ACCENTS = ["#D97706", "var(--primary)", "#00A882"] as const;
 
 export function MileageExplainer() {
   const t = useTranslations("event.mileageExplainer");
@@ -55,7 +55,7 @@ export function MileageExplainer() {
                 <div
                   className="absolute left-[15px] top-[32px] w-px h-[calc(100%-24px)]"
                   style={{
-                    backgroundImage: `repeating-linear-gradient(to bottom, hsl(var(--border))) 0px, hsl(var(--border))) 4px, transparent 4px, transparent 8px)`,
+                    backgroundImage: `repeating-linear-gradient(to bottom, var(--border)) 0px, var(--border)) 4px, transparent 4px, transparent 8px)`,
                   }}
                 />
               )}

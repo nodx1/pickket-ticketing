@@ -28,7 +28,7 @@ const WEIGHT_CAP = 50;
 /* ---------- Helpers ---------- */
 function getSliderFillColor(pct: number): string {
   if (pct < 33) return "#00A882";
-  if (pct < 66) return "hsl(var(--primary))";
+  if (pct < 66) return "var(--primary)";
   return "#D97706";
 }
 

@@ -231,6 +231,8 @@ async def test_pg_account_validation(client):
             await svc.register_account(org, client_key="test_ck_12345678", secret_key="live_sk_12345678")
         with pytest.raises(DirectSettlementError):  # 위젯 키·개별 키 섞임
             await svc.register_account(org, client_key="test_gck_12345678", secret_key="test_sk_12345678")
+        with pytest.raises(DirectSettlementError):  # 위젯 키는 직결에 쓰지 않는다
+            await svc.register_account(org, client_key="test_gck_12345678", secret_key="test_gsk_12345678")
         acct = await svc.register_account(org, client_key="test_ck_12345678", secret_key="test_sk_abcdefgh1234")
         assert acct.mode == "test" and acct.secret_hint == "test_sk_…1234" and acct.status == "pending"
 
@@ -317,3 +319,28 @@ def test_settlement_excludes_direct_orders():
     assert src.count("Order.pg_provider.is_distinct_from(DIRECT_PROVIDER)") == 2
     assert sg.DIRECT_PROVIDER == "toss_direct"
     _ = datetime.now(UTC) - timedelta(days=1)
+
+
+
+@pytest.mark.asyncio
+async def test_key_check_requires_not_found_payment(client, monkeypatch):
+    """404 라고 다 성공이 아니다 — NOT_FOUND_MERCHANT(상점 없음)는 실패, NOT_FOUND_PAYMENT 만 성공(실측)."""
+    import httpx
+
+    async with TestSession() as s:
+        svc = DirectSettlementService(s)
+        acct = await svc.register_account(uuid.uuid4(), client_key="test_ck_probe0001", secret_key="test_sk_probe0001")
+        await s.commit()
+        settings.DIRECT_PG_MOCK = False
+        for code, status, expected in (
+            ("NOT_FOUND_MERCHANT", 404, "failed"),
+            ("UNAUTHORIZED_KEY", 401, "failed"),
+            ("NOT_FOUND_PAYMENT", 404, "verified"),
+        ):
+            async def fake_get(self, url, headers=None, _code=code, _status=status):
+                return httpx.Response(_status, json={"code": _code, "message": "x"}, request=httpx.Request("GET", url))
+
+            monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+            acct = await svc.verify_account(acct.id)
+            assert acct.status == expected, code
+        settings.DIRECT_PG_MOCK = True

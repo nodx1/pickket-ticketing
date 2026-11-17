@@ -112,7 +112,7 @@ function ProgressRing({
           cy={radius}
           r={normalizedRadius}
           fill="none"
-          stroke={isActive ? "#059669" : "hsl(var(--primary))"}
+          stroke={isActive ? "#059669" : "var(--primary)"}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
