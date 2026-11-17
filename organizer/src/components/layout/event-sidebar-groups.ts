@@ -9,6 +9,7 @@ import {
   BarChart3, Building, CalendarDays, Clock, Code, FileText, Gauge, Gavel, Gift,
   HelpCircle, Inbox, LayoutDashboard, Mail, Music, Package, Palette, QrCode,
   Rocket, Send, Settings, Tag, Ticket, Upload, UserCheck, UserPlus, Users, Webhook,
+  FileBadge2, Landmark, MonitorSmartphone, SlidersHorizontal,
 } from "lucide-react";
 
 export interface EventSidebarItem {
@@ -102,7 +103,9 @@ export const menuGroups: EventSidebarGroup[] = [
       { label: "어필리에이트", icon: Users, href: "affiliates" },
       { label: "대기열", icon: Clock, href: "waitlist" },
       { label: "리포트", icon: BarChart3, href: "reports" },
+      { label: "가중치 추첨 설정", icon: SlidersHorizontal, href: "lottery-policy", requiresLotteryPhase: true },
       { label: "응모 현황", icon: Gavel, href: "bids", requiresLotteryPhase: true },
+      { label: "공정성 증명서", icon: FileBadge2, href: "fairness", requiresLotteryPhase: true },
       { label: "단체예약", icon: UserPlus, href: "group-bookings", requiredFeature: "group_booking" },
       // 발권 3종 인접 배치 — 유료 판매든 무료 초대든 "티켓을 손에 쥐여준다"는 같은 단계다.
       // b2b(F1/F4) 유지: 초대권 발송 파이프라인 진입점 — UI Phase2 슬림 대상 아님(UI base에 없던 항목)
@@ -117,6 +120,7 @@ export const menuGroups: EventSidebarGroup[] = [
     items: [
       { label: "참석자", icon: UserCheck, href: "attendees" },
       { label: "체크인", icon: QrCode, href: "check-in" },
+      { label: "현장 입장 관리", icon: MonitorSmartphone, href: "onsite" },
       { label: "경품 추첨", icon: Gift, href: "raffle", requiresRaffle: true },
     ],
   },
@@ -138,6 +142,7 @@ export const menuGroups: EventSidebarGroup[] = [
     label: "고급 설정",
     items: [
       { label: "용량 관리", icon: Gauge, href: "capacity" },
+      { label: "정산 방식", icon: Landmark, href: "settlement" },
       { label: "웹훅", icon: Webhook, href: "webhooks" },
       { label: "위젯", icon: Code, href: "widget" },
     ],

@@ -243,3 +243,18 @@ async def test_tenure_refresh_updates_history_score_and_feeds_weight(client):
         assert weights[str(uid)] == expected  # 누적 시간 점수 × tenure_coef 가 가중치에 들어갔다
     e_old = entries[old]
     assert weights[str(old)] - compute_weight(policy, e_old.invested_ap, e_old.fan_weight, e_old.pity_bonus, 0.0) == pytest.approx(40.0)
+
+
+@pytest.mark.asyncio
+async def test_shared_ip_alone_is_not_flagged(client):
+    """같은 IP(공연장 와이파이·NAT)만으로는 검토 표시를 남기지 않는다 — 모니터링이 묻히지 않게."""
+    event_id, tier_id, _ = await _setup(client, "ip1", capacity=20)
+    for i in range(8):
+        r = await _apply(
+            client, event_id, tier_id, f"ip1_u{i}@test.com",
+            headers_extra={"x-device-fingerprint": f"fp-own-{i}", "x-forwarded-for": "203.0.113.7"},
+        )
+        assert r.status_code == 201
+    async with TestSession() as s:
+        flags = (await s.execute(select(AccountSanction).where(AccountSanction.action == SanctionAction.FLAG))).scalars().all()
+    assert [f for f in flags if str(f.event_id) == event_id] == []

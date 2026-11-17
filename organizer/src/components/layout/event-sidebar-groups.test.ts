@@ -168,7 +168,8 @@ describe("게이트 필터", () => {
     const visible = visibleGroupsFor(ALL_GATES);
     const count = visible.reduce((n, g) => n + g.items.length, 0);
     // 재편 전 33 − campaigns 1 − 대시보드(고정으로 분리) 1 = 31
-    expect(count).toBe(31);
+    // + 과업(2026-11): 가중치 추첨 설정·공정성 증명서·현장 입장 관리·정산 방식 4 = 35
+    expect(count).toBe(35);
   });
 });
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ChevronDown, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSidebarGroup } from "@/components/layout/collapsible-sidebar-group";
 import { pinnedItem, visibleGroupsFor } from "@/components/layout/event-sidebar-groups";
@@ -35,10 +36,34 @@ export function EventSidebar({ event }: EventSidebarProps) {
   }, [hydrate]);
 
   const visibleGroups = visibleGroupsFor(event);
-
+  // 🔴 1280px 미만(태블릿·모바일)에서는 메뉴 40여 개가 본문 위에 통째로 쌓였다(UI 감사 P0-3).
+  //    좁은 화면은 '현재 화면 + 메뉴 버튼' 한 줄로 접고, 누르면 펼친다. 화면을 옮기면 다시 접힌다
+  //    (열린 경로를 기억해 비교 — 이펙트로 닫지 않는다).
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const menuOpen = openPath === pathname;
+  const currentLabel =
+    visibleGroups.flatMap((g) => g.items).find((item) => pathname === `/events/${event.id}/${item.href}`)?.label ??
+    (pathname === `/events/${event.id}/${pinnedItem.href}` ? pinnedItem.label : "이벤트 메뉴");
 
   return (
-    <aside className="w-full max-w-[280px] rounded-xl border border-border bg-sidebar p-5">
+    <aside className="w-full rounded-xl border border-border bg-sidebar p-3 xl:max-w-[280px] xl:p-5">
+      <button
+        type="button"
+        onClick={() => setOpenPath(menuOpen ? null : pathname)}
+        aria-expanded={menuOpen}
+        aria-controls="event-sidebar-menu"
+        className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left xl:hidden"
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <Menu className="size-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-xs text-content-subtle">{event.title}</span>
+          <span className="block truncate text-sm font-bold text-foreground">{currentLabel}</span>
+        </span>
+        <ChevronDown className={cn("size-4 text-content-subtle transition", menuOpen && "rotate-180")} />
+      </button>
+      <div id="event-sidebar-menu" className={cn(menuOpen ? "mt-3 block" : "hidden", "xl:mt-0 xl:block")}>
       <div className="space-y-4 rounded-lg border border-border-subtle bg-bg-muted p-4">
         <StatusBadge status={event.status} />
         <div>
@@ -127,6 +152,7 @@ export function EventSidebar({ event }: EventSidebarProps) {
             })}
           </CollapsibleSidebarGroup>
         ))}
+      </div>
       </div>
     </aside>
   );

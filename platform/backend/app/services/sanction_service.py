@@ -10,7 +10,8 @@ Slash 가 하는 일 (impose)
 계정 복제 차단 (check_apply)
     같은 이벤트에서 같은 기기 지문으로 응모한 다른 계정 수를 센다.
       · 기기 공유 ≥ DEVICE_BLOCK_THRESHOLD → 응모 거부 + 검토 표시(flag)
-      · 같은 IP 다수(통신사 NAT 가능) → 거부하지 않고 검토 표시만
+      · 기기 공유 1건 + 같은 IP 다수 → 거부하지 않고 검토 표시
+      · 같은 IP 다수만(통신사 NAT·공연장 와이파이) → 기록만(anomaly_logs), 표시 안 함
     본인인증 CI 중복은 users.ci_hash UNIQUE 로 가입 단계에서 이미 막힌다.
 """
 
@@ -280,7 +281,11 @@ class SanctionService:
             ip_address=ip_address,
             fingerprint_hash=device_fingerprint,
         )
-        if reasons:
+        # 🔴 검토 표시는 **기기 신호가 있을 때만** 남긴다(실측 2026-11-17).
+        #    IP 하나만으로 표시하면 공연장 와이파이·통신사 NAT 뒤의 정상 관객이 전부 '검토 필요'로
+        #    쌓여 모니터링이 쓸모없어진다. 같은 IP 다수는 anomaly_logs 에만 남긴다.
+        needs_review = blocked or (same_device >= 1 and same_ip >= IP_FLAG_THRESHOLD)
+        if needs_review:
             await self.flag(
                 user_id,
                 SanctionReason.MULTI_ACCOUNT,
