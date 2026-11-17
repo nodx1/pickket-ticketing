@@ -5,9 +5,10 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.api.v1.deps import verify_behavior_token
+from app.api.v1.guests import _client_ip
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -68,6 +69,7 @@ async def apply_lottery(
     event_id: uuid.UUID,
     tier_id: uuid.UUID,
     data: LotteryApply,
+    request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -108,6 +110,9 @@ async def apply_lottery(
             group_size=data.group_size,
             client_seed=data.client_seed,
             invested_ap=data.invested_ap,
+            # 과업 WP2: 계정 복제 차단 — 같은 기기 다중 계정 탐지용
+            ip_address=_client_ip(request),
+            device_fingerprint=(request.headers.get("x-device-fingerprint") or "")[:128] or None,
         )
         # 응모 시 bid_count 증가 (실시간 통계 반영)
         await db.execute(

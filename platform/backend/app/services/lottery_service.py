@@ -59,6 +59,7 @@ from app.schemas.lottery import (
 )
 from app.models.fairness import MerkleKind
 from app.services.fairness_service import FairnessService
+from app.services.timeseries_log import record_lottery_event
 from talkfile_engine.vcg_allocation import (
     PUBLIC_ALGORITHM_ID,
     VCG_ALGORITHM_NAME,
@@ -134,6 +135,49 @@ class LotteryService:
         group_size: int = 1,
         client_seed: str | None = None,
         invested_ap: int = 0,
+        ip_address: str | None = None,
+        device_fingerprint: str | None = None,
+    ) -> LotteryEntryResponse:
+        """응모 — 과업 WP5: (이벤트, 등급, 사용자) 단위 Redis 분산 락으로 중복 응모를 앞단에서 막는다.
+
+        같은 사용자의 동시 요청(더블클릭·매크로 연타·다중 탭)은 락을 못 잡은 쪽이 즉시 거절된다.
+        DB UNIQUE(pool_id, user_id) + 풀 행 잠금은 그대로 2차 방어선으로 남는다.
+        Redis 장애 시에는 응모를 막지 않고 DB 방어선만으로 진행한다(가용성 우선, 경고 로그).
+        """
+        lock_key = f"v2:lottery:apply:{{{event_id}}}:{tier_id}:{user_id}"
+        try:
+            lock_cm = redis_lock(lock_key, ttl=10, retry=1, delay=0.01)
+            await lock_cm.__aenter__()
+        except TimeoutError:
+            raise ValueError("같은 응모가 이미 처리 중입니다. 잠시 후 결과를 확인해 주세요") from None
+        except Exception:  # noqa: BLE001 — Redis 장애: DB 방어선으로 진행
+            logger.warning("apply lock unavailable — falling back to DB constraints", exc_info=True)
+            return await self._apply_inner(
+                user_id, event_id, tier_id, group_id, group_size, client_seed, invested_ap,
+                ip_address, device_fingerprint,
+            )
+        try:
+            return await self._apply_inner(
+                user_id, event_id, tier_id, group_id, group_size, client_seed, invested_ap,
+                ip_address, device_fingerprint,
+            )
+        finally:
+            try:
+                await lock_cm.__aexit__(None, None, None)
+            except Exception:  # noqa: BLE001
+                logger.warning("apply lock release failed", exc_info=True)
+
+    async def _apply_inner(
+        self,
+        user_id: uuid.UUID,
+        event_id: uuid.UUID,
+        tier_id: uuid.UUID,
+        group_id: uuid.UUID | None = None,
+        group_size: int = 1,
+        client_seed: str | None = None,
+        invested_ap: int = 0,
+        ip_address: str | None = None,
+        device_fingerprint: str | None = None,
     ) -> LotteryEntryResponse:
         """
         Apply to a lottery pool for a tier.
@@ -245,6 +289,13 @@ class LotteryService:
         if invested_ap > 0 and invested_ap % 100 != 0:
             raise ValueError("invested_ap must be in multiples of 100")
 
+        # 과업 WP2: 제재(Slash) 계정 응모 거부 + 계정 복제(같은 기기 다중 계정) 차단
+        from app.services.sanction_service import SanctionService
+
+        await SanctionService(self.session).check_apply(
+            user_id, event_id, ip_address=ip_address, device_fingerprint=device_fingerprint
+        )
+
         # Get or create lottery pool (with lock to prevent duplicate creation)
         pool = await self.pool_repo.get_by_event_tier(event_id, tier_id)
         if not pool:
@@ -345,6 +396,17 @@ class LotteryService:
             tier_multiplier=tier_multiplier,
             pity_bonus=pity_bonus,
             result=LotteryEntryResult.PENDING,
+        )
+        # 과업 WP5: 응모 시계열(가명 actor). 실패해도 응모는 진행된다.
+        await record_lottery_event(
+            self.session,
+            event_id=event_id,
+            kind="apply",
+            pool_id=pool.id,
+            tier_id=tier_id,
+            user_id=user_id,
+            ap=invested_ap,
+            meta={"group_size": group_size},
         )
 
         # Audit
@@ -495,6 +557,14 @@ class LotteryService:
         entries = await self.entry_repo.get_by_pool(pool_id)
         excluded = await self._sanctioned_user_ids([e.user_id for e in entries], pool.event_id)
         root, _ = await fairness.commit_entries_tree(pool, entries, excluded)
+        await record_lottery_event(
+            self.session,
+            event_id=pool.event_id,
+            kind="close",
+            pool_id=pool.id,
+            tier_id=pool.tier_id,
+            meta={"entries": len(entries), "excluded": len(excluded), "entries_root": root.root},
+        )
         await self.session.commit()
         return root.root
 
@@ -1150,6 +1220,19 @@ class LotteryService:
 
         # 과업 WP4: 결과 Merkle 루트(응모 트리와 같은 잎 순서). 응모 트리가 없는 기존 풀은 건너뜀.
         results_root = await fairness.commit_results_tree(pool, outcomes)
+        await record_lottery_event(
+            self.session,
+            event_id=pool.event_id,
+            kind="draw",
+            pool_id=pool.id,
+            tier_id=pool.tier_id,
+            meta={
+                "winners": winners_count,
+                "waitlisted": waitlisted_count,
+                "excluded": len(excluded_uids),
+                "algorithm": pool_policy.algorithm,
+            },
+        )
 
         # Increment tier sold count
         # sold_count: PG 는 trg_sync_sold_count 가 위 create_batch(PENDING 티켓) INSERT 시

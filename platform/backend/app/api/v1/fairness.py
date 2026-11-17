@@ -28,6 +28,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response,
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from talkfile_engine.weight_policy import WeightPolicy
+from talkfile_engine.weight_simulation import DEFAULT_PROFILES, Profile, simulate
 
 from app.api.v1.internal_sync import _require_service_token
 from app.core.config import settings
@@ -39,8 +41,6 @@ from app.models.fairness import FairnessCertificate, MerkleKind
 from app.models.user import User
 from app.services.fairness_pdf import render_certificate_pdf
 from app.services.fairness_service import FairnessError, FairnessService
-from talkfile_engine.weight_policy import WeightPolicy
-from talkfile_engine.weight_simulation import DEFAULT_PROFILES, Profile, simulate
 
 public_router = APIRouter()
 internal_router = APIRouter()
@@ -224,3 +224,82 @@ async def issue_pool_certificate(pool_id: uuid.UUID, request: Request, db: Async
     except SigningKeyUnavailable as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     return view
+
+
+# ───────────────────────── 제재(Slash)·시계열 (과업 WP2·WP5) ─────────────────────────
+
+
+@internal_router.get("/events/{event_id}/sanctions")
+async def get_event_sanctions(event_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db)):
+    _require_service_token(request)
+    from app.services.sanction_service import SanctionService
+
+    return await SanctionService(db).monitor(event_id)
+
+
+@internal_router.post("/events/{event_id}/sanctions")
+async def impose_event_sanction(event_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db)):
+    """주최사 제재 — 이벤트 범위만. 대상은 응모 id(entryId)로 지정해 원 사용자 id 를 화면에 내보내지 않는다."""
+    from app.models.lottery import LotteryEntry, LotteryPool
+    from app.services.sanction_service import SanctionError, SanctionService
+
+    body = await _verified_json(request)
+    try:
+        entry_id = uuid.UUID(str(body.get("entryId")))
+    except ValueError as exc:
+        raise _bad_request(ValueError("entryId 가 필요합니다")) from exc
+    row = (
+        await db.execute(
+            select(LotteryEntry.user_id)
+            .join(LotteryPool, LotteryPool.id == LotteryEntry.pool_id)
+            .where(LotteryEntry.id == entry_id, LotteryPool.event_id == event_id)
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="이 이벤트의 응모가 아닙니다")
+    try:
+        sanction = await SanctionService(db).impose(
+            row.user_id,
+            str(body.get("reasonCode") or "manual"),
+            event_id=event_id,
+            evidence={"note": str(body.get("note") or ""), "entry_id": str(entry_id)},
+            burn_ratio=float(body.get("burnRatio", 1.0)),
+            disqualify_days=int(body["disqualifyDays"]) if body.get("disqualifyDays") is not None else None,
+            actor=str(body.get("actor") or "") or None,
+        )
+    except SanctionError as exc:
+        raise _bad_request(exc) from exc
+    return {"ok": True, "sanction_id": str(sanction.id), "ap_burned": sanction.ap_burned}
+
+
+@internal_router.post("/sanctions/{sanction_id}/lift")
+async def lift_sanction(sanction_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db)):
+    from app.models.sanction import AccountSanction
+    from app.services.sanction_service import SanctionError, SanctionService
+
+    body = await _verified_json(request)
+    original = await db.get(AccountSanction, sanction_id)
+    expected_event = body.get("eventId")
+    if original is None or (expected_event and str(original.event_id) != str(expected_event)):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="제재를 찾을 수 없습니다")
+    try:
+        row = await SanctionService(db).lift(sanction_id, actor=str(body.get("actor") or "") or None, note=str(body.get("note") or ""))
+    except SanctionError as exc:
+        raise _bad_request(exc) from exc
+    return {"ok": True, "lift_id": str(row.id)}
+
+
+@internal_router.get("/events/{event_id}/timeseries")
+async def get_event_timeseries(
+    event_id: uuid.UUID,
+    request: Request,
+    kind: str = Query("admission", pattern="^(admission|lottery)$"),
+    minutes: int = Query(120, ge=1, le=20160),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_service_token(request)
+    from app.services.timeseries_log import admission_series, lottery_series
+
+    if kind == "admission":
+        return await admission_series(db, event_id, minutes)
+    return await lottery_series(db, event_id, minutes)

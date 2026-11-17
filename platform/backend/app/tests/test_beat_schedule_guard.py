@@ -128,6 +128,7 @@ _NIGHT_BATCH = {  # 트래픽 적은 KST 야간에 도는 정비·집계 작업
     "monthly-settlement-generate",
     "monthly-tier-recalculation",
     "daily-backup",
+    "refresh-tenure-scores",  # 과업 WP2 — 누적 시간 점수 집계(발송 아님)
 }
 _DAYTIME_SEND = {  # 🔴 손님에게 나가는 것 — 야간 금지
     "messaging-reminders",

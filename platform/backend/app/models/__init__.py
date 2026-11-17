@@ -266,6 +266,7 @@ from app.models.fairness import (
     LotteryPoolPolicy,
     LotteryWeightPolicyRecord,
 )
+from app.models.sanction import AccountSanction  # 과업 WP2
 
 __all__ = [
     "User",

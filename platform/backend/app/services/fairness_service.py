@@ -72,11 +72,11 @@ def _iso(dt: datetime | None) -> str | None:
 
 
 def _policy_cache_key(pool_id: uuid.UUID) -> str:
-    return f"v2:fairness:pool_policy:{{{pool_id}}}"
+    return f"fairness:pool_policy:{{{pool_id}}}"
 
 
 def _event_policy_cache_key(event_id: uuid.UUID) -> str:
-    return f"v2:fairness:event_policy:{{{event_id}}}"
+    return f"fairness:event_policy:{{{event_id}}}"
 
 
 class FairnessService:

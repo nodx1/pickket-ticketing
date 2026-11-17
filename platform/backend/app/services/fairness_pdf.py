@@ -1,6 +1,9 @@
 """공정성 증명서 PDF (reportlab).
 
-한글은 reportlab 내장 CID 글꼴(HYGothic-Medium, Adobe-Korea1)로 그린다 — 별도 글꼴 파일이 필요 없다.
+한글은 Pretendard(OFL) TrueType 을 **PDF 안에 내장**해 그린다 — 보는 쪽에 글꼴이 없어도 깨지지 않는다.
+(reportlab 내장 CID 글꼴은 내장되지 않아 뷰어에 따라 한글이 빈칸으로 보인다 — 실측으로 확인.)
+글꼴 파일: app/assets/fonts/Pretendard-{Regular,Bold}.ttf — 모바일 앱의 Pretendard OTF 를 TrueType 으로
+변환하고 한글 11,172자·라틴·기호만 남긴 것. 파일이 없으면 CID 글꼴로 내려간다.
 검증 페이지 QR 을 함께 넣어 종이로 받아도 누구나 원본 대조를 할 수 있게 한다.
 """
 
@@ -8,6 +11,7 @@ from __future__ import annotations
 
 import io
 from datetime import datetime
+from pathlib import Path
 
 from reportlab.graphics import renderPDF
 from reportlab.graphics.barcode.qr import QrCodeWidget
@@ -17,9 +21,12 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
-FONT = "HYGothic-Medium"
+_FONT_DIR = Path(__file__).resolve().parents[1] / "assets" / "fonts"
+FONT = "Pretendard"
+FONT_BOLD = "Pretendard-Bold"
 _registered = False
 
 INK = colors.HexColor("#1A1D2E")
@@ -35,10 +42,18 @@ ALGORITHM_LABEL = {
 
 
 def _ensure_font() -> None:
-    global _registered
-    if not _registered:
-        pdfmetrics.registerFont(UnicodeCIDFont(FONT))
-        _registered = True
+    global _registered, FONT, FONT_BOLD
+    if _registered:
+        return
+    regular = _FONT_DIR / "Pretendard-Regular.ttf"
+    bold = _FONT_DIR / "Pretendard-Bold.ttf"
+    if regular.exists() and bold.exists():
+        pdfmetrics.registerFont(TTFont(FONT, str(regular)))
+        pdfmetrics.registerFont(TTFont(FONT_BOLD, str(bold)))
+    else:  # 글꼴 파일이 없는 배포본 — 내장되지 않는 CID 글꼴로 대체
+        pdfmetrics.registerFont(UnicodeCIDFont("HYGothic-Medium"))
+        FONT = FONT_BOLD = "HYGothic-Medium"
+    _registered = True
 
 
 def _fmt_time(value: str | None) -> str:
@@ -73,7 +88,7 @@ def render_certificate_pdf(view: dict) -> bytes:
     c.rect(0, height - 8 * mm, width, 8 * mm, stroke=0, fill=1)
 
     c.setFillColor(INK)
-    c.setFont(FONT, 22)
+    c.setFont(FONT_BOLD, 22)
     c.drawString(left, y, "추첨 공정성 증명서")
     c.setFont(FONT, 10)
     c.setFillColor(MUTED)
@@ -107,14 +122,14 @@ def render_certificate_pdf(view: dict) -> bytes:
         c.setFont(FONT, 8)
         c.drawString(x + 3 * mm, y - 5 * mm, label)
         c.setFillColor(INK)
-        c.setFont(FONT, 14)
+        c.setFont(FONT_BOLD, 14)
         c.drawString(x + 3 * mm, y - 11.5 * mm, f"{value:,}")
     y -= 22 * mm
 
     def section(title: str) -> None:
         nonlocal y
         c.setFillColor(INK)
-        c.setFont(FONT, 11)
+        c.setFont(FONT_BOLD, 11)
         c.drawString(left, y, title)
         y -= 2.5 * mm
         c.setStrokeColor(LINE)

@@ -9,6 +9,9 @@ import uuid
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from sqlalchemy import select
+from talkfile_engine.lottery import compute_lottery_weight
+from talkfile_engine.merkle import canonical_json, hash_leaf, user_commit, verify_proof
+from talkfile_engine.weight_policy import WeightPolicy
 
 from app.models.fairness import LotteryMerkleLeaf, LotteryMerkleRoot, LotteryPoolPolicy, MerkleKind
 from app.models.lottery import LotteryEntry, LotteryPool
@@ -17,9 +20,6 @@ from app.models.user import User
 from app.services.fairness_service import FairnessError, FairnessService
 from app.services.point_service import PointService
 from app.tests.conftest import TestSession, auth_headers, create_event_as_organizer, get_auth_token
-from talkfile_engine.lottery import compute_lottery_weight
-from talkfile_engine.merkle import canonical_json, hash_leaf, user_commit, verify_proof
-from talkfile_engine.weight_policy import WeightPolicy
 
 
 async def _grant_ap(email: str, amount: int) -> uuid.UUID:

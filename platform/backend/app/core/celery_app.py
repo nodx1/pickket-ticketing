@@ -32,6 +32,7 @@ CELERY_TASK_MODULES = (
     "app.tasks.payment_expiry",
     "app.tasks.payment_capture",
     "app.tasks.lottery_draw",
+    "app.tasks.tenure_refresh",  # 과업 WP2
     "app.tasks.notifications",
     "app.tasks.propagate_order_event",
     "app.tasks.dead_letter",
@@ -107,6 +108,7 @@ TASK_QUEUE_MAP = {
     "app.tasks.allocation.run_allocation_async": "celery",
     "app.tasks.allocation.recover_stuck_allocations": "celery",
     "app.tasks.lottery_draw.auto_draw_lotteries": "celery",
+    "app.tasks.tenure_refresh.refresh_tenure_scores": "celery",
     "app.tasks.auto_fcfs_transition.auto_transition_to_fcfs": "celery",
     "app.tasks.phase_transition.check_phase_transitions": "celery",
     "app.tasks.queue_processor.process_queues": "celery",
@@ -190,6 +192,11 @@ celery_app.conf.update(
         "auto-draw-lotteries": {
             "task": "app.tasks.lottery_draw.auto_draw_lotteries",
             "schedule": 60.0,  # Every minute
+        },
+        # 과업 WP2: 정상 누적 시간 점수(가중치 tenure 항) 일 배치
+        "refresh-tenure-scores": {
+            "task": "app.tasks.tenure_refresh.refresh_tenure_scores",
+            "schedule": crontab(minute=10, hour=4),
         },
         "auto-transition-to-fcfs": {
             "task": "app.tasks.auto_fcfs_transition.auto_transition_to_fcfs",
