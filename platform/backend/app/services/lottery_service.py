@@ -32,6 +32,7 @@ from talkfile_engine.lottery import (
 
 from app.models.lottery import (
     LotteryEntryResult,
+    LotteryPool,
     LotteryPoolStatus,
 )
 from app.models.order import OrderStatus, OrderType
@@ -56,6 +57,16 @@ from app.schemas.lottery import (
     LotteryTransparencyReport,
     LotteryVerificationResponse,
 )
+from app.models.fairness import MerkleKind
+from app.services.fairness_service import FairnessService
+from talkfile_engine.vcg_allocation import (
+    PUBLIC_ALGORITHM_ID,
+    VCG_ALGORITHM_NAME,
+    VcgEntry,
+    run_allocation_draw,
+    verify_allocation_reveal,
+)
+from talkfile_engine.weight_policy import ALGORITHM_WEIGHTED_ALLOCATION
 from app.services.fan_weight_service import FanWeightService
 from app.services.pity_service import PityService
 from app.services.point_service import PointService
@@ -256,6 +267,9 @@ class LotteryService:
                     # 운영자는 커밋 시점에 결과를 예측·선택할 수 없다.
                     self._set_seed_commitment(pool)
                     await self.session.flush()
+                    # 과업 WP1: 사전 커밋과 같은 시점에 주최사 가중치 정책을 스냅숏·고정한다.
+                    # 이후 정책을 바꿔도 이 풀에는 영향이 없다(사후 조작 방지).
+                    await FairnessService(self.session).lock_pool_policy(pool)
 
         # idx13: apply/draw 경합 차단.
         # 이전엔 잠금 없는 일반 SELECT 의 pool.status 로 OPEN 을 확인한 뒤 엔트리를
@@ -270,6 +284,13 @@ class LotteryService:
             pool = locked_pool
         if pool.status != LotteryPoolStatus.OPEN:
             raise ValueError("Lottery pool is no longer accepting applications")
+
+        # 과업 WP3: 가중 배분(가중 VCG) 풀은 1인 1매 — 묶음 응모는 단위 분할 시 일부만
+        # 배정될 수 있어 받지 않는다.
+        if group_size and group_size > 1:
+            pool_policy, _ = await FairnessService(self.session).get_pool_policy(pool.id)
+            if pool_policy.algorithm == ALGORITHM_WEIGHTED_ALLOCATION:
+                raise ValueError("가중 배분 추첨은 1인 1매로만 응모할 수 있습니다")
 
         # Check for duplicate entry
         existing = await self.entry_repo.get_user_entry(pool.id, user_id)
@@ -446,6 +467,47 @@ class LotteryService:
         await self.session.commit()
         return commitment
 
+    async def commit_entries_snapshot(self, pool_id: uuid.UUID) -> str | None:
+        """응모 마감 + 응모 Merkle 루트 확정 (과업 WP4).
+
+        추첨과 **분리된 트랜잭션**으로 커밋한다. 같은 트랜잭션이면 루트와 결과가 함께
+        롤백·재실행될 수 있어 "루트가 추첨보다 먼저 고정됐다"를 증명할 수 없다
+        (ensure_commitment 와 같은 이유).
+
+        - 이미 루트가 있으면 그대로(멱등) — 추첨 재시도 시 같은 명단·가중치를 쓴다.
+        - 취소된 이벤트·이미 추첨된 풀은 건드리지 않는다(기존 오류 경로를 그대로 둔다).
+        - 제재(Slash)된 응모자는 가중치 0 으로 트리에 남기고 추첨에서 뺀다.
+        """
+        fairness = FairnessService(self.session)
+        existing = await fairness.get_root(pool_id, MerkleKind.ENTRIES)
+        if existing is not None:
+            return existing.root
+
+        pool = await self.pool_repo.get_for_update(pool_id)
+        if not isinstance(pool, LotteryPool) or pool.status == LotteryPoolStatus.DRAWN:
+            return None  # 실제 DB 행만 다룬다(목 객체 등은 기존 경로 그대로)
+        event_status = await self.session.scalar(select(Event.status).where(Event.id == pool.event_id))
+        if event_status == EventStatus.CANCELLED:
+            return None
+
+        if pool.status == LotteryPoolStatus.OPEN:
+            pool.status = LotteryPoolStatus.CLOSED
+        entries = await self.entry_repo.get_by_pool(pool_id)
+        excluded = await self._sanctioned_user_ids([e.user_id for e in entries], pool.event_id)
+        root, _ = await fairness.commit_entries_tree(pool, entries, excluded)
+        await self.session.commit()
+        return root.root
+
+    async def _sanctioned_user_ids(
+        self, user_ids: list[uuid.UUID], event_id: uuid.UUID
+    ) -> set[uuid.UUID]:
+        """추첨에서 뺄 제재 대상(과업 WP2 Slash). 제재 서비스가 없으면 빈 집합."""
+        try:
+            from app.services.sanction_service import SanctionService
+        except ImportError:
+            return set()
+        return await SanctionService(self.session).disqualified_among(user_ids, event_id)
+
     async def draw(self, pool_id: uuid.UUID, max_winners: int | None = None) -> LotteryDrawResult:
         """
         Execute the lottery drawing for a pool.
@@ -481,6 +543,9 @@ class LotteryService:
                 # 아래는 no-op 이고, legacy 풀만 여기서 별도 트랜잭션으로
                 # 백필된 뒤 추첨된다. _draw_inner 는 커밋 없는 풀을 거부한다.
                 await self.ensure_commitment(pool_id)
+                # 과업 WP4: 응모 마감 + 응모 Merkle 루트를 추첨과 **분리된 트랜잭션**으로
+                # 먼저 영속화한다. 루트 시각 < 추첨 시각이 증명서로 증명된다.
+                await self.commit_entries_snapshot(pool_id)
                 return await self._draw_inner(pool_id, max_winners)
         except TimeoutError:
             raise ValueError(
@@ -535,6 +600,17 @@ class LotteryService:
                 waitlisted=0,
                 seed_used=0,
             )
+
+        # 과업 WP1·WP3·WP4: 풀에 고정된 정책, 마감 시 확정된 가중치, 제재 제외 대상.
+        # 응모 트리가 없는 기존 풀(committed_weights == {})은 기존 상수 경로 그대로 동작한다.
+        fairness = FairnessService(self.session)
+        pool_policy, _ = await fairness.get_pool_policy(pool.id)
+        committed_weights = await fairness.entry_weights(pool.id)
+        excluded_uids = await fairness.excluded_users(pool.id)
+        use_allocation = pool_policy.algorithm == ALGORITHM_WEIGHTED_ALLOCATION
+        allocation_charges: dict[str, int] = {}
+        engine_waitlist_ordered: list[str] = []
+        outcomes: dict[str, dict] = {}
 
         # WP08: 이벤트 도메인 조회
         domain = await self._get_event_domain(pool.event_id)
@@ -595,6 +671,8 @@ class LotteryService:
         )
 
         for entry in entries:
+            if str(entry.user_id) in excluded_uids:
+                continue  # 제재(Slash) — 보장 당첨·추첨 모두에서 제외
             has_guaranteed = await self.pity_service.has_guaranteed_ticket(entry.user_id, domain)
             if has_guaranteed and remaining_seats >= entry.group_size:
                 guaranteed_winners.append(entry)
@@ -624,12 +702,17 @@ class LotteryService:
             # 기본100 + AP보너스(log₂) + 보정값(fan/pity)
             pity_bonus = entry.pity_bonus if entry.pity_bonus else 1.0
             tier_mult = entry.tier_multiplier if entry.tier_multiplier else 1.0
-            w = compute_lottery_weight(
-                invested_ap=entry.invested_ap or 0,
-                fan_weight=entry.fan_weight,
-                tier_multiplier=tier_mult,
-                pity_bonus=pity_bonus,
-            )
+            committed = committed_weights.get(str(entry.user_id))
+            if committed is not None:
+                # 응모 Merkle 트리에 고정된 가중치를 그대로 쓴다(트리 ↔ 추첨 일치 보장).
+                w = committed
+            else:
+                w = compute_lottery_weight(
+                    invested_ap=entry.invested_ap or 0,
+                    fan_weight=entry.fan_weight,
+                    tier_multiplier=tier_mult,
+                    pity_bonus=pity_bonus,
+                )
             weights[str(entry.user_id)] = w
             if entry.client_seed:
                 client_seeds[str(entry.user_id)] = entry.client_seed
@@ -643,7 +726,37 @@ class LotteryService:
         engine_winners_ordered: list[str] = []
         entries_digest = ""
 
-        if remaining_seats > 0 and engine_entries:
+        if remaining_seats > 0 and engine_entries and use_allocation:
+            # 과업 WP3: 가중 배분(가중 VCG). 입찰 = 투입 AP, w_i = 고정된 정책 가중치.
+            # 시드는 가중 추첨과 똑같이 사전 커밋된 server_seed(+client_seeds) — 동점 순서까지
+            # 커밋에 묶인다. 공개 데이터 algorithm 은 중립 명칭(weighted_allocation_v1).
+            alloc_entries = [
+                VcgEntry(
+                    user_id=str(entry.user_id),
+                    bid_ap=int(entry.invested_ap or 0),
+                    weight=weights[str(entry.user_id)],
+                )
+                for entry in remaining_entries
+            ]
+            alloc_result, verification_data = run_allocation_draw(
+                alloc_entries,
+                remaining_seats,
+                pool.server_seed,
+                pool_policy,
+                str(pool.tier_id),
+                client_seeds if client_seeds else None,
+            )
+            lottery_winner_set = set(alloc_result.winners)
+            lottery_waitlist_set = set(alloc_result.waitlist)
+            engine_winners_ordered = list(alloc_result.winners)
+            engine_waitlist_ordered = list(alloc_result.waitlist)
+            allocation_charges = dict(alloc_result.charges)
+            seed_used = int(verification_data["seed"])
+            entries_digest = verification_data["entries_digest"]
+            commitment_hash = LotteryVerifier.compute_commitment(
+                seed_used, engine_entries, remaining_seats, weights, client_seeds or None
+            )
+        elif remaining_seats > 0 and engine_entries:
             # F-1 commit-reveal ② 실행 단계: 시드는 새로 뽑지 않고, 추첨 전에
             # 영속화된 사전 커밋의 server_seed 를 사용한다. client_seeds 가
             # 있으면 엔진이 sha256(server_seed + client_seeds) 결합 시드를
@@ -663,6 +776,7 @@ class LotteryService:
             )
             lottery_winner_set = set(result.winners)
             lottery_waitlist_set = set(result.waitlist)
+            engine_waitlist_ordered = list(result.waitlist)
             seed_used = result.seed_used
             commitment_hash = result.commitment_hash
             verification_data = result.verification_data
@@ -840,7 +954,36 @@ class LotteryService:
                 except Exception:
                     logger.warning("Failed to record pity win for user %s", entry.user_id)
 
-                # 당첨자 투자 AP는 전액 소진 (정가 보장 원칙, VCG 제거됨)
+                # 당첨자 투자 AP는 전액 소진 (정가 보장 원칙)
+                invested = int(entry.invested_ap or 0)
+                ap_charged = invested
+                if (
+                    use_allocation
+                    and uid_str in allocation_charges
+                    and uid_str not in guaranteed_winner_uids
+                ):
+                    # 과업 WP3: 가중 배분 당첨자는 VCG 가격만큼만 소각, 차액 환급.
+                    ap_charged = int(allocation_charges[uid_str])
+                    refund = invested - ap_charged
+                    if refund > 0:
+                        await self.point_service.earn(
+                            user_id=entry.user_id,
+                            point_type=PointType.FAN,
+                            amount=refund,
+                            tx_type=PointTransactionType.REFUND_LOTTERY,
+                            reference_id=pool.event_id,
+                            description=f"가중 배분 차액 환급 ({refund}AP, 투입 {invested}AP 중 {ap_charged}AP 소각)",
+                            idempotency_key=f"lottery_alloc_refund:{entry.id}",
+                        )
+                if uid_str in guaranteed_winner_uids:
+                    outcomes[uid_str] = {"result": "won", "order": None, "ap_charged": ap_charged, "path": "guaranteed"}
+                else:
+                    outcomes[uid_str] = {
+                        "result": "won",
+                        "order": engine_winners_ordered.index(uid_str) if uid_str in engine_winners_ordered else None,
+                        "ap_charged": ap_charged,
+                        "path": "draw",
+                    }
 
             elif uid_str in lottery_waitlist_set:
                 entry.result = LotteryEntryResult.WAITLISTED
@@ -851,6 +994,31 @@ class LotteryService:
                     await self.pity_service.record_loss(entry.user_id, domain)
                 except Exception:
                     logger.warning("Failed to record pity loss for user %s", entry.user_id)
+
+                waitlist_order = (
+                    engine_waitlist_ordered.index(uid_str) if uid_str in engine_waitlist_ordered else None
+                )
+                if use_allocation:
+                    # 과업 WP3: VCG 규칙상 낙첨자 지불은 0 — 투입 AP 전액 환급(위로금 없음).
+                    if entry.invested_ap and entry.invested_ap > 0:
+                        await self.point_service.earn(
+                            user_id=entry.user_id,
+                            point_type=PointType.FAN,
+                            amount=int(entry.invested_ap),
+                            tx_type=PointTransactionType.REFUND_LOTTERY,
+                            reference_id=pool.event_id,
+                            description=f"가중 배분 낙첨 환급 ({entry.invested_ap}AP)",
+                            idempotency_key=f"lottery_alloc_loser_refund:{entry.id}",
+                        )
+                    outcomes[uid_str] = {"result": "waitlisted", "order": waitlist_order, "ap_charged": 0, "path": "draw"}
+                    continue
+
+                outcomes[uid_str] = {
+                    "result": "waitlisted",
+                    "order": waitlist_order,
+                    "ap_charged": int(entry.invested_ap or 0),
+                    "path": "draw",
+                }
 
                 # WP12: 낙첨자 — 투자 AP 소진 (환급 없음) + 위로금 지급
                 # 정본: SALE_MODE_POLICY_v2_2026-04-10.md + AP_POINT_POLICY.md
@@ -872,6 +1040,17 @@ class LotteryService:
                         )
                     except Exception:
                         logger.warning("Failed to grant consolation AP for user %s", entry.user_id)
+
+            elif uid_str in excluded_uids:
+                # 과업 WP2: 제재(Slash)로 추첨에서 제외된 응모 — 투입 AP 는 환급하지 않는다
+                # (소각). 결과는 비당첨 종결(WAITLISTED), 결과 트리에는 excluded 로 기록.
+                entry.result = LotteryEntryResult.WAITLISTED
+                outcomes[uid_str] = {
+                    "result": "excluded",
+                    "order": None,
+                    "ap_charged": int(entry.invested_ap or 0),
+                    "path": "excluded",
+                }
 
             else:
                 # idx13: 당첨도 대기도 아닌 엔트리 — 추첨이 실제로 이 엔트리를
@@ -911,6 +1090,7 @@ class LotteryService:
                         )
                 entry.result = LotteryEntryResult.WAITLISTED
                 waitlisted_count += 1
+                outcomes[uid_str] = {"result": "waitlisted", "order": None, "ap_charged": 0, "path": "race_refund"}
 
         # 당첨자에게 배정된 좌석들을 HELD 로 일괄 전환 (결제 기한 내 점유).
         # 결제 완료 → SOLD, 결제 만료 → AVAILABLE 복구는 payment/order 서비스가 처리.
@@ -968,6 +1148,9 @@ class LotteryService:
         pool.commitment_hash = commitment_hash
         pool.verification_data = verification_data
 
+        # 과업 WP4: 결과 Merkle 루트(응모 트리와 같은 잎 순서). 응모 트리가 없는 기존 풀은 건너뜀.
+        results_root = await fairness.commit_results_tree(pool, outcomes)
+
         # Increment tier sold count
         # sold_count: PG 는 trg_sync_sold_count 가 위 create_batch(PENDING 티켓) INSERT 시
         # 자동 +1. 여기서 또 increment_sold 하면 이중증가 → SQLite(test) 에서만 수동 증가.
@@ -998,6 +1181,11 @@ class LotteryService:
                 "commitment_hash": commitment_hash,
                 "seed_commitment": pool.seed_commitment,
                 "committed_at": pool.committed_at.isoformat() if pool.committed_at else None,
+                # 감사 로그의 algorithm 필드는 내부 알고리즘명 허용(DOMAIN_MODEL_STANDARD §1.3)
+                "algorithm": VCG_ALGORITHM_NAME if use_allocation else "efraimidis_spirakis_weighted_sampling",
+                "policy_hash": pool_policy.policy_hash(),
+                "results_root": results_root.root if results_root else None,
+                "excluded_by_sanction": len(excluded_uids),
                 "result": "success",
             },
         )
@@ -1267,6 +1455,11 @@ class LotteryService:
                 == LotteryVerifier.DRAW_MODE_PITY_EXHAUSTED
             ):
                 checks = LotteryVerifier.verify_pity_reveal(
+                    pool.seed_commitment, str(pool.id), verification_data
+                )
+            elif verification_data.get("algorithm") == PUBLIC_ALGORITHM_ID:
+                # 과업 WP3: 가중 배분 풀 — 공개 입력으로 가중 VCG 를 다시 돌려 당첨자·소각 AP 비교
+                checks = verify_allocation_reveal(
                     pool.seed_commitment, str(pool.id), verification_data
                 )
             else:

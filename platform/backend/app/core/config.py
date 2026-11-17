@@ -120,6 +120,12 @@ class Settings(BaseSettings):
     WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS: int = 60  # 1-min replay window
     PORTONE_WEBHOOK_IPS: str = ""  # Comma-separated IP allowlist, e.g. "52.78.5.241,52.78.100.19"
 
+    # 공정성 증명서 서명 키 (과업 WP4) — Ed25519 개인키 32바이트 시드의 base64.
+    # 미설정 시 운영에서는 증명서 발급만 503(서버 기동은 그대로), 개발에서는 SECRET_KEY 유도 키.
+    FAIRNESS_SIGNING_KEY: str = ""
+    # 공개 증명서 페이지 기본 주소 (PDF·QR 에 실린다)
+    FAIRNESS_PUBLIC_BASE_URL: str = "https://www.pickket.kr"
+
     # TossPayments (PAYMENT_PROVIDER="toss")
     TOSS_API_BASE_URL: str = "https://api.tosspayments.com/v1"
     TOSS_SECRET_KEY: str = ""  # live_sk_* / test_sk_* (서버 전용). 미설정 시 mock.

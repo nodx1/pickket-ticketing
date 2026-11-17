@@ -70,6 +70,8 @@ def compute_lottery_weight(
     fan_weight: float,
     tier_multiplier: float = 1.0,
     pity_bonus: float = 1.0,
+    policy: "WeightPolicy | None" = None,
+    tenure_score: float = 0.0,
 ) -> float:
     """공정 추첨 가중치 계산 (가산 방식).
 
@@ -85,9 +87,24 @@ def compute_lottery_weight(
         tier_multiplier: 멤버십 티어 배율 (1.00~1.20). 현재 미사용 예약.
         pity_bonus: 연속 낙첨 보정 배율 (기본 1.0).
 
+        policy: 주최사 가중치 정책(`weight_policy.WeightPolicy`). None 이면 아래
+            기존 상수 경로 그대로 — 기존 결과와 비트 단위로 같다.
+        tenure_score: 정상 누적 시간 점수 [0~1]. 정책의 tenure_coef 와 곱해진다.
+
     Returns:
         최종 가중치 (항상 >= 1).
     """
+    if policy is not None:
+        from talkfile_engine.weight_policy import compute_weight
+
+        return compute_weight(
+            policy,
+            invested_ap=invested_ap,
+            fan_weight=fan_weight,
+            pity_bonus=pity_bonus,
+            tenure_score=tenure_score,
+        )
+
     ap_bonus = compute_ap_bonus(invested_ap)
 
     # fan_weight [0.57~1.93] → 보정값 [-21.5 ~ +46.5]

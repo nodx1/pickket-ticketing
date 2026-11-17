@@ -1,0 +1,14 @@
+# 과업(가중치 추첨·파트너 연동) 로컬 개발용 오버라이드 — DB·Redis 만 띄운다.
+#
+#   docker compose -p pickket-gwasup -f docker-compose.yml -f docker-compose.gwasup.yml up -d db redis
+#
+# - DB 이미지를 TimescaleDB(PostgreSQL 16 + timescaledb 확장)로 바꾼다.
+#   시계열 로그(ts_* hypertable)를 로컬에서 실제로 검증하기 위함이다.
+#   운영 DB 가 일반 PostgreSQL 이어도 마이그레이션은 확장이 없으면 일반 테이블로 내려간다.
+# - 컨테이너 이름을 바꿔 기존 pickket-v2-* 컨테이너·볼륨과 섞이지 않게 한다.
+services:
+  db:
+    image: timescale/timescaledb:2.17.2-pg16
+    container_name: pickket-gwasup-db
+  redis:
+    container_name: pickket-gwasup-redis

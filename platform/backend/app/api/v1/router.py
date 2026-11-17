@@ -67,6 +67,7 @@ from app.api.v1 import traffic_monitor
 from app.api.v1 import admin_slo
 from app.api.v1 import event_open_subscriptions
 from app.api.v1 import internal_sync
+from app.api.v1 import fairness as fairness_api  # 과업 WP1·WP4
 from app.api.v1 import ops as ops_board
 from app.api.v1 import internal_commerce
 from app.api.v1 import internal_commerce_read
@@ -348,6 +349,9 @@ api_router.include_router(
 
 # Internal: go → v2 data sync (HMAC-authenticated)
 api_router.include_router(internal_sync.router, prefix="/internal", tags=["internal-sync"])
+# 과업 WP1·WP4: 가중치 추첨 정책 · Merkle · 공정성 증명서
+api_router.include_router(fairness_api.internal_router, prefix="/internal", tags=["internal-fairness"])
+api_router.include_router(fairness_api.public_router, prefix="/fairness", tags=["fairness"])
 api_router.include_router(internal_commerce.router, prefix="/internal", tags=["internal-commerce"])
 api_router.include_router(internal_commerce_read.router, prefix="/internal", tags=["internal-commerce-read"])
 # 레벨2 컷오버 T1 — go 주최자 계정 화면(v2 organizer_profiles 정본)

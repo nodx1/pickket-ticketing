@@ -258,6 +258,15 @@ from app.models.organizer_support import (
     FinalCallRule,
 )
 
+# 과업 WP1·WP4: 가중치 정책 · Merkle 무결성 · 공정성 증명서
+from app.models.fairness import (
+    FairnessCertificate,
+    LotteryMerkleLeaf,
+    LotteryMerkleRoot,
+    LotteryPoolPolicy,
+    LotteryWeightPolicyRecord,
+)
+
 __all__ = [
     "User",
     "Event",
