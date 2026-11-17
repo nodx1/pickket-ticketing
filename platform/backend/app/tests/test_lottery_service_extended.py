@@ -154,6 +154,8 @@ def _build_service(session=None):
         return svc.pool_repo.get_by_event_tier.return_value
 
     svc.pool_repo.get_for_update = AsyncMock(side_effect=_get_for_update)
+    # 응모는 공유 잠금(get_for_share)을 쓴다(과업 WP11) — 같은 목 동작을 그대로 비춘다.
+    svc.pool_repo.get_for_share = AsyncMock(side_effect=_get_for_update)
     svc.entry_repo = AsyncMock()
     svc.tier_repo = AsyncMock()
     svc.ticket_repo = AsyncMock()

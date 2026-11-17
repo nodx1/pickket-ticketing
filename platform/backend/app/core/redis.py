@@ -32,7 +32,9 @@ redis_pool: Union[aioredis.Redis, RedisCluster, None] = None
 def build_redis_connection_kwargs(url: str) -> dict:
     kwargs: dict = {
         "decode_responses": True,
-        "max_connections": 50,
+        # 과업 WP11: 부하 테스트에서 50 상한이 동시 100요청에 바로 소진돼 'Too many connections'
+        # 503 이 났다(실측 2026-11-17). 상한을 설정으로 빼고 기본값을 올린다.
+        "max_connections": settings.REDIS_MAX_CONNECTIONS,
         "socket_timeout": 5,
         "socket_connect_timeout": 5,
         "retry_on_timeout": True,
@@ -78,8 +80,13 @@ async def init_redis():
         logger.info("Redis Cluster client initialized with %d startup nodes", len(nodes))
     else:
         url = settings.REDIS_URL.split("?")[0]  # strip query params
-        redis_pool = aioredis.from_url(url, **build_redis_connection_kwargs(url))
-        logger.info("Redis standalone client initialized")
+        # 과업 WP11: 상한에 닿으면 즉시 실패(ConnectionPool) 대신 잠깐 기다린다(BlockingConnectionPool).
+        #   피크 순간의 짧은 경합이 사용자 오류(503)로 번지지 않게 한다. 기다려도 안 되면 그때 실패.
+        pool = aioredis.BlockingConnectionPool.from_url(
+            url, timeout=settings.REDIS_POOL_TIMEOUT_SECONDS, **build_redis_connection_kwargs(url)
+        )
+        redis_pool = aioredis.Redis(connection_pool=pool)
+        logger.info("Redis standalone client initialized (blocking pool, max=%d)", settings.REDIS_MAX_CONNECTIONS)
 
 
 async def close_redis():

@@ -267,7 +267,8 @@ class SanctionService:
 
         tracker = AnomalyTracker(self.session)
         same_device = await tracker.get_same_device_user_count(event_id, device_fingerprint, user_id)
-        same_ip = await tracker.get_same_ip_user_count(event_id, ip_address, user_id)
+        # 검토 표시는 기기 신호가 있어야만 남기므로(아래), 기기 공유가 없으면 IP 집계는 건너뛴다(WP11 — 응모당 1왕복 절약).
+        same_ip = await tracker.get_same_ip_user_count(event_id, ip_address, user_id) if same_device else 0
         reasons: list[str] = []
         if same_device >= DEVICE_BLOCK_THRESHOLD:
             reasons.append(f"same_device_accounts={same_device + 1}")

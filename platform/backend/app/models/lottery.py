@@ -62,6 +62,9 @@ class LotteryPool(Base):
 
     entries: Mapped[list["LotteryEntry"]] = relationship(back_populates="pool", lazy="raise")
 
+    # 과업 WP11(부하 테스트 발견): 등급당 풀은 하나 — 동시 첫 응모가 풀을 여러 개 만들던 경합을 DB 가 막는다.
+    __table_args__ = (UniqueConstraint("event_id", "tier_id", name="uq_lottery_pool_event_tier"),)
+
 
 class LotteryEntry(Base):
     __tablename__ = "lottery_entries"

@@ -16,6 +16,18 @@ class LotteryPoolRepository(BaseRepository[LotteryPool]):
         )
         return result.scalar_one_or_none()
 
+    async def get_for_share(self, pool_id: uuid.UUID) -> LotteryPool | None:
+        """응모용 공유 잠금(FOR SHARE) — 과업 WP11.
+
+        응모끼리는 서로 막지 않고 동시에 진행하되, 추첨(FOR UPDATE, 배타)과는 직렬화된다.
+        추첨이 진행 중이면 응모는 기다렸다가 CLOSED 를 보고 거부되고, 진행 중인 응모가 있으면
+        추첨이 그 응모들의 커밋을 기다린다(idx13 경합 방어는 그대로).
+        """
+        result = await self.session.execute(
+            select(LotteryPool).where(LotteryPool.id == pool_id).with_for_update(read=True)
+        )
+        return result.scalar_one_or_none()
+
     async def get_by_event_tier(
         self, event_id: uuid.UUID, tier_id: uuid.UUID
     ) -> LotteryPool | None:

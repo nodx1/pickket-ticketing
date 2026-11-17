@@ -37,6 +37,9 @@ class Settings(BaseSettings):
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
+    # 과업 WP11: Redis 연결 풀 — 워커당 상한과 상한 도달 시 대기 시간(초)
+    REDIS_MAX_CONNECTIONS: int = 200
+    REDIS_POOL_TIMEOUT_SECONDS: float = 2.0
     REDIS_CLUSTER_MODE: bool = False
     REDIS_CLUSTER_NODES: str = ""  # comma-separated host:port pairs
     REDIS_TLS_INSECURE_SKIP_VERIFY: bool = False

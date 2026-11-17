@@ -183,3 +183,34 @@ async def lottery_series(session: AsyncSession, event_id: uuid.UUID, minutes: in
             {"bucket": r.bucket.isoformat(), "kind": r.kind, "n": int(r.n), "ap_sum": int(r.ap_sum or 0)} for r in rows
         ],
     }
+
+
+def defer_lottery_event(session: AsyncSession, **kwargs) -> None:
+    """응모 같은 뜨거운 경로용 — 커밋이 끝난 뒤 별도 세션으로 기록한다(과업 WP11).
+
+    트랜잭션 안에서 쓰면 SAVEPOINT·INSERT·RELEASE 3왕복이 잠금을 쥔 채 늘어난다(실측 약 2.7ms/건).
+    커밋 후로 미루면 응모 지연에서 빠지고, 롤백되면 기록하지 않는다(실제로 일어난 응모만 남는다).
+    """
+    if not _is_postgres(session):
+        return
+    import asyncio
+
+    from sqlalchemy import event as sa_event
+
+    from app.core.database import async_session
+
+    async def _write() -> None:
+        try:
+            async with async_session() as db:
+                await record_lottery_event(db, **kwargs)
+                await db.commit()
+        except Exception:  # noqa: BLE001
+            logger.warning("deferred timeseries write failed", exc_info=True)
+
+    def _after_commit(_session) -> None:
+        try:
+            asyncio.get_running_loop().create_task(_write())
+        except RuntimeError:
+            return
+
+    sa_event.listen(session.sync_session, "after_commit", _after_commit, once=True)

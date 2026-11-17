@@ -1,0 +1,42 @@
+{
+  "label": "tuned-w4",
+  "run": "1117093759",
+  "ran_at": "2026-11-17T09:38:34.088227+00:00",
+  "event_id": "6dfe7f77-d22e-4551-bb47-29a6aa8d6b4b",
+  "peak": {
+    "users": 1000,
+    "concurrency": 200,
+    "seconds": 12.58,
+    "throughput_rps": 79.5,
+    "status": {
+      "201": 1000
+    },
+    "error_rate": 0.0,
+    "latency_ms": {
+      "p50": 2082.7,
+      "p95": 5407.4,
+      "p99": 8102.3,
+      "max": 11139.5,
+      "mean": 2268.4
+    }
+  },
+  "duplicate_storm": {
+    "users": 100,
+    "burst_per_user": 10,
+    "requests": 1000,
+    "seconds": 16.01,
+    "status": {
+      "201": 100,
+      "400": 900
+    },
+    "users_with_exactly_one_entry": 100,
+    "users_with_multiple_entries": 0,
+    "users_with_exactly_one_ap_deduction": 100
+  },
+  "correctness": {
+    "entries_in_pool": 1100,
+    "expected_entries": 1100,
+    "timeseries_apply_rows": 1100
+  },
+  "passed": true
+}

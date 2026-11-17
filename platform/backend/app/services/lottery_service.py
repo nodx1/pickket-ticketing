@@ -18,6 +18,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from talkfile_engine.lottery import (
@@ -59,7 +60,7 @@ from app.schemas.lottery import (
 )
 from app.models.fairness import MerkleKind
 from app.services.fairness_service import FairnessService
-from app.services.timeseries_log import record_lottery_event
+from app.services.timeseries_log import defer_lottery_event, record_lottery_event
 from talkfile_engine.vcg_allocation import (
     PUBLIC_ALGORITHM_ID,
     VCG_ALGORITHM_NAME,
@@ -296,18 +297,20 @@ class LotteryService:
             user_id, event_id, ip_address=ip_address, device_fingerprint=device_fingerprint
         )
 
-        # Get or create lottery pool (with lock to prevent duplicate creation)
+        # Get or create lottery pool
+        # 🔴 과업 WP11 부하 테스트에서 발견(2026-11-17): 첫 응모가 동시에 몰리면 풀이 여러 개 생겼다.
+        #    예전 코드는 Redis 락 안에서 풀을 만들고 flush 만 한 채 락을 풀었다 — 커밋 전이라 다음 대기자의
+        #    재확인 조회에 안 보였고, 각자 풀을 또 만들었다. 이후 모든 응모가 MultipleResultsFound(500).
+        #    ⟹ (event_id, tier_id) UNIQUE(gwasup06) 를 정본으로 삼고, 생성은 SAVEPOINT 안에서 한다.
+        #       동시에 만든 쪽은 상대 커밋까지 기다렸다가 UNIQUE 위반 → 되돌리고 커밋된 풀을 다시 읽는다.
         pool = await self.pool_repo.get_by_event_tier(event_id, tier_id)
         if not pool:
-            async with redis_lock(f"v2:lottery_pool:{{{event_id}}}:{tier_id}", ttl=5, retry=20, delay=0.1):
-                # Double-check after acquiring lock
-                pool = await self.pool_repo.get_by_event_tier(event_id, tier_id)
-                if not pool:
-                    total_seats = tier.capacity - tier.sold_count
+            try:
+                async with self.session.begin_nested():
                     pool = await self.pool_repo.create(
                         event_id=event_id,
                         tier_id=tier_id,
-                        total_seats=total_seats,
+                        total_seats=tier.capacity - tier.sold_count,
                         use_fan_weight=True,
                         status=LotteryPoolStatus.OPEN,
                     )
@@ -321,6 +324,10 @@ class LotteryService:
                     # 과업 WP1: 사전 커밋과 같은 시점에 주최사 가중치 정책을 스냅숏·고정한다.
                     # 이후 정책을 바꿔도 이 풀에는 영향이 없다(사후 조작 방지).
                     await FairnessService(self.session).lock_pool_policy(pool)
+            except IntegrityError:
+                pool = await self.pool_repo.get_by_event_tier(event_id, tier_id)
+                if not pool:
+                    raise
 
         # idx13: apply/draw 경합 차단.
         # 이전엔 잠금 없는 일반 SELECT 의 pool.status 로 OPEN 을 확인한 뒤 엔트리를
@@ -330,7 +337,10 @@ class LotteryService:
         # 풀 행을 FOR UPDATE 로 잠그고 그 잠금 하에서 status 를 재확인하면 apply 와
         # draw 가 동일 행 잠금으로 직렬화되어, draw 가 진행 중이면 apply 는 그 잠금이
         # 풀릴 때까지 대기한 뒤 CLOSED 를 보고 거부된다(엔트리·AP 차감 발생 안 함).
-        locked_pool = await self.pool_repo.get_for_update(pool.id)
+        # 과업 WP11(부하 테스트): 예전엔 여기서 배타 잠금(FOR UPDATE)을 잡아 같은 풀의 모든 응모가
+        #   한 줄로 처리됐다(동시 100명 기준 처리량 25건/초, 중앙값 3.3초 — 실측). 응모끼리는 공유 잠금,
+        #   추첨만 배타 잠금이면 idx13 의 응모·추첨 직렬화는 그대로 지키면서 응모는 병렬로 돈다.
+        locked_pool = await self.pool_repo.get_for_share(pool.id)
         if locked_pool is not None:
             pool = locked_pool
         if pool.status != LotteryPoolStatus.OPEN:
@@ -397,8 +407,8 @@ class LotteryService:
             pity_bonus=pity_bonus,
             result=LotteryEntryResult.PENDING,
         )
-        # 과업 WP5: 응모 시계열(가명 actor). 실패해도 응모는 진행된다.
-        await record_lottery_event(
+        # 과업 WP5: 응모 시계열(가명 actor). 커밋 후 별도 세션으로 기록(WP11 — 응모 지연·잠금 시간에서 제외).
+        defer_lottery_event(
             self.session,
             event_id=event_id,
             kind="apply",

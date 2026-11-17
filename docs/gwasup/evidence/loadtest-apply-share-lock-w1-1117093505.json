@@ -1,0 +1,42 @@
+{
+  "label": "share-lock-w1",
+  "run": "1117093505",
+  "ran_at": "2026-11-17T09:35:21.448556+00:00",
+  "event_id": "8d63c701-b229-478b-a5eb-a8fde25a3512",
+  "peak": {
+    "users": 300,
+    "concurrency": 100,
+    "seconds": 7.48,
+    "throughput_rps": 40.1,
+    "status": {
+      "201": 300
+    },
+    "error_rate": 0.0,
+    "latency_ms": {
+      "p50": 2029.8,
+      "p95": 4403.8,
+      "p99": 5681.1,
+      "max": 7353.9,
+      "mean": 2243.0
+    }
+  },
+  "duplicate_storm": {
+    "users": 30,
+    "burst_per_user": 10,
+    "requests": 300,
+    "seconds": 6.34,
+    "status": {
+      "201": 30,
+      "400": 270
+    },
+    "users_with_exactly_one_entry": 30,
+    "users_with_multiple_entries": 0,
+    "users_with_exactly_one_ap_deduction": 30
+  },
+  "correctness": {
+    "entries_in_pool": 330,
+    "expected_entries": 330,
+    "timeseries_apply_rows": 330
+  },
+  "passed": true
+}
