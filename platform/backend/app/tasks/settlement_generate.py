@@ -45,6 +45,8 @@ from app.models.settlement import (
     SettlementType,
 )
 
+DIRECT_PROVIDER = "toss_direct"  # app.services.direct_settlement.DIRECT_PROVIDER 와 같은 값
+
 logger = logging.getLogger(__name__)
 
 _CENT = Decimal("0.01")
@@ -199,6 +201,9 @@ def _refund_equivalent(
                 Order.created_at >= period_start,
                 Order.created_at < period_end,
                 Order.deleted_at.is_(None),
+                # 과업 WP7: 주최사 PG 직결(무경유) 주문은 대금이 주최사 상점으로 바로 들어갔다 —
+                # 피켓이 지급할 정산 대상이 아니다(수수료는 platform_fee_invoices 로 별도 청구).
+                Order.pg_provider.is_distinct_from(DIRECT_PROVIDER),
             )
         ).scalar_one()
         total += _dec(primary)
@@ -369,6 +374,9 @@ def generate_settlements(
                 Order.created_at >= period_start,
                 Order.created_at < period_end,
                 Order.deleted_at.is_(None),
+                # 과업 WP7: 주최사 PG 직결(무경유) 주문은 대금이 주최사 상점으로 바로 들어갔다 —
+                # 피켓이 지급할 정산 대상이 아니다(수수료는 platform_fee_invoices 로 별도 청구).
+                Order.pg_provider.is_distinct_from(DIRECT_PROVIDER),
             )
             .group_by(Event.organizer_id)
         ).all()

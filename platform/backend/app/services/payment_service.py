@@ -165,6 +165,9 @@ class PaymentService:
 
         토스/mock/포트원은 None — 기존 8필드 계약 무변.
         """
+        if provider == "toss_direct" and isinstance(raw, dict):
+            # 과업 WP7: 직결 정산 — 결제창은 **주최사 상점의 클라이언트 키**로 띄운다.
+            return {"clientKey": raw.get("clientKey"), "settlement": "direct", "orderId": raw.get("orderId")}
         if provider != "nicepay":
             return None
         if not isinstance(raw, dict):
@@ -297,7 +300,14 @@ class PaymentService:
             # 할인이 안 걸렸으면 넣지 않아 전 카드사 선택 가능(현행 불변).
             if card_discount:
                 prepare_kwargs["select_card_code"] = card_discount["card_code"]
-        prepared = await self.gateway.prepare_payment(**prepare_kwargs)
+        # 과업 WP7: 주최사 PG 직결(무경유) 이벤트면 결제를 주최사 상점으로 보낸다(기본은 기존 경로).
+        from app.services.direct_settlement import DirectSettlementService
+
+        direct = await DirectSettlementService(self.session).route_for_event(order.event_id)
+        if direct is not None and getattr(self.gateway, "provider_name", None) == "nicepay":
+            prepare_kwargs.pop("pay_method", None)
+            prepare_kwargs.pop("select_card_code", None)
+        prepared = await (direct[0] if direct is not None else self.gateway).prepare_payment(**prepare_kwargs)
 
         if order.status != OrderStatus.PAYMENT_REQUIRED:
             validate_order_transition(order.status, OrderStatus.PAYMENT_REQUIRED)
@@ -318,6 +328,7 @@ class PaymentService:
             #    prepare 앞에서 따로 써두면 이 재할당이 통째로 덮어써 T15 가 영구 무력화된다
             #    (자체검수에서 실제로 그 상태였다. 스텁 테스트라 못 잡았다).
             **({"card_discount": card_discount} if card_discount else {}),
+            **({"direct_pg_account_id": str(direct[1].id), "settlement": "direct"} if direct is not None else {}),
         }
 
         await write_audit_log(

@@ -1,0 +1,117 @@
+{
+  "run": "1117085102",
+  "ran_at": "2026-11-17T08:51:04.822807+00:00",
+  "seconds": 2.6,
+  "event_id": "e12e8ceb-b721-4d7e-83d5-e2fbf1981df2",
+  "passed": 20,
+  "skipped": 1,
+  "failed": 0,
+  "checks": [
+    {
+      "check": "단말 3대 등록(키오스크·게이트 스캐너·POS)",
+      "ok": true,
+      "detail": "키 접두사 pkt_term_yQo5…"
+    },
+    {
+      "check": "Socket.IO 단말 접속 → 차단 목록 즉시 동기화",
+      "ok": true,
+      "detail": "terminal events=['hello', 'blocklist.sync']"
+    },
+    {
+      "check": "대시보드 소켓: 단말 온라인 표시",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "등록되지 않은 단말 키 소켓 접속 거부",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "소켓 scan → 입장 판정(ack)",
+      "ok": true,
+      "detail": "{\"result\": \"admitted\", \"code\": \"admitted\", \"message\": \"입장 확인\", \"ticket_no\": \"TKT-50FC5C19A3A2\", \"holder\": \"관**호\", \"tier\": \"VIP\", \"gate\": \"정문\", \"terminal_id\": \"7"
+    },
+    {
+      "check": "대시보드에 실시간 입장 이벤트",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "다른 게이트 같은 QR 화면 → 캡처 재사용 차단",
+      "ok": true,
+      "detail": "이미 입장에 사용된 QR 화면입니다(캡처 공유 의심). 직원에게 문의해 주세요."
+    },
+    {
+      "check": "부정 탐지 내역이 대시보드·다른 단말에 동기화",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "VIP 전용 게이트에 일반석 → 입장 권한 거부",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "주최사 티켓 차단 → 단말 차단 목록 실시간 갱신",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "차단 티켓 입장 거부",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "Slash 제재 → 해당 계정 티켓이 단말 차단 목록에 반영",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "제재 계정 티켓 입장 거부(POS 수기)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "단말 일시중지 → 대시보드 반영·요청 거부",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "입장 판정 시계열 기록(hypertable)",
+      "ok": true,
+      "detail": "{'admitted': 1, 'blocked_ticket': 1, 'gate_not_allowed': 1, 'qr_replay': 1, 'sanctioned_account': 1}"
+    },
+    {
+      "check": "입장 1분 연속 집계 조회",
+      "ok": true,
+      "detail": "{'admitted': Decimal('1'), 'rejected': Decimal('4')}"
+    },
+    {
+      "check": "토스 샌드박스: 틀린 키 → 실패로 판정",
+      "ok": true,
+      "detail": "HTTP 401 UNAUTHORIZED_KEY"
+    },
+    {
+      "check": "토스 샌드박스: 상점 없는 공개 문서 키 → 실패로 판정(NOT_FOUND_MERCHANT 오판 방지)",
+      "ok": true,
+      "detail": "HTTP 404 NOT_FOUND_MERCHANT"
+    },
+    {
+      "check": "토스 샌드박스: 주최사 테스트 키 → 상점 인증 성공",
+      "ok": true,
+      "skipped": true,
+      "detail": "TOSS_TEST_CLIENT_KEY/TOSS_TEST_SECRET_KEY 미제공"
+    },
+    {
+      "check": "연동 원장 해시 체인 검증",
+      "ok": true,
+      "detail": "rows=14, {'pg': 4, 'terminal': 10}"
+    },
+    {
+      "check": "연동 원장 변조 거부(append-only)",
+      "ok": true,
+      "detail": "(sqlalchemy.dialects.postgresql.asyncpg.Error) integration_ledger is append-only: UPDATE n"
+    }
+  ]
+}

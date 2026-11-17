@@ -267,6 +267,8 @@ from app.models.fairness import (
     LotteryWeightPolicyRecord,
 )
 from app.models.sanction import AccountSanction  # 과업 WP2
+from app.models.onsite import AdmissionBlock, OnsiteTerminal  # 과업 WP6
+from app.models.direct_settlement import EventSettlementMode, OrganizerPgAccount, PlatformFeeInvoice  # 과업 WP7
 
 __all__ = [
     "User",

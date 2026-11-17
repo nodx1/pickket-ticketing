@@ -17,6 +17,7 @@ dependencies = [
     "psycopg2-binary>=2.9.9",
     "alembic>=1.13.0",
     "redis>=5.0.0",
+    "python-socketio>=5.11.0",  # 과업 WP6: 현장 단말·대시보드 실시간(Socket.IO)
     "celery[redis]>=5.3.0",
     "PyJWT[crypto]>=2.10.1",
     "passlib[bcrypt]>=1.7.4",

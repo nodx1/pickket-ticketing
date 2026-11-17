@@ -120,6 +120,17 @@ class Settings(BaseSettings):
     WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS: int = 60  # 1-min replay window
     PORTONE_WEBHOOK_IPS: str = ""  # Comma-separated IP allowlist, e.g. "52.78.5.241,52.78.100.19"
 
+    # 현장 단말 연동 (과업 WP6)
+    # go(주최사 앱) 회전 QR 의 HMAC 비밀값(go 의 QR_SECRET 과 같은 값). 비우면 회전 QR 해석을 끈다.
+    GO_QR_SECRET: str = ""
+    # Socket.IO 다중 워커 동기화(Redis pub/sub). 테스트에서는 자동으로 끈다.
+    REALTIME_REDIS_MANAGER: bool = True
+    # Socket.IO 허용 Origin(콤마 구분). 비우면 CORS_ORIGINS 를 따른다.
+    REALTIME_CORS_ORIGINS: str = ""
+
+    # 주최사 PG 직결 정산 (과업 WP7) — true 면 직결 게이트웨이가 실제 토스 대신 모의 응답(테스트용)
+    DIRECT_PG_MOCK: bool = False
+
     # 공정성 증명서 서명 키 (과업 WP4) — Ed25519 개인키 32바이트 시드의 base64.
     # 미설정 시 운영에서는 증명서 발급만 503(서버 기동은 그대로), 개발에서는 SECRET_KEY 유도 키.
     FAIRNESS_SIGNING_KEY: str = ""

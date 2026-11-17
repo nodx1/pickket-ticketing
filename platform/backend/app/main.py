@@ -496,3 +496,8 @@ if _metrics_enabled:
 from app.api.health import health_router  # noqa: E402
 
 app.include_router(health_router)
+
+# 과업 WP6: 현장 단말·주최사 대시보드 실시간 게이트웨이(Socket.IO) — ws(s)://<api>/ws/socket.io/
+from app.realtime.gateway import asgi_app as realtime_asgi_app  # noqa: E402
+
+app.mount("/ws", realtime_asgi_app)

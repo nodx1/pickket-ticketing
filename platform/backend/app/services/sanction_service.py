@@ -224,15 +224,23 @@ class SanctionService:
         return row
 
     async def _publish(self, row: AccountSanction) -> None:
-        """현장 단말·대시보드 실시간 동기화(과업 WP6). 게이트웨이가 없으면 조용히 넘어간다."""
+        """현장 단말·대시보드 실시간 동기화(과업 WP6) — **커밋 후** 방송한다.
+
+        커밋 전에 방송하면 차단 목록을 다시 읽는 다른 세션이 이 제재를 못 본다.
+        """
         try:
-            from app.realtime.gateway import publish_sanction
+            from app.realtime.gateway import publish_after_commit, publish_sanction
         except ImportError:
             return
-        try:
-            await publish_sanction(row)
-        except Exception:
-            logger.warning("sanction publish failed", exc_info=True)
+        snapshot = AccountSanction(
+            id=row.id,
+            user_id=row.user_id,
+            event_id=row.event_id,
+            action=row.action,
+            reason_code=row.reason_code,
+            ap_burned=row.ap_burned,
+        )
+        publish_after_commit(self.session, lambda: publish_sanction(snapshot))
 
     # ───────── 계정 복제 차단 ─────────
 

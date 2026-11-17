@@ -196,6 +196,11 @@ def get_payment_gateway(provider: str | None = None):
         from app.services.nicepay_gateway import NicepayGateway
 
         return NicepayGateway()
+    if resolved == "toss_direct":
+        # 과업 WP7: 주최사 PG 직결(무경유) 주문 — 게이트웨이가 주문의 직결 계정 키를 스스로 찾는다.
+        from app.services.direct_settlement import DirectTossGateway
+
+        return DirectTossGateway()
     # "toss" 및 미지원 provider 는 토스로 폴백(현 단일 PG 전환 상태 유지).
     from app.services.toss_gateway import TossGateway
 
