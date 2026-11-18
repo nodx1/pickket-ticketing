@@ -2294,6 +2294,13 @@ async def _do_upsert_tiers(db: AsyncSession, event_id: uuid.UUID, body: TiersReq
             _apply_tier_meta(existing, t)
             tier = existing
         else:
+            # 판매 계획(공정 추첨 등)을 세운 뒤 새로 추가한 입장권 등급은 그 계획의 첫 주 단계
+            # 방식을 따른다. 등급 추가 화면은 판매 방식을 묻지 않아 기본값(fixed_fcfs)이 오므로,
+            # 기본값일 때만 계획을 따르고 명시한 방식(추첨·대기열 등)은 그대로 둔다.
+            if sm == "fixed_fcfs" and (getattr(t, "product_type", None) or "ticket") == "ticket":
+                from app.services.sale_phase_service import plan_tier_sale_mode
+
+                sm = await plan_tier_sale_mode(db, event_id) or sm
             tier = SeatTier(
                 event_id=event_id,
                 external_ref=t.external_ref,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@pickket/ui";
 import { Badge } from "@pickket/ui";
 import {
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { getDomainLabels, getOrganizerLabels } from "@pickket/lib";
 import {
+  ageRatingLabel,
   EventInfoTabsEvent,
   formatPeriod,
   getFaqItems,
@@ -34,6 +35,7 @@ export default function EventInfoTabs({
   saleModeDescription,
 }: EventInfoTabsProps) {
   const t = useTranslations("event.infoTabs");
+  const locale = useLocale();
   const [descExpanded, setDescExpanded] = useState(false);
 
   const parsedTags = useMemo(() => {
@@ -90,12 +92,12 @@ export default function EventInfoTabs({
     if (ageValue) {
       items.push({
         label: orgLabels.ageRatingLabel,
-        value: ageValue,
+        value: ageRatingLabel(ageValue, locale),
       });
     }
 
     return items;
-  }, [event, orgLabels, t]);
+  }, [event, orgLabels, t, locale]);
 
   const cat = event.category?.toLowerCase();
   const isSports = cat === "sports";

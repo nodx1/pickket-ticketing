@@ -887,7 +887,7 @@
       "badgeWaitlisted": "Waitlisted",
       "badgeLost": "Not Selected",
       "badgeEntered": "Entered",
-      "labelZone": "Zone",
+      "labelZone": "Tier",
       "labelTickets": "Tickets",
       "ticketCount": "{count} ticket(s)",
       "labelInvestedAp": "Invested AP",
@@ -1339,7 +1339,11 @@
       "upToDays": "Up to {days} days before",
       "sameDay": "On event day",
       "freeCancel": "Free cancellation",
-      "note": "Cancellation fees are based on the event date; refunds are issued to the original payment method."
+      "note": "Cancellation fees are based on the event date; refunds are issued to the original payment method.",
+      "beforeDays": "{days}+ days before",
+      "rangeDays": "{to}–{from} days before",
+      "dDay": "{days} day before",
+      "feePct": "{pct}% fee"
     }
   },
   "booking": {
@@ -1491,7 +1495,13 @@
       "capacity": "Capacity: {capacity}",
       "noticeNoPayment": "📌 No payment is made at entry — payment instructions are sent only to winners.",
       "noticeRandomSeat": "📌 Winners are assigned a random seat within the selected section.",
-      "noticeCommitReveal": "📌 After the deadline, winners are drawn fairly using a commit-reveal hash."
+      "noticeCommitReveal": "📌 After the deadline, winners are drawn fairly using a commit-reveal hash.",
+      "tierSelectLabel": "Choose a ticket to apply for",
+      "noTiers": "No tickets are open for application",
+      "targetAriaLabel": "Apply for {name}, {price}, {entryCount} applied",
+      "noticeNoSeat": "📌 General admission — no assigned seats. Winners receive a ticket after payment.",
+      "closedHint": "Applications are closed. Check your draw result in the card above.",
+      "closedBadge": "Closed"
     },
     "sidebar": {
       "ctaLottery": "Enter Lottery",
@@ -1627,7 +1637,8 @@
       "submitting": "Applying…",
       "submit": "Apply",
       "submitWithAp": "Apply (AP {ap})",
-      "submitDisclaimer": "No payment required to apply. Winners will be notified for payment."
+      "submitDisclaimer": "No payment required to apply. Winners will be notified for payment.",
+      "titleTier": "Apply for {tierName}"
     },
     "subdomainSheet": {
       "title": "Book tickets — {title}",
@@ -1738,6 +1749,10 @@
       "nextButton": "Next",
       "submittingButton": "Submitting...",
       "submitButton": "Book with Phone Number"
+    },
+    "generalAdmission": {
+      "badge": "General admission",
+      "body": "No assigned seats. Choose a ticket type and enter with the mobile ticket QR on site."
     }
   },
   "result": {
@@ -2365,7 +2380,8 @@
     "confetti_resale_message": "Your resale purchase is confirmed!",
     "refunded_title": "Refund Completed",
     "refunded_amount": "Refund amount:",
-    "refunded_at": "Refunded on:"
+    "refunded_at": "Refunded on:",
+    "ticket_fallback": "Ticket"
   },
   "ticket": {
     "title": "Ticket Detail",
@@ -3055,7 +3071,9 @@
       "weightMedian": "Median",
       "weightMax": "Max",
       "seedDerivationMethod": "Seed derivation method: {method}"
-    }
+    },
+    "waitlisted_label": "Waitlisted",
+    "waitlisted_message": "If a winner doesn't pay in time, the chance passes to the waitlist in order. We'll notify you."
   },
   "legal": {
     "legal_badge": "Legal",
@@ -4002,7 +4020,8 @@
       "agreeLabel": "I have reviewed my order and agree to proceed with payment.",
       "processingButton": "Processing with {method}...",
       "cancelProcessing": "Cancel payment and close",
-      "confirmButton": "Pay {amount}"
+      "confirmButton": "Pay {amount}",
+      "refundPolicyEvent": "Free cancellation until {days} days before the event; tiered cancellation fees apply after that."
     },
     "reminderBanner": {
       "pendingOrdersCount": "You have {count} order(s) awaiting payment",

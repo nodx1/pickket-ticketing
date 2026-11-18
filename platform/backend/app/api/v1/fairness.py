@@ -171,6 +171,9 @@ async def put_event_policy(event_id: uuid.UUID, request: Request, db: AsyncSessi
         )
     except (FairnessError, ValueError) as exc:
         raise _bad_request(exc) from exc
+    # 🔴 get_db 는 자동 커밋하지 않는다. 커밋을 빼먹으면 응답은 성공인데 DB 에는 아무것도 남지 않는다
+    #    (실측 2026-11-18: 피켓고에서 고른 가중치 정책·발급한 증명서가 사라짐).
+    await db.commit()
     return {"ok": True, "policy_hash": record.policy_hash, "view": await service.event_policy_view(event_id)}
 
 
@@ -218,12 +221,46 @@ async def issue_pool_certificate(pool_id: uuid.UUID, request: Request, db: Async
     service = FairnessService(db)
     try:
         cert = await service.issue_certificate(pool_id, issued_by=str(body.get("actor") or "") or None)
-        view = await service.certificate_view(cert.cert_no)
+        cert_no = cert.cert_no
+        # 🔴 get_db 는 자동 커밋하지 않는다. 커밋을 빼먹으면 응답은 성공인데 DB 에는 아무것도 남지 않는다
+        #    (실측 2026-11-18: 피켓고에서 고른 가중치 정책·발급한 증명서가 사라짐).
+        await db.commit()
+        view = await service.certificate_view(cert_no)
     except FairnessError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except SigningKeyUnavailable as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     return view
+
+
+@internal_router.post("/lottery/pools/{pool_id}/draw")
+async def draw_pool_now(pool_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db)):
+    """주최사 「지금 추첨하기」(피켓고 공정성 증명서 화면) — 응모 마감 뒤에만.
+
+    운영에서는 자동 추첨 작업이 마감 뒤 같은 일을 한다. 둘 중 먼저 실행된 쪽만 추첨하고,
+    이미 추첨된 풀은 다시 뽑지 않고 현재 상태만 돌려준다(이중 추첨 방지).
+    """
+    from datetime import datetime, timezone
+
+    from app.models.lottery import LotteryPool, LotteryPoolStatus
+    from app.services.fairness_service import lottery_deadline
+    from app.services.lottery_service import LotteryService
+
+    await _verified_json(request)
+    pool = await db.get(LotteryPool, pool_id)
+    if pool is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="추첨 풀을 찾을 수 없습니다")
+    if pool.status == LotteryPoolStatus.DRAWN:
+        return {"pool_id": str(pool.id), "already_drawn": True}
+    deadline = await lottery_deadline(db, pool.event_id)
+    if deadline is not None and datetime.now(timezone.utc) < deadline:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="응모 마감 전에는 추첨할 수 없습니다")
+    try:
+        result = await LotteryService(db).draw(pool_id=pool.id)
+        await db.commit()
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return {"pool_id": str(pool.id), "already_drawn": False, "winners": result.winners, "waitlisted": result.waitlisted}
 
 
 # ───────────────────────── 제재(Slash)·시계열 (과업 WP2·WP5) ─────────────────────────
@@ -269,7 +306,9 @@ async def impose_event_sanction(event_id: uuid.UUID, request: Request, db: Async
         )
     except SanctionError as exc:
         raise _bad_request(exc) from exc
-    return {"ok": True, "sanction_id": str(sanction.id), "ap_burned": sanction.ap_burned}
+    result = {"ok": True, "sanction_id": str(sanction.id), "ap_burned": sanction.ap_burned}
+    await db.commit()
+    return result
 
 
 @internal_router.post("/sanctions/{sanction_id}/lift")
@@ -286,7 +325,9 @@ async def lift_sanction(sanction_id: uuid.UUID, request: Request, db: AsyncSessi
         row = await SanctionService(db).lift(sanction_id, actor=str(body.get("actor") or "") or None, note=str(body.get("note") or ""))
     except SanctionError as exc:
         raise _bad_request(exc) from exc
-    return {"ok": True, "lift_id": str(row.id)}
+    lift_id = str(row.id)
+    await db.commit()
+    return {"ok": True, "lift_id": lift_id}
 
 
 @internal_router.get("/events/{event_id}/timeseries")

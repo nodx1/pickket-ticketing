@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
   Trophy,
   Clock,
-  XCircle,
   Hourglass,
   CreditCard,
   ArrowRight,
@@ -52,29 +52,21 @@ export default function MyLotteryResultCard({
   locale,
   refreshKey,
 }: Props) {
-  const [entries, setEntries] = useState<MyLotteryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
   const t = useTranslations("lottery");
 
+  // 예매 화면에는 응모 패널이 PC·모바일 두 벌 있다. 각자 같은 주소를 동시에 부르면 공통 API 의
+  // 중복 GET 취소가 먼저 보낸 쪽을 끊어 PC 화면에 결과 카드가 영영 안 뜬다(당첨자에게 결제 버튼이
+  // 안 보이던 결함). 한 쿼리를 함께 쓰게 해 요청이 한 번만 나가게 한다.
+  const { data: entries = [], isLoading: loading, refetch } = useQuery<MyLotteryEntry[]>({
+    queryKey: ["events", eventId, "lottery", "my-entries"],
+    queryFn: async () => (await getMyLotteryEntries(eventId)).data.entries ?? [],
+    refetchInterval: 10_000,
+    staleTime: 5_000,
+    retry: false,
+  });
   useEffect(() => {
-    let cancelled = false;
-    const fetch = async () => {
-      try {
-        const res = await getMyLotteryEntries(eventId);
-        if (!cancelled) setEntries(res.data.entries ?? []);
-      } catch {
-        if (!cancelled) setEntries([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    fetch();
-    const iv = setInterval(fetch, 10_000);
-    return () => {
-      cancelled = true;
-      clearInterval(iv);
-    };
-  }, [eventId, refreshKey]);
+    if (refreshKey) void refetch();
+  }, [refreshKey, refetch]);
 
   if (loading || entries.length === 0) return null;
 
@@ -140,27 +132,20 @@ export default function MyLotteryResultCard({
           );
         }
         if (result === "waitlisted") {
+          // 🔴 대기는 낙첨이 아니다 — 당첨자가 결제하지 않으면 순서대로 기회가 넘어간다.
+          //    예전엔 「낙첨 · 다음 기회에 도전하세요」로 보여 대기자가 포기하게 만들었다(실측 2026-11-18).
           return (
             <div
               key={e.pool_id}
-              className="p-4 rounded-lg bg-muted/40 border border-border opacity-75"
+              className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/40"
             >
               <div className="flex items-center gap-2 mb-1">
-                <XCircle className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-semibold text-muted-foreground">
-                  {e.tier_name} · {t("lost_label")}
+                <Hourglass className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                  {e.tier_name} · {t("waitlisted_label")}
                 </span>
               </div>
-              <p className="text-2xs text-muted-foreground">
-                {e.invested_ap > 0
-                  ? t("ap_refund_message")
-                      .replace("{ap}", e.invested_ap.toLocaleString())
-                      .replace(
-                        "{bonus}",
-                        Math.floor(e.invested_ap * 0.1).toLocaleString(),
-                      )
-                  : t("next_chance")}
-              </p>
+              <p className="text-2xs text-foreground">{t("waitlisted_message")}</p>
             </div>
           );
         }
@@ -198,22 +183,18 @@ export default function MyLotteryResultCard({
  * 증명서 페이지에서 '내 응모 확인'으로 내 응모가 명단·결과에 그대로 들어 있는지 직접 확인할 수 있다.
  */
 function FairnessCertificateLinks({ eventId, poolIds }: { eventId: string; poolIds: string[] }) {
-  const [certs, setCerts] = useState<Array<{ cert_no: string; pool_id: string; tier_name: string }>>([]);
-  const key = poolIds.join(",");
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .get(`/fairness/events/${eventId}/certificates`)
-      .then((res) => {
-        if (cancelled) return;
-        const wanted = new Set(key.split(","));
-        setCerts((res.data.certificates ?? []).filter((c: { pool_id: string }) => wanted.has(c.pool_id)));
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [eventId, key]);
+  // 결과 카드와 같은 이유로(PC·모바일 두 벌이 같은 주소를 동시 호출 → 중복 GET 취소) 한 쿼리를 함께 쓴다.
+  // 추첨 직후엔 아직 발급 전일 수 있어 주기적으로 다시 본다.
+  const { data: all = [] } = useQuery<Array<{ cert_no: string; pool_id: string; tier_name: string }>>({
+    queryKey: ["fairness", "events", eventId, "certificates"],
+    queryFn: async () => (await api.get(`/fairness/events/${eventId}/certificates`)).data.certificates ?? [],
+    enabled: poolIds.length > 0,
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+    retry: false,
+  });
+  const wanted = new Set(poolIds);
+  const certs = all.filter((c) => wanted.has(c.pool_id));
   if (certs.length === 0) return null;
   return (
     <div className="space-y-1.5">

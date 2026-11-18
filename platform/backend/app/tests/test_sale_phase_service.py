@@ -451,3 +451,92 @@ async def test_review_request_upsert_preserves_status_and_config(db_session):
     assert row.config["payment_window_hours"] == 48
     # 이미 open 인 단계의 시각은 사후 변경되지 않는다
     assert row.starts_at.replace(tzinfo=UTC) < (now + timedelta(days=5))
+
+
+# ── 자유 입장(좌석 지정 없음) 이벤트: 정원 = 판매 중인 입장권 등급 수량 합 ──────────
+#    좌석 배치도가 없는 자유 입장 행사(골프대회 갤러리권 등)에서 공정 추첨 판매 단계를
+#    저장하면 "좌석이 하나도 없는 이벤트"로 거부되던 결함의 회귀 테스트.
+
+
+@pytest.mark.asyncio
+async def test_unassigned_event_capacity_counts_ticket_tiers(db_session):
+    from app.models.event import SeatTier
+
+    event = await _mk_event(db_session, days_ahead=90)
+    event.seat_type = "unassigned"
+    db_session.add_all(
+        [
+            SeatTier(event_id=event.id, name="갤러리 입장권", capacity=20, base_price=30000),
+            SeatTier(event_id=event.id, name="주말권", capacity=30, base_price=50000),
+            # 부가상품·판매 중지 등급·무제한 등급은 추첨 정원에 넣지 않는다
+            SeatTier(event_id=event.id, name="주차권", capacity=100, base_price=5000, product_type="addon"),
+            SeatTier(event_id=event.id, name="중지된 등급", capacity=40, base_price=1000, is_active=False),
+            SeatTier(event_id=event.id, name="무제한", capacity=1_000_000, base_price=0),
+        ]
+    )
+    await db_session.flush()
+    assert await sps.compute_total_capacity(db_session, event) == 50
+
+    opens = datetime.now(UTC) + timedelta(days=1)
+    await sps.apply_sale_plan(db_session, event, [_lottery_spec(opens)], None)
+    rows = await sps.list_phases(db_session, event.id)
+    assert rows[0].phase == "lottery"
+    assert rows[0].target_quantity == 50
+
+
+@pytest.mark.asyncio
+async def test_assigned_event_without_seats_still_rejected(db_session):
+    """지정석 행사는 기존 규칙 그대로 — 좌석·스탠딩이 없으면 주 단계를 거부한다."""
+    from app.models.event import SeatTier
+
+    event = await _mk_event(db_session, days_ahead=90)
+    db_session.add(SeatTier(event_id=event.id, name="R석", capacity=20, base_price=30000))
+    await db_session.flush()
+    assert await sps.compute_total_capacity(db_session, event) == 0
+    with pytest.raises(sps.SalePlanError):
+        await sps.apply_sale_plan(db_session, event, [_lottery_spec(datetime.now(UTC) + timedelta(days=1))], None)
+
+
+# ── 판매 단계 ↔ 등급 판매 방식 일치 ─────────────────────────────────────────
+#    주최자가 「판매 방식: 공정 추첨」을 저장해도 등급이 fixed_fcfs 로 남아 가중치 추첨 설정
+#    화면·응모 기간 가드·팬 가중치가 적용되지 않던 결함의 회귀 테스트. 등급은 첫 주 단계의
+#    방식으로 시작하고(추첨 종료 뒤 FCFS 전환은 기존 작업이 담당) 계획이 없으면 선착순이다.
+
+
+async def _unassigned_event_with_tiers(db_session):
+    from app.models.event import SeatTier
+
+    event = await _mk_event(db_session, days_ahead=90)
+    event.seat_type = "unassigned"
+    t1 = SeatTier(event_id=event.id, name="갤러리 입장권", capacity=20, base_price=30000)
+    addon = SeatTier(event_id=event.id, name="주차권", capacity=50, base_price=5000, product_type="addon")
+    db_session.add_all([t1, addon])
+    await db_session.flush()
+    return event, t1, addon
+
+
+@pytest.mark.asyncio
+async def test_lottery_plan_marks_ticket_tiers_point_lottery(db_session):
+    event, t1, addon = await _unassigned_event_with_tiers(db_session)
+    await sps.apply_sale_plan(db_session, event, [_lottery_spec(datetime.now(UTC) + timedelta(days=1))], None)
+    assert t1.sale_mode == "point_lottery"
+    assert addon.sale_mode == "fixed_fcfs"  # 부가상품은 추첨 대상이 아니다
+
+    # 계획을 선착순 단독으로 바꾸면 다시 선착순
+    await sps.apply_sale_plan(db_session, event, [], datetime.now(UTC) + timedelta(days=1))
+    assert t1.sale_mode == "fixed_fcfs"
+
+
+@pytest.mark.asyncio
+async def test_plan_tier_mode_follows_first_main_phase(db_session):
+    event, t1, _ = await _unassigned_event_with_tiers(db_session)
+    assert await sps.plan_tier_sale_mode(db_session, event.id) is None
+    await sps.apply_sale_plan(db_session, event, [_lottery_spec(datetime.now(UTC) + timedelta(days=1))], None)
+    assert await sps.plan_tier_sale_mode(db_session, event.id) == "point_lottery"
+
+
+def test_phase_to_tier_sale_mode_mapping():
+    assert sps.tier_sale_mode_for_phase("lottery") == "point_lottery"
+    assert sps.tier_sale_mode_for_phase("membership_presale") == "fanclub_presale"
+    assert sps.tier_sale_mode_for_phase("queue_sale") == "queue"
+    assert sps.tier_sale_mode_for_phase("fcfs_residual") == "fixed_fcfs"

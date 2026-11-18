@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { currentLocale } from "@/lib/locale-path";
 import {
   type PayMethod,
   type PaymentResponse,
@@ -149,8 +150,7 @@ export function usePayment(
 
     try {
       // provider(토스/나이스) 분기는 공통 startPayment 로 위임(3중복제 공통화).
-      const locale =
-        (typeof window !== "undefined" && window.location.pathname.split("/")[1]) || "ko";
+      const locale = currentLocale();
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       const successUrl = `${origin}/${locale}/payment/success?order=${encodeURIComponent(orderId)}`;
       const failUrl = `${origin}/${locale}/payment/fail?order=${encodeURIComponent(orderId)}`;

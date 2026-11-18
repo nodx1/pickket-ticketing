@@ -21,10 +21,12 @@ interface StickyCTABarProps {
   minPrice: number;
   maxPrice: number;
   isSoldOut: boolean;
+  /** 추첨 등급만 있는 행사 — 구매 대신 피켓 응모 화면으로 보낸다(lib/public/lottery-cta). */
+  lotteryHref?: string | null;
 }
 
 export function StickyCTABar({ queueEnabled,
-  eventId, eventSlug, minPrice, maxPrice, isSoldOut }: StickyCTABarProps) {
+  eventId, eventSlug, minPrice, maxPrice, isSoldOut, lotteryHref }: StickyCTABarProps) {
   const [visible, setVisible] = useState(false);
   const [queueReady, setQueueReady] = useState(false);
 
@@ -94,6 +96,11 @@ export function StickyCTABar({ queueEnabled,
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{priceLabel}</p>
         </div>
+        {lotteryHref ? (
+          <Button asChild size="lg" className="shrink-0">
+            <a href={lotteryHref}>피켓에서 추첨 응모</a>
+          </Button>
+        ) : (
         <Button asChild={queueReady && !isSoldOut} disabled={isSoldOut || !queueReady} size="lg" className="shrink-0">
           {queueReady && !isSoldOut ? (
             <Link href={`/e/${eventSlug}/checkout`}>티켓 구매</Link>
@@ -101,6 +108,7 @@ export function StickyCTABar({ queueEnabled,
             <span>{isSoldOut ? "매진" : "대기열 확인 중"}</span>
           )}
         </Button>
+        )}
       </div>
     </div>
   );

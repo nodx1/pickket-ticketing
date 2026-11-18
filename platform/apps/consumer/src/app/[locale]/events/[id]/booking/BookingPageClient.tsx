@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState, useRef } from "react";
+import { currentLocale } from "@/lib/locale-path";
 import { useTranslations } from "next-intl";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -12,6 +13,8 @@ import {
   releaseSeats,
   applyLottery,
   getLotteryStatus,
+  getLotteryStats,
+  type PublicLotteryStats,
   type EventDetail,
   type MyEventStatus,
   type SeatTier,
@@ -31,6 +34,7 @@ import {
 } from "@/lib/nicepay-methods";
 import BookingHeader from "./_components/BookingHeader";
 import SeatMapPanel from "./_components/SeatMapPanel";
+import GeneralAdmissionPanel from "./_components/GeneralAdmissionPanel";
 import TicketPanel from "./_components/TicketPanel";
 import LotteryApplyPanel from "./_components/LotteryApplyPanel";
 import LotteryApplyModal from "./_components/LotteryApplyModal";
@@ -238,6 +242,21 @@ export default function BookingPageClient({
    * 이 경우 좌석 선택/결제 UI 숨기고 구역별 응모 UI 노출.
    */
   const isLotteryEvent = tiers.some((t) => t.sale_mode === "point_lottery");
+  /** 응모 마감 시각(phase_configs 정본) — 응모 패널에 표시. 이벤트 상세와 같은 공개 통계를 쓴다. */
+  const { data: lotteryStats } = useQuery<PublicLotteryStats>({
+    queryKey: ["events", eventId, "lottery-stats"],
+    queryFn: async () => (await getLotteryStats(eventId)).data,
+    enabled: isLotteryEvent && !!eventId,
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+  });
+  /** 자유 입장(좌석 배치도 없음) — 배치도 대신 행사 요약 패널을 보여 준다. */
+  const isGeneralAdmission = event?.seat_type === "unassigned";
+  const generalAdmissionDate = event?.event_date
+    ? new Date(event.event_date).toLocaleString(params.locale === "ko" || !params.locale ? "ko-KR" : "en-US", {
+        year: "numeric", month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit",
+      })
+    : null;
 
   /* ── Lottery 응모 모달 상태 ── */
   const [lotteryApplyTarget, setLotteryApplyTarget] = useState<{
@@ -415,8 +434,7 @@ export default function BookingPageClient({
     try {
       // provider(토스/나이스) 분기는 공통 startPayment 로 위임(3중복제 공통화).
       // 성공 경로는 리다이렉트로 종료 — 정상 흐름은 아래 도달 전에 페이지를 떠난다.
-      const locale =
-        (typeof window !== "undefined" && window.location.pathname.split("/")[1]) || "ko";
+      const locale = currentLocale();
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       const successUrl = `${origin}/${locale}/payment/success?order=${encodeURIComponent(pendingOrderId)}`;
       const failUrl = `${origin}/${locale}/payment/fail?order=${encodeURIComponent(pendingOrderId)}`;
@@ -719,31 +737,35 @@ export default function BookingPageClient({
         className="hidden lg:flex flex-1 min-h-0 flex-row overflow-hidden"
         aria-label={t("desktopBookingLabel")}
       >
-        <SeatMapPanel
-          eventId={eventId}
-          venue={venue}
-          tiers={tiers}
-          preloadedSeats={seats}
-          selectedTier={selectedTier}
-          selectedSeats={booking.selectedSeats}
-          quantity={booking.quantity}
-          onSelectTier={handleMapSelectTier}
-          onToggleSeat={handleToggleSeat}
-          onSetSelectedSeats={booking.setSelectedSeats}
-          category={event.category}
-          homeTeam={event.home_team}
-          awayTeam={event.away_team}
-          eventImageUrl={event.image_url}
-          eventTitle={event.title}
-          seatSelectionActive={isLotteryEvent ? false : seatSelectionActive}
-          onExitSeatSelection={handleExitSeatSelection}
-          event={event}
-          lotteryMode={isLotteryEvent}
-          onSectionClickForLottery={({ sectionName, tierId }) => {
-            const tier = tiers.find((t) => t.id === tierId);
-            if (tier) setLotteryApplyTarget({ tier, sectionName });
-          }}
-        />
+        {isGeneralAdmission ? (
+          <GeneralAdmissionPanel title={event.title} venue={event.venue} dateText={generalAdmissionDate} imageUrl={event.image_url} />
+        ) : (
+          <SeatMapPanel
+            eventId={eventId}
+            venue={venue}
+            tiers={tiers}
+            preloadedSeats={seats}
+            selectedTier={selectedTier}
+            selectedSeats={booking.selectedSeats}
+            quantity={booking.quantity}
+            onSelectTier={handleMapSelectTier}
+            onToggleSeat={handleToggleSeat}
+            onSetSelectedSeats={booking.setSelectedSeats}
+            category={event.category}
+            homeTeam={event.home_team}
+            awayTeam={event.away_team}
+            eventImageUrl={event.image_url}
+            eventTitle={event.title}
+            seatSelectionActive={isLotteryEvent ? false : seatSelectionActive}
+            onExitSeatSelection={handleExitSeatSelection}
+            event={event}
+            lotteryMode={isLotteryEvent}
+            onSectionClickForLottery={({ sectionName, tierId }) => {
+              const tier = tiers.find((t) => t.id === tierId);
+              if (tier) setLotteryApplyTarget({ tier, sectionName });
+            }}
+          />
+        )}
         {isLotteryEvent ? (
           <LotteryApplyPanel
             eventId={eventId}
@@ -753,7 +775,7 @@ export default function BookingPageClient({
             sections={venue?.sections ?? []}
             entryCountsByTier={entryCountsByTier}
             myEntry={myLotteryEntry}
-            closesAt={null}
+            closesAt={lotteryStats?.closes_at ?? null}
             refreshKey={myLotteryEntry ? 1 : 0}
             onOpenApplyModal={handleOpenLotteryApply}
           />
@@ -789,31 +811,35 @@ export default function BookingPageClient({
         aria-label={t("mobileSeatMapLabel")}
         aria-describedby="booking-tier-status"
       >
-        <SeatMapPanel
-          eventId={eventId}
-          venue={venue}
-          tiers={tiers}
-          preloadedSeats={seats}
-          selectedTier={selectedTier}
-          selectedSeats={booking.selectedSeats}
-          quantity={booking.quantity}
-          onSelectTier={handleMapSelectTier}
-          onToggleSeat={handleToggleSeat}
-          onSetSelectedSeats={booking.setSelectedSeats}
-          category={event.category}
-          homeTeam={event.home_team}
-          awayTeam={event.away_team}
-          eventImageUrl={event.image_url}
-          eventTitle={event.title}
-          seatSelectionActive={isLotteryEvent ? false : seatSelectionActive}
-          onExitSeatSelection={handleExitSeatSelection}
-          event={event}
-          lotteryMode={isLotteryEvent}
-          onSectionClickForLottery={({ sectionName, tierId }) => {
-            const tier = tiers.find((t) => t.id === tierId);
-            if (tier) setLotteryApplyTarget({ tier, sectionName });
-          }}
-        />
+        {isGeneralAdmission ? (
+          <GeneralAdmissionPanel title={event.title} venue={event.venue} dateText={generalAdmissionDate} imageUrl={event.image_url} />
+        ) : (
+          <SeatMapPanel
+            eventId={eventId}
+            venue={venue}
+            tiers={tiers}
+            preloadedSeats={seats}
+            selectedTier={selectedTier}
+            selectedSeats={booking.selectedSeats}
+            quantity={booking.quantity}
+            onSelectTier={handleMapSelectTier}
+            onToggleSeat={handleToggleSeat}
+            onSetSelectedSeats={booking.setSelectedSeats}
+            category={event.category}
+            homeTeam={event.home_team}
+            awayTeam={event.away_team}
+            eventImageUrl={event.image_url}
+            eventTitle={event.title}
+            seatSelectionActive={isLotteryEvent ? false : seatSelectionActive}
+            onExitSeatSelection={handleExitSeatSelection}
+            event={event}
+            lotteryMode={isLotteryEvent}
+            onSectionClickForLottery={({ sectionName, tierId }) => {
+              const tier = tiers.find((t) => t.id === tierId);
+              if (tier) setLotteryApplyTarget({ tier, sectionName });
+            }}
+          />
+        )}
       </div>
       <div
         className="lg:hidden"
@@ -829,7 +855,7 @@ export default function BookingPageClient({
             sections={venue?.sections ?? []}
             entryCountsByTier={entryCountsByTier}
             myEntry={myLotteryEntry}
-            closesAt={null}
+            closesAt={lotteryStats?.closes_at ?? null}
             refreshKey={myLotteryEntry ? 1 : 0}
             onOpenApplyModal={handleOpenLotteryApply}
           />

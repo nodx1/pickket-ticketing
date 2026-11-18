@@ -330,7 +330,7 @@ app.add_middleware(
     allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Idempotency-Key", "X-Behavior-Token", "X-Behavior-Session", "X-Screen-Info", "X-Timezone", "X-Client-Type", "X-CSRF-Token", "sentry-trace", "baggage"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-Idempotency-Key", "X-Behavior-Token", "X-Behavior-Session", "X-Screen-Info", "X-Timezone", "X-Client-Type", "X-CSRF-Token", "X-Terminal-Key", "sentry-trace", "baggage"],
 )
 app.add_middleware(CacheControlMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=500)

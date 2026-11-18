@@ -109,6 +109,30 @@ export default function FairnessPage() {
     }
   };
 
+  // 응모 마감 뒤 주최사가 바로 추첨한다. 운영에서는 자동 추첨 작업이 같은 일을 하고, 둘 중 먼저
+  // 실행된 쪽만 추첨된다(v2 가 이중 추첨을 막는다).
+  const drawNow = async (pool: FairnessPool) => {
+    setBusy(`draw:${pool.pool_id}`);
+    try {
+      const r = await gw<{ already_drawn: boolean; winners?: number; waitlisted?: number }>(
+        eventId,
+        `fairness/pools/${pool.pool_id}/draw`,
+        { method: "POST", json: {} },
+      );
+      addToast({
+        message: r.already_drawn
+          ? "이미 추첨이 끝났습니다."
+          : `추첨을 마쳤습니다 — 당첨 ${r.winners ?? 0}명 · 대기 ${r.waitlisted ?? 0}명`,
+        variant: "success",
+      });
+      await load();
+    } catch (err) {
+      addToast({ message: err instanceof Error ? err.message : "추첨에 실패했습니다", variant: "error" });
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const drawn = pools?.filter((p) => p.status === "drawn").length ?? 0;
   const issued = pools?.filter((p) => p.certificate).length ?? 0;
   const applicants = pools?.reduce((a, p) => a + p.applicants, 0) ?? 0;
@@ -169,7 +193,18 @@ export default function FairnessPage() {
                     <HashRow label="시드 커밋" value={pool.seed_commitment} />
                     <HashRow label="응모 Merkle 루트" value={pool.entries_root} />
                     <HashRow label="결과 Merkle 루트" value={pool.results_root} />
+                    {pool.closes_at ? (
+                      <p className="text-xs text-content-subtle">
+                        응모 마감 {formatDateTimeSecKst(pool.closes_at)}
+                        {pool.status !== "drawn" && !pool.can_draw ? " · 마감 뒤 추첨할 수 있습니다" : ""}
+                      </p>
+                    ) : null}
                     <div className="flex flex-wrap gap-2 pt-2">
+                      {pool.can_draw ? (
+                        <Button size="sm" onClick={() => void drawNow(pool)} disabled={busy !== null}>
+                          <Trophy className="size-4" /> {busy === `draw:${pool.pool_id}` ? "추첨 중…" : "지금 추첨하기"}
+                        </Button>
+                      ) : null}
                       <Button size="sm" variant="secondary" onClick={() => void openResults(pool)} disabled={busy !== null}>
                         <Trophy className="size-4" /> 결과 보기
                       </Button>

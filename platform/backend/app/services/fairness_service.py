@@ -79,6 +79,36 @@ def _event_policy_cache_key(event_id: uuid.UUID) -> str:
     return f"fairness:event_policy:{{{event_id}}}"
 
 
+
+async def lottery_deadline(session, event_id):
+    """응모 마감 시각 — 자동 추첨(Celery auto_draw_lotteries)·주최사 추첨 실행과 같은 규칙.
+
+    phase_configs 의 lottery 단계 ends_at(가장 늦은 값) 우선, 없으면 event.bidding_closes_at.
+    """
+    from datetime import timezone as _tz
+
+    from sqlalchemy import func as _func
+
+    from app.models.event import Event as _Event
+    from app.models.phase_config import PhaseConfig
+
+    phase_end = await session.scalar(
+        select(_func.max(PhaseConfig.ends_at)).where(PhaseConfig.event_id == event_id, PhaseConfig.phase == "lottery")
+    )
+    deadline = phase_end
+    if deadline is None:
+        event = await session.get(_Event, event_id)
+        deadline = event.bidding_closes_at if event else None
+    if deadline is not None and deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=_tz.utc)
+    return deadline
+
+
+def _now_utc():
+    from datetime import datetime as _dt, timezone as _tz
+
+    return _dt.now(_tz.utc)
+
 class FairnessService:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -645,6 +675,7 @@ class FairnessService:
             for t in (await self.session.execute(select(SeatTier).where(SeatTier.event_id == event_id))).scalars().all()
         }
         out = []
+        deadline = await lottery_deadline(self.session, event_id)
         for p in pools:
             roots = await self.pool_roots(p.id)
             snap = await self.session.get(LotteryPoolPolicy, p.id)
@@ -673,6 +704,14 @@ class FairnessService:
                     "entries_root": roots.get(MerkleKind.ENTRIES, {}).get("root"),
                     "results_root": roots.get(MerkleKind.RESULTS, {}).get("root"),
                     "certificate": {"cert_no": cert.cert_no, "issued_at": _iso(cert.issued_at)} if cert else None,
+                    # 응모 마감·추첨 가능 여부 — 주최사 「지금 추첨하기」 버튼 노출 기준.
+                    "closes_at": _iso(deadline),
+                    "can_draw": bool(
+                        (p.status.value if hasattr(p.status, "value") else str(p.status)) != "drawn"
+                        and deadline is not None
+                        and _now_utc() >= deadline
+                        and int(applicants or 0) > 0
+                    ),
                 }
             )
         return {"event_id": str(event_id), "pools": out}

@@ -213,6 +213,18 @@ describe("POST /api/events (생성)", () => {
       expect(createPayload().admission_mode).toBe("daypass");
     });
 
+    // 🔴 만들기 폼에서 고른 「자유 입장」이 v2 로 가지 않아 항상 지정석으로 저장되던 결함.
+    //    지정석으로 남으면 좌석이 0 이라 공정 추첨 판매 단계를 저장할 수 없었다.
+    it("좌석 판매 방식(자유 입장)을 전파한다", async () => {
+      await post(postBody({ seatType: "unassigned" }));
+      expect(createPayload().seat_type).toBe("unassigned");
+    });
+
+    it("좌석 판매 방식을 보내지 않으면 지정석(기존 기본값)", async () => {
+      await post(postBody());
+      expect(createPayload().seat_type).toBe("assigned");
+    });
+
     it("단일일(같은 날) 이벤트에 daypass/allpass 는 400 — v2 호출 없음", async () => {
       const res = await post(
         postBody({

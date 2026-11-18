@@ -166,6 +166,8 @@ interface PublicProductRow {
   minPerOrder: number | null;
   maxPerOrder: number | null;
   type: string | null;
+  /** v2 등급 판매 방식(point_lottery·fanclub_presale 이면 피켓 응모 등급 — lib/public/lottery-cta). */
+  saleMode: string | null;
 }
 
 export async function getPublicEventBySlug(
@@ -287,6 +289,7 @@ export async function getPublicEventBySlug(
     minPerOrder: t.min_per_order,
     maxPerOrder: t.max_per_order,
     type: t.product_type,
+    saleMode: t.sale_mode ?? null,
   }));
 
   // ⚠️ 옛 "authoritativePricing 이면 go price 를 v2 tier.base_price 로 덮어쓴다" 블록은 **삭제**했다.

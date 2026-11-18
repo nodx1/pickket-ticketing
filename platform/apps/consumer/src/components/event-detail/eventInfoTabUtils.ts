@@ -82,3 +82,22 @@ export function getFaqItems(verifyMessage: string): FaqItem[] {
     },
   ];
 }
+
+
+/**
+ * 관람연령 코드 → 화면 문구. 피켓고는 코드(all, 7+, 12+, 15+, 18+)로 저장하고, 「직접 입력」은
+ * 주최사가 쓴 문구 그대로 온다. 예전에는 코드가 그대로 보여 「관람등급: all」처럼 나왔다.
+ */
+const AGE_RATING_LABELS: Record<string, { ko: string; en: string }> = {
+  all: { ko: "전체관람가", en: "All ages" },
+  "7+": { ko: "만 7세 이상", en: "Ages 7+" },
+  "12+": { ko: "12세 이상", en: "Ages 12+" },
+  "15+": { ko: "15세 이상", en: "Ages 15+" },
+  "18+": { ko: "청소년관람불가", en: "Adults only (18+)" },
+};
+
+export function ageRatingLabel(value: string, locale: string): string {
+  const hit = AGE_RATING_LABELS[value.trim().toLowerCase()];
+  if (!hit) return value;
+  return locale === "ko" ? hit.ko : hit.en;
+}

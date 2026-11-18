@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { RotateCcw } from "lucide-react";
 import { CollapsibleCard } from "./CollapsibleCard";
+import { feeScheduleRows } from "./cancellationSchedule";
 
 interface CancellationFeeTier {
   days_before: number;
@@ -22,30 +23,30 @@ export function CancellationPolicyCard({
   const t = useTranslations("event.cancellationPolicy");
   if (!tiers || tiers.length === 0) return null;
 
-  // 공연에서 먼 시점 → 임박 순(days_before 내림차순)으로 정렬해 표시.
-  const sorted = [...tiers].sort((a, b) => b.days_before - a.days_before);
-
+  // 서버 환불 계산과 같은 구간으로 풀어 쓴다(cancellationSchedule.ts). 먼 시점 → 임박 순.
+  const rows = feeScheduleRows(tiers);
+  const when = (from: number | null, to: number) =>
+    from === null
+      ? t("beforeDays", { days: to })
+      : from === 0
+        ? t("sameDay")
+        : from === to
+          ? t("dDay", { days: to })
+          : t("rangeDays", { from, to });
   return (
     <CollapsibleCard title={t("title")} icon={RotateCcw} span="full" defaultOpen>
       <div className="divide-y divide-border">
-        {sorted.map((tier, i) => (
-          <div
-            key={`${tier.days_before}-${i}`}
-            className="flex items-center justify-between py-3 text-sm"
-          >
-            <span className="text-muted-foreground">
-              {tier.days_before > 0
-                ? t("upToDays", { days: tier.days_before })
-                : t("sameDay")}
-            </span>
+        {rows.map((r, i) => (
+          <div key={`${r.from}-${r.to}-${i}`} className="flex items-center justify-between py-3 text-sm">
+            <span className="text-muted-foreground">{when(r.from, r.to)}</span>
             <span
               className={
-                tier.fee_pct === 0
+                r.feePct === 0
                   ? "font-semibold text-emerald-600 dark:text-emerald-400"
                   : "font-semibold text-foreground"
               }
             >
-              {tier.fee_pct === 0 ? t("freeCancel") : `${tier.fee_pct}%`}
+              {r.feePct === 0 ? t("freeCancel") : t("feePct", { pct: r.feePct })}
             </span>
           </div>
         ))}

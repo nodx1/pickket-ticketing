@@ -45,6 +45,8 @@ logger = logging.getLogger(__name__)
 
 QR_WINDOW_SECONDS = 30
 QR_TOLERANCE_WINDOWS = 5  # go 와 같은 기본값(±150초)
+# 피켓 앱·웹 티켓 QR(v2 서명 회전 QR) 유효 시간 — 스태프 입장 확인(/tickets/validate-qr)과 같은 60초.
+PICKKET_QR_MAX_AGE_SECONDS = 60
 REPLAY_WINDOW_SECONDS = 120
 DUPLICATE_GATE_SECONDS = 60
 DUPLICATE_READ_SECONDS = 5
@@ -117,6 +119,52 @@ def resolve_qr(payload: str, *, secret: str, now: float | None = None, tolerance
     if abs(current - window) > tolerance:
         return "expired_qr", ticket_no
     return "ok", ticket_no
+
+
+async def resolve_pickket_qr(session: AsyncSession, payload: str) -> tuple[str, str | None]:
+    """피켓(v2) 티켓 QR 해석 — (상태, 티켓번호). 피켓에서 예매한 티켓을 피켓고 현장 단말로 입장시킨다.
+
+    🔴 예전 단말은 피켓고 형식(PKT:티켓번호:창:서명)만 받아, 피켓 앱·웹 티켓은 전부
+       「유효하지 않은 QR」로 거부됐다(실측 2026-11-18: 가중치 추첨 당첨 → 결제 → 입장 불가).
+    지원 형식(서버가 /tickets/{id}/qr 로 내려주는 그대로):
+      ① 기기 묶인 TOTP  "티켓id|코드|기기해시"         — 티켓의 시드·기기해시로 검증
+      ② 서명 회전 QR    base64("티켓id|시각|서명")     — QR_HMAC_SECRET, 60초
+    """
+    from app.services.dynamic_qr_service import TOTPQRService, verify_qr
+
+    parts = payload.split("|")
+    if len(parts) == 3:
+        try:
+            ticket_id = uuid.UUID(parts[0])
+        except ValueError:
+            return "invalid_qr", None
+        ticket = await session.get(Ticket, ticket_id)
+        if ticket is None or not ticket.totp_seed or not ticket.device_hash:
+            return "invalid_qr", None
+        ok, err = TOTPQRService.verify_qr(payload, ticket.totp_seed, ticket.device_hash)
+        if ok:
+            return "ok", ticket.ticket_number
+        return ("expired_qr" if err == "totp_expired" else "forged_qr"), ticket.ticket_number
+
+    secret = settings.QR_HMAC_SECRET
+    ticket_id = verify_qr(payload, secret, max_age_seconds=PICKKET_QR_MAX_AGE_SECONDS)
+    if ticket_id is None:
+        # 서명은 맞는데 오래됐으면 만료, 서명이 틀리면 위조(부정 경보), 형식부터 아니면 무효.
+        stale = verify_qr(payload, secret, max_age_seconds=10 * 365 * 24 * 3600)
+        if stale is not None:
+            ticket = await session.get(Ticket, stale)
+            return "expired_qr", ticket.ticket_number if ticket else None
+        try:
+            import base64
+
+            looks_signed = len(base64.urlsafe_b64decode(payload.encode()).decode().split("|")) == 3
+        except Exception:  # noqa: BLE001 — 형식 판별만
+            looks_signed = False
+        return ("forged_qr" if looks_signed else "invalid_qr"), None
+    ticket = await session.get(Ticket, ticket_id)
+    if ticket is None or not ticket.ticket_number:
+        return "invalid_qr", None
+    return "ok", ticket.ticket_number
 
 
 @dataclass
@@ -343,7 +391,10 @@ class OnsiteService:
                 return await self._finish(terminal, ScanOutcome("rejected", "manual_not_allowed", MESSAGES["manual_not_allowed"], **base))
             ticket_no = payload.upper()
         else:
-            status, ticket_no = resolve_qr(payload, secret=settings.GO_QR_SECRET)
+            if payload.startswith("PKT:"):
+                status, ticket_no = resolve_qr(payload, secret=settings.GO_QR_SECRET)
+            else:
+                status, ticket_no = await resolve_pickket_qr(self.session, payload)
             if status != "ok":
                 return await self._finish(
                     terminal,

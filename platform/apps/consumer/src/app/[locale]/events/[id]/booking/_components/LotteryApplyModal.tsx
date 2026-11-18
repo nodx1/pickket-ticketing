@@ -96,7 +96,12 @@ export default function LotteryApplyModal({
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <span className="font-bold text-sm">{t("title", { sectionName: sectionName ?? "" })}</span>
+            <span className="font-bold text-sm">
+              {/* 자유 입장 행사는 구역 대신 입장권 등급 이름으로 응모한다(sectionName === tier.name). */}
+              {tier && sectionName === tier.name
+                ? t("titleTier", { tierName: tier.name })
+                : t("title", { sectionName: sectionName ?? "" })}
+            </span>
           </div>
           <button
             type="button"

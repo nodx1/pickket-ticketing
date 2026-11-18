@@ -37,11 +37,13 @@ describe("pay.ts — 결제 개시 공통 헬퍼", () => {
     it("'nicepay' → nicepay", () => {
       expect(resolveProvider("nicepay")).toBe("nicepay");
     });
-    it("'toss'/미지정/미상 → toss 폴백", () => {
+    // 2026-07-28 결정(f32db91f): 기본 PG 는 나이스. 토스는 명시('toss')일 때만(기존 주문 라우팅용).
+    //    이 테스트가 옛 기본값(toss)을 기대한 채 남아 있었다.
+    it("'toss' 는 toss, 미지정/미상 → nicepay 폴백", () => {
       expect(resolveProvider("toss")).toBe("toss");
-      expect(resolveProvider(null)).toBe("toss");
-      expect(resolveProvider(undefined)).toBe("toss");
-      expect(resolveProvider("unknown_pg")).toBe("toss");
+      expect(resolveProvider(null)).toBe("nicepay");
+      expect(resolveProvider(undefined)).toBe("nicepay");
+      expect(resolveProvider("unknown_pg")).toBe("nicepay");
     });
   });
 
@@ -201,17 +203,18 @@ describe("pay.ts — 결제 개시 공통 헬퍼", () => {
       expect(injectedPrepare).toHaveBeenCalledWith("uuid-9");
     });
 
-    it("provider 미지정 → toss 폴백(회귀 방지)", async () => {
+    it("provider 미지정 → 나이스로 가되 결제창 값이 없으면 조용히 넘기지 않고 실패(모의 성공 금지)", async () => {
       prepareMock.mockResolvedValue({ data: { payment_id: "ord_z_a1" } });
-      await startPayment({
-        orderId: "uuid-3",
-        orderName: "티켓",
-        amount: 1000,
-        successUrl: "http://localhost/ko/payment/success?order=uuid-3",
-        failUrl: "http://localhost/ko/payment/fail?order=uuid-3",
-      });
-      const url = new URL(assignMock.mock.calls[0][0] as string);
-      expect(url.searchParams.get("paymentKey")).toBe("mock_ord_z_a1");
+      await expect(
+        startPayment({
+          orderId: "uuid-3",
+          orderName: "티켓",
+          amount: 1000,
+          successUrl: "http://localhost/ko/payment/success?order=uuid-3",
+          failUrl: "http://localhost/ko/payment/fail?order=uuid-3",
+        }),
+      ).rejects.toThrow();
+      expect(assignMock).not.toHaveBeenCalled();
       expect(startNicePaymentMock).not.toHaveBeenCalled();
     });
   });

@@ -226,12 +226,12 @@ export default function BidsPage() {
           {data.byTier.length > 0 && (
             <div className="rounded-lg border border-border bg-card">
               <div className="border-b border-border px-5 py-4">
-                <h3 className="text-sm font-semibold text-foreground">구역별 응모</h3>
+                <h3 className="text-sm font-semibold text-foreground">등급·구역별 응모</h3>
               </div>
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border text-left text-xs text-content-muted">
-                    <th className="px-5 py-3">구역</th>
+                    <th className="px-5 py-3">등급·구역</th>
                     <th className="px-5 py-3 text-right">좌석</th>
                     <th className="px-5 py-3 text-right">응모자</th>
                     <th className="px-5 py-3 text-right">응모 수</th>

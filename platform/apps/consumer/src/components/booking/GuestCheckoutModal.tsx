@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { currentLocale } from "@/lib/locale-path";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, Check } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -212,10 +213,7 @@ export default function GuestCheckoutModal({
 
   const goToOrder = useCallback(() => {
     if (!completedOrderId) return;
-    const locale =
-      (typeof window !== "undefined" &&
-        window.location.pathname.split("/")[1]) ||
-      "ko";
+    const locale = currentLocale();
     router.push(`/${locale}/guests/orders/${completedOrderId}`);
   }, [completedOrderId, router]);
 
@@ -235,10 +233,7 @@ export default function GuestCheckoutModal({
     const orderId = pendingOrder.order_id;
     const viewToken = pendingOrder.view_token;
     try {
-      const locale =
-        (typeof window !== "undefined" &&
-          window.location.pathname.split("/")[1]) ||
-        "ko";
+      const locale = currentLocale();
       const origin =
         typeof window !== "undefined" ? window.location.origin : "";
       const successUrl = `${origin}/${locale}/payment/success?order=${encodeURIComponent(

@@ -132,6 +132,11 @@ async function handleWrite(method: "POST" | "PUT" | "PATCH", ctx: Ctx): Promise<
   if (method === "POST" && key === "lottery-policy/simulate") {
     return successResponse(await v2Write("POST", `/internal/lottery-policy/simulate`, body, "gwasup.lottery-policy.simulate", 30_000));
   }
+  // 주최사 「지금 추첨하기」 — 응모 마감 뒤에만(v2 가 마감·이중 추첨을 다시 확인한다).
+  if (method === "POST" && path[0] === "fairness" && path[1] === "pools" && path[3] === "draw" && path.length === 4) {
+    await assertPoolInEvent(eventId, path[2]);
+    return successResponse(await v2Write("POST", `/internal/lottery/pools/${path[2]}/draw`, body, "gwasup.lottery.draw", 20_000));
+  }
   if (method === "POST" && path[0] === "fairness" && path[1] === "pools" && path[3] === "certificate" && path.length === 4) {
     await assertPoolInEvent(eventId, path[2]);
     return successResponse(await v2Write("POST", `/internal/lottery/pools/${path[2]}/certificate`, body, "gwasup.certificate.issue"));

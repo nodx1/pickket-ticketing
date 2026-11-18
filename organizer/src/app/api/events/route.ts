@@ -64,6 +64,9 @@ const eventSchema = z.object({
   admissionMode: z.enum(["single", "daypass", "allpass"]).optional().default("single"),
   // F4 경품/추첨 활성 — v2 events.raffle_enabled(SoT)로 write-through.
   raffleEnabled: z.boolean().optional().default(false),
+  // 좌석 판매 방식 — assigned(지정석·배치도) / unassigned(자유 입장·등급 수량만). v2 events.seat_type(SoT).
+  // 🔴 이 필드가 생성 스키마에 없어서 만들기 폼의 「자유 입장」이 버려지고 항상 지정석으로 저장됐다.
+  seatType: z.enum(["assigned", "unassigned"]).optional().default("assigned"),
 });
 
 const SORT_KEYS = new Set(["latest", "oldest", "created", "title"]);
@@ -250,6 +253,8 @@ export const POST = withRole("organizer", async (request, { session }) => {
         admission_mode: body.admissionMode,
         // F4 경품 활성 — v2 events.raffle_enabled(SoT).
         raffle_enabled: body.raffleEnabled,
+        // 좌석 판매 방식 — v2 events.seat_type(SoT). 수정(PATCH)과 같은 값을 생성 시에도 보낸다.
+        seat_type: body.seatType,
         // U3 공개 랜딩 게이트 — consumer 가 이 플래그로 RSVP·단체예약 폼 노출을 판정(v2 SoT).
         rsvp_enabled: body.rsvpEnabled ?? false,
         group_booking_enabled: body.groupBookingEnabled ?? false,

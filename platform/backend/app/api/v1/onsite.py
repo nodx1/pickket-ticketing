@@ -116,6 +116,9 @@ async def register_terminal(event_id: uuid.UUID, request: Request, db: AsyncSess
         )
     except (OnsiteError, ValueError) as exc:
         raise _bad_request(exc) from exc
+    # 🔴 get_db 는 자동 커밋하지 않는다 — 빼먹으면 키는 화면에 나오는데 단말이 저장되지 않아 접속이 거부된다
+    #    (실측 2026-11-18). 아래 내부 쓰기 경로 모두 같다.
+    await db.commit()
     return {"id": str(terminal.id), "key": key, "key_prefix": terminal.key_prefix, "notice": "이 키는 다시 볼 수 없습니다. 단말에 바로 입력해 주세요."}
 
 
@@ -133,6 +136,7 @@ async def update_terminal(event_id: uuid.UUID, terminal_id: uuid.UUID, request: 
         )
     except (OnsiteError, ValueError) as exc:
         raise _bad_request(exc) from exc
+    await db.commit()
     return {"ok": True, "id": str(t.id), "status": t.status, "gate": t.gate, "allowed_tier_ids": t.allowed_tier_ids}
 
 
@@ -149,6 +153,7 @@ async def set_admission_block(event_id: uuid.UUID, request: Request, db: AsyncSe
         )
     except OnsiteError as exc:
         raise _bad_request(exc) from exc
+    await db.commit()
     return {"ok": True, "id": str(row.id), "action": row.action}
 
 
@@ -184,6 +189,7 @@ async def set_settlement_mode(event_id: uuid.UUID, request: Request, db: AsyncSe
         )
     except (DirectSettlementError, ValueError) as exc:
         raise _bad_request(exc) from exc
+    await db.commit()
     return {"ok": True, "mode": row.mode, "pg_account_id": str(row.pg_account_id) if row.pg_account_id else None}
 
 
@@ -200,6 +206,7 @@ async def register_pg_account(organizer_id: uuid.UUID, request: Request, db: Asy
         )
     except DirectSettlementError as exc:
         raise _bad_request(exc) from exc
+    await db.commit()
     return {"ok": True, "id": str(account.id), "mode": account.mode, "secret_hint": account.secret_hint}
 
 
@@ -210,6 +217,7 @@ async def verify_pg_account(account_id: uuid.UUID, request: Request, db: AsyncSe
         account = await DirectSettlementService(db).verify_account(account_id)
     except DirectSettlementError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    await db.commit()
     return {"ok": account.status == "verified", "status": account.status, "last_error": account.last_error}
 
 
@@ -217,9 +225,11 @@ async def verify_pg_account(account_id: uuid.UUID, request: Request, db: AsyncSe
 async def pull_order_status(order_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db)):
     await _verified_json(request)
     try:
-        return await DirectSettlementService(db).pull_status(order_id)
+        result = await DirectSettlementService(db).pull_status(order_id)
     except DirectSettlementError as exc:
         raise _bad_request(exc) from exc
+    await db.commit()
+    return result
 
 
 # ───────── 내부: 연동 원장 ─────────

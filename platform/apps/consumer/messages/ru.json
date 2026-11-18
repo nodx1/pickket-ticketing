@@ -887,7 +887,7 @@
       "badgeWaitlisted": "Waitlisted",
       "badgeLost": "Not Selected",
       "badgeEntered": "Entered",
-      "labelZone": "Zone",
+      "labelZone": "Категория",
       "labelTickets": "Tickets",
       "ticketCount": "{count} ticket(s)",
       "labelInvestedAp": "Invested AP",
@@ -1339,7 +1339,11 @@
       "upToDays": "За {days} дн. до",
       "sameDay": "В день события",
       "freeCancel": "Бесплатная отмена",
-      "note": "Сборы за отмену рассчитываются от даты события; возврат — на исходный способ оплаты."
+      "note": "Сборы за отмену рассчитываются от даты события; возврат — на исходный способ оплаты.",
+      "beforeDays": "{days}+ days before",
+      "rangeDays": "{to}–{from} days before",
+      "dDay": "{days} day before",
+      "feePct": "{pct}% fee"
     }
   },
   "booking": {
@@ -1490,7 +1494,13 @@
       "capacity": "Capacity: {capacity}",
       "noticeNoPayment": "📌 No payment is made at entry — payment instructions are sent only to winners.",
       "noticeRandomSeat": "📌 Winners are assigned a random seat within the selected section.",
-      "noticeCommitReveal": "📌 After the deadline, winners are drawn fairly using a commit-reveal hash."
+      "noticeCommitReveal": "📌 After the deadline, winners are drawn fairly using a commit-reveal hash.",
+      "tierSelectLabel": "Choose a ticket to apply for",
+      "noTiers": "No tickets are open for application",
+      "targetAriaLabel": "Apply for {name}, {price}, {entryCount} applied",
+      "noticeNoSeat": "📌 General admission — no assigned seats. Winners receive a ticket after payment.",
+      "closedHint": "Приём заявок завершён. Результат розыгрыша — в карточке выше.",
+      "closedBadge": "Закрыто"
     },
     "sidebar": {
       "ctaLottery": "Enter Lottery",
@@ -1626,7 +1636,8 @@
       "submitting": "Applying…",
       "submit": "Apply",
       "submitWithAp": "Apply (AP {ap})",
-      "submitDisclaimer": "No payment required to apply. Winners will be notified for payment."
+      "submitDisclaimer": "No payment required to apply. Winners will be notified for payment.",
+      "titleTier": "Apply for {tierName}"
     },
     "subdomainSheet": {
       "title": "Book tickets — {title}",
@@ -1737,6 +1748,10 @@
       "nextButton": "Next",
       "submittingButton": "Submitting...",
       "submitButton": "Book with Phone Number"
+    },
+    "generalAdmission": {
+      "badge": "General admission",
+      "body": "No assigned seats. Choose a ticket type and enter with the mobile ticket QR on site."
     }
   },
   "result": {
@@ -2364,7 +2379,8 @@
     "confetti_resale_message": "Ваша перепродажа подтверждена!",
     "refunded_title": "Возврат выполнен",
     "refunded_amount": "Сумма возврата:",
-    "refunded_at": "Дата возврата:"
+    "refunded_at": "Дата возврата:",
+    "ticket_fallback": "Билет"
   },
   "ticket": {
     "title": "Детали билета",
@@ -3054,7 +3070,9 @@
       "weightMedian": "Median",
       "weightMax": "Max",
       "seedDerivationMethod": "Seed derivation method: {method}"
-    }
+    },
+    "waitlisted_label": "Лист ожидания",
+    "waitlisted_message": "Если победитель не оплатит вовремя, возможность перейдёт к следующему в листе ожидания. Мы сообщим вам."
   },
   "legal": {
     "legal_badge": "Юридический",
@@ -3986,7 +4004,8 @@
       "refundPolicyLink": "View full refund policy",
       "agreeLabel": "I have reviewed my order and agree to proceed with payment.",
       "processingButton": "Processing with {method}...",
-      "confirmButton": "Pay {amount}"
+      "confirmButton": "Pay {amount}",
+      "refundPolicyEvent": "Бесплатная отмена — не позднее чем за {days} дн. до события; после этого действуют поэтапные сборы."
     },
     "reminderBanner": {
       "pendingOrdersCount": "You have {count} order(s) awaiting payment",

@@ -25,6 +25,7 @@ import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { AffiliateRefTracker } from "./_components/affiliate-ref-tracker";
 import { ContextBanner } from "./_components/context-banner";
 import { QueuePurchaseGate } from "./_components/queue-purchase-gate";
+import { isLotterySaleMode, marketEventUrl, publicCtaMode } from "@/lib/public/lottery-cta";
 import { RsvpForm } from "./_components/rsvp-form";
 import { InquiryForm } from "./_components/inquiry-form";
 
@@ -216,6 +217,8 @@ export default async function PublicEventPage({
   // 🔴 여기 인라인으로 두면 서버 컴포넌트라 **어떤 테스트도 닿지 못한다** — 감사가
   //    판정을 정반대로 뒤집는 뮤테이션을 넣었는데 1220개 테스트가 전부 통과했다(F-3).
   const isSoldOut = isEventSoldOut(event.products as SoldOutProduct[]);
+  // 추첨 등급은 피켓에서 응모한다 — 추첨 등급만 있으면 구매 버튼 대신 응모 링크(lib/public/lottery-cta).
+  const ctaMode = publicCtaMode(event.products as Array<{ saleMode?: string | null; type?: string | null }>);
 
   // 정보 영역을 탭으로 묶는다. **내용이 있는 탭만** 노출한다 — 빈 탭은 "준비 중"만 보이는
   // 페이지가 된다. 판정은 순수 함수(테스트 대상)에 위임한다.
@@ -690,6 +693,7 @@ export default async function PublicEventPage({
                   stock: number | null;
                   taxIncluded?: boolean;
                   isOnSale?: boolean;
+                  saleMode?: string | null;
                 }) => {
                   const soldOut = product.stock === 0;
                   const lowStock = product.stock !== null && product.stock > 0 && product.stock < 20;
@@ -699,6 +703,9 @@ export default async function PublicEventPage({
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-foreground">{String(product.name)}</h3>
+                            {isLotterySaleMode(product.saleMode) ? (
+                              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">가중치 추첨</span>
+                            ) : null}
                             {soldOut ? (
                               <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-medium text-destructive">매진</span>
                             ) : lowStock ? (
@@ -737,13 +744,29 @@ export default async function PublicEventPage({
               </div>
             </div>
 
-            <QueuePurchaseGate
-              eventId={String(event.id)}
-              eventSlug={eventSlug}
-              queueEnabled={event.queueEnabled === true}
-              soldOut={isSoldOut}
-              label={ctaText || "티켓 구매하기"}
-            />
+            {ctaMode !== "purchase" ? (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+                <p className="font-semibold">가중치 추첨으로 배정하는 티켓이 있어요</p>
+                <p className="mt-1 text-xs text-content-subtle">
+                  추첨 응모는 피켓 회원만 할 수 있어요. 응모 마감 뒤 공정하게 추첨하고, 당첨되면 결제 안내를 드려요.
+                </p>
+                <a
+                  href={marketEventUrl(String(event.id))}
+                  className="mt-3 flex h-12 w-full items-center justify-center rounded-xl bg-primary font-bold text-primary-foreground"
+                >
+                  피켓에서 추첨 응모하기
+                </a>
+              </div>
+            ) : null}
+            {ctaMode !== "lottery" ? (
+              <QueuePurchaseGate
+                eventId={String(event.id)}
+                eventSlug={eventSlug}
+                queueEnabled={event.queueEnabled === true}
+                soldOut={isSoldOut}
+                label={ctaText || "티켓 구매하기"}
+              />
+            ) : null}
 
             {/* 트러스트 뱃지 — CTA 바로 아래 */}
             <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-content-subtle">
@@ -819,6 +842,7 @@ export default async function PublicEventPage({
         minPrice={minPrice}
         maxPrice={maxPrice}
         isSoldOut={isSoldOut}
+        lotteryHref={ctaMode === "lottery" ? marketEventUrl(String(event.id)) : null}
       />
       {/*
         🔴 챗봇 위젯을 **내렸다** (2026-08-03, 대표 지시 — 지금은 안 쓴다).

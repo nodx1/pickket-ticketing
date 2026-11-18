@@ -335,6 +335,20 @@ GO_EVENT_TYPE_TO_V2_CATEGORY: dict[str, str] = {
     "preview": "exhibition",
     "flea_market": "exhibition",
     "networking": "civic",
+    # go EVENT_TYPES(24종) 전수 매핑 — go `domain-model.EVENT_TYPE_TO_CATEGORY` 와 같은 표.
+    # 🔴 이 아래가 빠져 있어 심사 요청 때 스포츠(골프 등)·뮤지컬·세미나 행사가 「콘서트」로
+    #    재분류되어 피켓 마켓에 잘못 노출됐다.
+    "sports": "sports",
+    "musical": "musical",
+    "theater": "musical",
+    "comedy": "concert",
+    "awards": "concert",
+    "seminar": "education",
+    "webinar": "education",
+    "trade_show": "exhibition",
+    "screening": "exhibition",
+    "meetup": "civic",
+    "charity": "civic",
 }
 
 # DEPRECATED: 레거시 events/sync 경로 전용(go 미의존, grep 0건). 커머스 write 정본은
@@ -1455,9 +1469,11 @@ async def lottery_stats(event_id: uuid.UUID, request: Request):
         draw_executed_at = None
         if all(s == LotteryPoolStatus.DRAWN for s in pool_statuses):
             phase = "drawn"
-            # 가장 최근 pool의 updated_at을 draw 시각으로 사용
-            latest = max(pools, key=lambda p: p.created_at)
-            draw_executed_at = latest.created_at.isoformat() if latest.created_at else None
+            # 추첨 시각 = 가장 늦게 추첨된 풀의 drawn_at. 🔴 예전엔 풀 생성 시각(첫 응모 시각)을 써서
+            #    주최사 화면이 응모 마감 전에 추첨한 것처럼 보였다(실측 2026-11-18).
+            drawn_times = [p.drawn_at for p in pools if p.drawn_at is not None]
+            latest_drawn = max(drawn_times) if drawn_times else None
+            draw_executed_at = latest_drawn.isoformat() if latest_drawn else None
         elif any(s == LotteryPoolStatus.DRAWN for s in pool_statuses):
             phase = "drawing"
         elif all(s == LotteryPoolStatus.CLOSED for s in pool_statuses):

@@ -180,6 +180,10 @@ export interface FairnessPool {
   entries_root: string | null;
   results_root: string | null;
   certificate: { cert_no: string; issued_at: string } | null;
+  /** 응모 마감 시각(phase_configs lottery ends_at 정본). */
+  closes_at?: string | null;
+  /** 마감이 지났고 아직 추첨 전이며 응모가 있으면 true — 「지금 추첨하기」 노출. */
+  can_draw?: boolean;
 }
 
 export interface CertificateView {

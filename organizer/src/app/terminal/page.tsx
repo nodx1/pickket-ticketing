@@ -120,7 +120,8 @@ export default function TerminalPage() {
     async (payload: string) => {
       const value = payload.trim();
       if (!value) return;
-      const ticketNo = manual ? value.toUpperCase() : value.split(":")[1] ?? "";
+      // 피켓고 QR(PKT:티켓번호:…)만 화면에서 티켓번호를 읽을 수 있다. 피켓 앱 QR 은 서버가 판정한다.
+      const ticketNo = manual ? value.toUpperCase() : value.startsWith("PKT:") ? (value.split(":")[1] ?? "") : "";
       // 연결이 끊겨도 차단 목록에 있는 티켓은 화면에서 바로 막는다
       const blockedLocally =
         blocklist && (blocklist.blocked.some((b) => b.ticket_no === ticketNo) || blocklist.sanctioned.includes(ticketNo));
@@ -287,7 +288,7 @@ export default function TerminalPage() {
               autoFocus
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={manual ? "TKT-…" : "PKT:…"}
+              placeholder={manual ? "TKT-…" : "피켓·피켓고 티켓 QR"}
               className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 font-mono text-sm focus:border-primary focus:outline-none"
             />
             <div className="mt-3 flex items-center justify-between">

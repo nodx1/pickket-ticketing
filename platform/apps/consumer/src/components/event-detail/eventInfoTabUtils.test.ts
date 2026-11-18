@@ -43,3 +43,13 @@ describe("formatPeriod — 단일일 이벤트에 기간 표기를 만들지 않
     expect(formatPeriod("2026-08-01T00:00:00Z", undefined)).toBe("");
   });
 });
+
+describe("ageRatingLabel — 관람연령 코드를 문구로", () => {
+  it("코드는 문구로 바꾸고 직접 입력한 문구는 그대로 둔다", async () => {
+    const { ageRatingLabel } = await import("./eventInfoTabUtils");
+    expect(ageRatingLabel("all", "ko")).toBe("전체관람가");
+    expect(ageRatingLabel("15+", "ko")).toBe("15세 이상");
+    expect(ageRatingLabel("all", "en")).toBe("All ages");
+    expect(ageRatingLabel("초등학생 이상 보호자 동반", "ko")).toBe("초등학생 이상 보호자 동반");
+  });
+});

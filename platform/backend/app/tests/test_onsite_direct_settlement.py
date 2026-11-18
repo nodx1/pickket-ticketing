@@ -344,3 +344,74 @@ async def test_key_check_requires_not_found_payment(client, monkeypatch):
             acct = await svc.verify_account(acct.id)
             assert acct.status == expected, code
         settings.DIRECT_PG_MOCK = True
+
+
+# ───────── 피켓고 → v2 내부 쓰기는 커밋돼야 한다 (실측 2026-11-18) ─────────
+
+
+@pytest.mark.asyncio
+async def test_registering_terminal_through_go_is_committed_and_key_works(client, monkeypatch):
+    """🔴 피켓고 「단말 등록」(내부 API) 뒤 받은 키로 단말이 실제로 붙어야 한다.
+
+    예전엔 내부 API 가 커밋하지 않아 키는 화면에 나오는데 단말이 저장되지 않았고, 웹 단말은
+    「사용 중지된 단말」로 거부됐다. 서비스를 직접 부르는 위 테스트들은 스스로 커밋해서 이걸 못 잡았다.
+    """
+    import app.api.v1.onsite as onsite_api
+
+    async def _skip_verify(request):
+        import json as _json
+
+        return _json.loads((await request.body()) or b"{}")
+
+    monkeypatch.setattr(onsite_api, "_verified_json", _skip_verify)
+    event_id, tiers, _org = await _event(client, "gocommit")
+    r = await client.post(
+        f"/api/v1/internal/events/{event_id}/terminals",
+        json={"name": "정문 1번 게이트", "kind": "gate_scanner", "gate": "정문", "allowedTierIds": []},
+    )
+    assert r.status_code == 200, r.text
+    key = r.json()["key"]
+    me = await client.get("/api/v1/terminals/me", headers={"x-terminal-key": key})
+    assert me.status_code == 200, me.text
+
+    # 단말 사용 중지(수정)도 저장돼야 한다
+    up = await client.patch(f"/api/v1/internal/events/{event_id}/terminals/{r.json()['id']}", json={"status": "suspended"})
+    assert up.status_code == 200, up.text
+    again = await client.get("/api/v1/terminals/me", headers={"x-terminal-key": key})
+    assert again.status_code == 401, again.text
+
+
+@pytest.mark.asyncio
+async def test_pickket_app_ticket_qr_is_admitted_at_go_terminal(client):
+    """🔴 피켓(v2)에서 예매한 티켓의 앱·웹 QR 이 피켓고 현장 단말에서 입장돼야 한다.
+
+    예전엔 피켓고 형식(PKT:…)만 받아 피켓 티켓은 전부 「유효하지 않은 QR」이었다(실측 2026-11-18).
+    """
+    import base64
+
+    from app.services.dynamic_qr_service import generate_qr
+
+    event_id, tiers, _org = await _event(client, "pkqr")
+    ticket_no = await _ticket(client, event_id, tiers[0], "pkqr_fan@test.com")
+    async with TestSession() as s:
+        ticket_id = (await s.execute(select(Ticket.id).where(Ticket.ticket_number == ticket_no))).scalar_one()
+    _tid, key = await _terminal(event_id, gate="정문")
+
+    first = await _scan(client, key, generate_qr(ticket_id, settings.QR_HMAC_SECRET))
+    assert first["result"] == "admitted", first
+    assert first["ticket_no"] == ticket_no
+
+    # 서명이 틀리면 위조(부정 경보)
+    raw = base64.urlsafe_b64decode(generate_qr(ticket_id, settings.QR_HMAC_SECRET)).decode().rsplit("|", 1)[0] + "|0000000000000000"
+    forged = await _scan(client, key, base64.urlsafe_b64encode(raw.encode()).decode())
+    assert forged["result"] == "rejected" and forged["code"] == "forged_qr" and forged["fraud"] is True
+
+    # 서명은 맞지만 오래된 QR(캡처 화면)은 만료
+    old_payload = f"{ticket_id}|{int(time.time()) - 600}"
+    sig = hmac.new(settings.QR_HMAC_SECRET.encode(), old_payload.encode(), hashlib.sha256).hexdigest()[:16]
+    stale = await _scan(client, key, base64.urlsafe_b64encode(f"{old_payload}|{sig}".encode()).decode())
+    assert stale["result"] == "rejected" and stale["code"] == "expired_qr"
+
+    # 아무 문자열은 무효
+    junk = await _scan(client, key, "hello")
+    assert junk["code"] == "invalid_qr"

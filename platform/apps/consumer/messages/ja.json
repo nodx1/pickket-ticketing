@@ -887,7 +887,7 @@
       "badgeWaitlisted": "Waitlisted",
       "badgeLost": "Not Selected",
       "badgeEntered": "Entered",
-      "labelZone": "Zone",
+      "labelZone": "席種",
       "labelTickets": "Tickets",
       "ticketCount": "{count} ticket(s)",
       "labelInvestedAp": "Invested AP",
@@ -1339,7 +1339,11 @@
       "upToDays": "公演{days}日前まで",
       "sameDay": "公演当日",
       "freeCancel": "無料キャンセル",
-      "note": "キャンセル料は公演日を基準に算定され、払戻は決済手段へ行われます。"
+      "note": "キャンセル料は公演日を基準に算定され、払戻は決済手段へ行われます。",
+      "beforeDays": "{days}+ days before",
+      "rangeDays": "{to}–{from} days before",
+      "dDay": "{days} day before",
+      "feePct": "{pct}% fee"
     }
   },
   "booking": {
@@ -1490,7 +1494,13 @@
       "capacity": "Capacity: {capacity}",
       "noticeNoPayment": "📌 No payment is made at entry — payment instructions are sent only to winners.",
       "noticeRandomSeat": "📌 Winners are assigned a random seat within the selected section.",
-      "noticeCommitReveal": "📌 After the deadline, winners are drawn fairly using a commit-reveal hash."
+      "noticeCommitReveal": "📌 After the deadline, winners are drawn fairly using a commit-reveal hash.",
+      "tierSelectLabel": "Choose a ticket to apply for",
+      "noTiers": "No tickets are open for application",
+      "targetAriaLabel": "Apply for {name}, {price}, {entryCount} applied",
+      "noticeNoSeat": "📌 General admission — no assigned seats. Winners receive a ticket after payment.",
+      "closedHint": "応募は締め切られました。抽選結果は上のカードで確認できます。",
+      "closedBadge": "締切"
     },
     "sidebar": {
       "ctaLottery": "Enter Lottery",
@@ -1626,7 +1636,8 @@
       "submitting": "Applying…",
       "submit": "Apply",
       "submitWithAp": "Apply (AP {ap})",
-      "submitDisclaimer": "No payment required to apply. Winners will be notified for payment."
+      "submitDisclaimer": "No payment required to apply. Winners will be notified for payment.",
+      "titleTier": "Apply for {tierName}"
     },
     "subdomainSheet": {
       "title": "Book tickets — {title}",
@@ -1737,6 +1748,10 @@
       "nextButton": "Next",
       "submittingButton": "Submitting...",
       "submitButton": "Book with Phone Number"
+    },
+    "generalAdmission": {
+      "badge": "General admission",
+      "body": "No assigned seats. Choose a ticket type and enter with the mobile ticket QR on site."
     }
   },
   "result": {
@@ -2364,7 +2379,8 @@
     "confetti_resale_message": "リセール購入が確定しました！",
     "refunded_title": "返金完了",
     "refunded_amount": "返金金額：",
-    "refunded_at": "返金処理日："
+    "refunded_at": "返金処理日：",
+    "ticket_fallback": "チケット"
   },
   "ticket": {
     "title": "チケット詳細",
@@ -3054,7 +3070,9 @@
       "weightMedian": "Median",
       "weightMax": "Max",
       "seedDerivationMethod": "Seed derivation method: {method}"
-    }
+    },
+    "waitlisted_label": "キャンセル待ち",
+    "waitlisted_message": "当選者が期限内に決済しない場合、順番に決済の機会が回ります。その際は通知でお知らせします。"
   },
   "legal": {
     "legal_badge": "法的情報",
@@ -3986,7 +4004,8 @@
       "refundPolicyLink": "View full refund policy",
       "agreeLabel": "I have reviewed my order and agree to proceed with payment.",
       "processingButton": "Processing with {method}...",
-      "confirmButton": "Pay {amount}"
+      "confirmButton": "Pay {amount}",
+      "refundPolicyEvent": "イベントの{days}日前までは無料でキャンセルできます。それ以降は段階的なキャンセル手数料がかかります。"
     },
     "reminderBanner": {
       "pendingOrdersCount": "You have {count} order(s) awaiting payment",

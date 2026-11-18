@@ -294,12 +294,86 @@ def build_phase_rows(
 # ── 저장 ────────────────────────────────────────────────────────────────
 
 
+# internal_commerce.UNLIMITED_TIER_CAPACITY 와 같은 값(재고 무제한 센티널). 순환 import 를 피해 복제.
+_UNLIMITED_TIER_CAPACITY = 1_000_000
+
+# 판매 단계(phase) → 등급 판매 방식(seat_tiers.sale_mode, canonical 4종).
+# go domain-model.LEGACY_SALE_MODE_MAP 과 같은 대응이다.
+_PHASE_TO_TIER_SALE_MODE = {
+    "lottery": "point_lottery",
+    "membership_presale": "fanclub_presale",
+    "queue_sale": "queue",
+}
+
+
+def tier_sale_mode_for_phase(phase: str) -> str:
+    """판매 단계 이름을 등급 판매 방식으로 바꾼다. 주 단계가 아니면 선착순."""
+    return _PHASE_TO_TIER_SALE_MODE.get(phase, "fixed_fcfs")
+
+
+async def plan_tier_sale_mode(db: AsyncSession, event_id: uuid.UUID) -> str | None:
+    """아직 시작 전(scheduled)이거나 진행 중(open)인 첫 주 단계의 등급 판매 방식.
+
+    판매 계획이 없거나 주 단계가 없으면 None. 계획을 세운 뒤 새로 추가한 등급이 이 값을
+    따르게 하는 데 쓴다(등급 추가 화면은 판매 방식을 따로 묻지 않는다).
+    """
+    rows = await list_phases(db, event_id)
+    for r in rows:
+        if r.phase in MAIN_SALE_PHASE_MODES and r.status in ("scheduled", "open"):
+            return tier_sale_mode_for_phase(r.phase)
+    return None
+
+
+async def _sync_tier_sale_modes(db: AsyncSession, event: Event, phases: list["PhaseSpec"]) -> None:
+    """판매 계획 저장 시 판매 중인 입장권 등급의 판매 방식을 첫 주 단계에 맞춘다.
+
+    🔴 이 동기화가 없으면 「판매 방식: 공정 추첨」을 저장해도 등급이 fixed_fcfs 로 남아,
+    가중치 추첨 설정 화면에 등급이 안 보이고 응모 기간 가드·팬 가중치가 적용되지 않는다.
+    추첨이 끝난 뒤 남은 좌석의 선착순 전환은 기존 작업(payment_expiry)이 등급을 fixed_fcfs 로
+    바꿔 처리한다. 진행 중 단계가 있으면 apply_sale_plan 이 먼저 거부하므로 판매 전에만 바뀐다.
+    """
+    from app.models.event import SeatTier
+
+    mode = tier_sale_mode_for_phase(phases[0].mode) if phases else "fixed_fcfs"
+    tiers = (
+        await db.execute(
+            select(SeatTier).where(
+                SeatTier.event_id == event.id,
+                SeatTier.product_type == "ticket",
+                SeatTier.is_active.is_(True),
+            )
+        )
+    ).scalars().all()
+    for t in tiers:
+        t.sale_mode = mode
+
+
 async def compute_total_capacity(db: AsyncSession, event: Event) -> int:
     """이벤트 총 정원(지정석 좌석 수 + 스탠딩 섹션 정원).
 
     v2 가 커머스 SoT 이므로 자기 데이터로 직접 계산한다(go 왕복 없음).
     스탠딩은 published 배치도의 figmaLayout standing 섹션 capacity 합.
+
+    자유 입장(`seat_type == "unassigned"`) 이벤트는 좌석·배치도가 없으므로 판매 중인 입장권
+    등급(product_type=ticket, is_active)의 수량 합을 정원으로 쓴다. 무제한 등급(수량 센티널
+    1,000,000)과 부가상품은 추첨 정원에 넣지 않는다. 이 분기가 없으면 자유 입장 행사에서
+    공정 추첨 판매 단계를 저장할 때 "좌석이 하나도 없는 이벤트"로 거부된다.
     """
+    if (getattr(event, "seat_type", None) or "assigned") == "unassigned":
+        from app.models.event import SeatTier
+
+        tier_total = (
+            await db.execute(
+                select(func.coalesce(func.sum(SeatTier.capacity), 0)).where(
+                    SeatTier.event_id == event.id,
+                    SeatTier.product_type == "ticket",
+                    SeatTier.is_active.is_(True),
+                    SeatTier.capacity < _UNLIMITED_TIER_CAPACITY,
+                )
+            )
+        ).scalar() or 0
+        return int(tier_total)
+
     seat_count = (
         await db.execute(
             select(func.count(Seat.id)).where(Seat.event_id == event.id)
@@ -436,6 +510,8 @@ async def apply_sale_plan(
         closes = max(_as_utc(event.event_date), opens + timedelta(hours=1))
     event.bidding_opens_at = opens
     event.bidding_closes_at = closes
+    await _sync_tier_sale_modes(db, event, phases)
+    await db.flush()
 
     # 멤버십 단계의 팬클럽은 `config.fanclub_id` 에 영속된다(과거 Redis TTL 7일에만 존재).
     # v2 Event 에는 fanclub_id 컬럼이 없고 팬클럽 게이팅은 community_id 로 하므로

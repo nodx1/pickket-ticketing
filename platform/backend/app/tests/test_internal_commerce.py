@@ -45,6 +45,13 @@ async def _seed_organizer(db_session, go_account_id="go_org_1") -> User:
     return user
 
 
+# 🔴 고정 날짜(2026-08-20)가 지나 환불 테스트가 「행사 당일 이후 수수료 100%」로 깨졌다(2026-11-18).
+#    오늘 기준 90일 뒤 19시(KST)로 둔다 — 환불 수수료 0% 구간(30일+)이 유지된다.
+_EVENT_DATE = (datetime.now(timezone(timedelta(hours=9))) + timedelta(days=90)).replace(
+    hour=19, minute=0, second=0, microsecond=0
+)
+
+
 def _event_body(go_account_id="go_org_1", **over) -> dict:
     body = {
         "organizer_ref": {"go_account_id": go_account_id},
@@ -52,7 +59,7 @@ def _event_body(go_account_id="go_org_1", **over) -> dict:
         "title": "테스트 콘서트",
         "venue": "올림픽홀",
         "category": "concert",
-        "event_date": "2026-08-20T19:00:00+09:00",
+        "event_date": _EVENT_DATE.isoformat(),
         "sale_window": {
             "opens_at": "2026-07-01T10:00:00+09:00",
             "closes_at": "2026-07-10T23:59:59+09:00",
@@ -217,7 +224,7 @@ async def test_admission_mode_raffle_roundtrip_create_patch(client, db_session):
         "/api/v1/internal/events",
         json=_event_body(
             admission_mode="daypass",
-            event_date_end="2026-08-22T22:00:00+09:00",
+            event_date_end=(_EVENT_DATE + timedelta(days=2, hours=3)).isoformat(),
             raffle_enabled=True,
         ),
         headers=h,
@@ -4721,3 +4728,38 @@ async def test_payable_statuses_share_one_source(client, db_session):
     assert PAYABLE_ORDER_STATUSES == (OS.PENDING, OS.PAYMENT_REQUIRED)
     src = inspect.getsource(ic._assert_order_replayable)
     assert "PAYABLE_ORDER_STATUSES" in src, "dedup 이 목록을 따로 적고 있다"
+
+
+async def test_new_tier_inherits_lottery_sale_plan(client, db_session):
+    """판매 계획(공정 추첨)을 세운 뒤 새로 추가한 입장권 등급은 point_lottery 로 시작한다.
+
+    등급 추가 화면은 판매 방식을 묻지 않아 기본값 fixed_fcfs 가 오는데, 그대로 두면 추첨 계획
+    아래에서 선착순 등급이 섞여 가중치 추첨이 적용되지 않는다. 명시한 방식은 그대로 둔다.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.phase_config import PhaseConfig
+
+    await _seed_organizer(db_session)
+    eid = await _create_event(client)
+    now = datetime.now(timezone.utc)
+    db_session.add(
+        PhaseConfig(
+            event_id=uuid.UUID(eid), phase="lottery", starts_at=now + timedelta(days=1),
+            ends_at=now + timedelta(days=2), sort_order=0, status="scheduled", config={},
+        )
+    )
+    await db_session.flush()
+    r = await client.post(
+        f"/api/v1/internal/events/{eid}/tiers",
+        json={"tiers": [
+            {"external_ref": "t_new", "name": "갤러리", "capacity": 20, "base_price": 30000, "sale_mode": "fixed_fcfs"},
+            {"external_ref": "t_addon", "name": "주차", "capacity": 20, "base_price": 5000, "sale_mode": "fixed_fcfs", "product_type": "addon"},
+            {"external_ref": "t_queue", "name": "대기열", "capacity": 20, "base_price": 1000, "sale_mode": "queue"},
+        ]},
+        headers={**_HDR, "Idempotency-Key": str(uuid.uuid4())},
+    )
+    assert r.status_code == 200, r.text
+    lst = (await client.get(f"/api/v1/internal/events/{eid}/tiers", headers=_HDR)).json()["data"]["tiers"]
+    mode = {t["external_ref"]: t["sale_mode"] for t in lst}
+    assert mode == {"t_new": "point_lottery", "t_addon": "fixed_fcfs", "t_queue": "queue"}

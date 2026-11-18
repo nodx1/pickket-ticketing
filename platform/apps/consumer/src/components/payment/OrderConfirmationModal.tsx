@@ -32,6 +32,8 @@ interface Props {
    * 발화하지 않아도 사용자가 직접 취소할 수 있게 한다. 미지정이면 탈출 링크 미노출.
    */
   onCancelProcessing?: () => void;
+  /** 이 행사의 무료 취소 마감(행사 N일 전까지). 있으면 일반 환불 문구 대신 행사 정책을 보여 준다. */
+  freeCancelUntilDays?: number | null;
   onAgreedChange: (v: boolean) => void;
   onConfirm: () => void;
   onClose: () => void;
@@ -50,6 +52,7 @@ export default function OrderConfirmationModal({
   niceCardOnly,
   provider,
   onCancelProcessing,
+  freeCancelUntilDays,
   onAgreedChange,
   onConfirm,
   onClose,
@@ -216,7 +219,11 @@ export default function OrderConfirmationModal({
 
           {/* 환불 정책 */}
           <div className="text-xs text-muted-foreground space-y-1">
-            <p>{t("refundPolicy")}</p>
+            <p>
+              {freeCancelUntilDays != null
+                ? t("refundPolicyEvent", { days: freeCancelUntilDays })
+                : t("refundPolicy")}
+            </p>
             <Link
               href="/refund-policy"
               target="_blank"

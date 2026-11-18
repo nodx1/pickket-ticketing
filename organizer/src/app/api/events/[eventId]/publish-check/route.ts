@@ -1,3 +1,4 @@
+import { ticketCheckItem } from "@/lib/publish/ticket-check";
 import { errorResponse, successResponse } from "@/lib/apiResponse";
 import { withRole } from "@/lib/auth/permissions";
 import { getPool } from "@/lib/db/pool";
@@ -164,20 +165,9 @@ export const GET = withRole<{ eventId: string }>(
       },
       {
         label: "티켓 (좌석 등급)",
-        // 통합 모델: 지정석 이벤트는 seat_tiers + 배치도만으로 판매 가능.
+        // 지정석은 등급 + 발행된 배치도, 자유 입장은 등급만으로 판매 가능(lib/publish/ticket-check).
         // 부가상품(products)은 옵션이라 여기선 체크하지 않음.
-        status:
-          ticketReadiness.tierCount > 0 && ticketReadiness.publishedMapCount > 0
-            ? "pass"
-            : ticketReadiness.tierCount > 0
-              ? "warn"
-              : "fail",
-        message:
-          ticketReadiness.tierCount > 0 && ticketReadiness.publishedMapCount > 0
-            ? `${ticketReadiness.tierCount}개 등급 · ${ticketReadiness.seatCount}석 등록 · 배치도 발행됨`
-            : ticketReadiness.tierCount > 0
-              ? `${ticketReadiness.tierCount}개 등급 등록됐지만 배치도가 아직 발행되지 않았습니다.`
-              : "좌석 등급을 1개 이상 추가하고 배치도를 발행해주세요.",
+        ...ticketCheckItem({ ...ticketReadiness, seatType: event.seat_type ?? "assigned" }),
         link: `/events/${eventId}/tickets`,
       },
       {

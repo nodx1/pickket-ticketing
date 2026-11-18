@@ -20,6 +20,7 @@ import { Button } from "@pickket/ui";
 import PaymentStatus from "@/components/payment/PaymentStatus";
 import ReceiptDownload from "@/components/payment/ReceiptDownload";
 import OrderConfirmationModal from "@/components/payment/OrderConfirmationModal";
+import { freeCancelUntilDays } from "@/app/[locale]/events/[id]/_components/cancellationSchedule";
 import PaymentCompleteModal from "@/components/payment/PaymentCompleteModal";
 import PaymentErrorModal from "@/components/payment/PaymentErrorModal";
 import RefundRequestModal from "@/components/payment/RefundRequestModal";
@@ -168,17 +169,23 @@ export default function OrderDetailPage() {
       }
 
       let eventTitle = t("event_fallback");
+      // 주문서의 「등급」·환불 안내는 행사 정보에서 채운다(주문 응답엔 등급 id 만 있다 — 예전엔 order_type
+      // 「purchase」가 등급 자리에 그대로 찍혔다).
+      let tierName: string | null = null;
+      let freeCancelDays: number | null = null;
       // 나이스 결제수단 게이팅(C2) — 이벤트 allowed_pay_methods 를 결제 훅에 전달.
       let allowedPayMethods: string[] | null = null;
       try {
         const eventRes = await getEvent(orderResult.event_id);
         eventTitle = eventRes.data?.title || t("event_fallback");
         allowedPayMethods = eventRes.data?.allowed_pay_methods ?? null;
+        tierName = eventRes.data?.seat_tiers?.find((x: { id: string }) => x.id === orderResult.tier_id)?.name ?? null;
+        freeCancelDays = freeCancelUntilDays(eventRes.data?.cancellation_fee_tiers);
       } catch {
         // fallback already set
       }
 
-      return { order: orderResult, eventTitle, allowedPayMethods };
+      return { order: orderResult, eventTitle, allowedPayMethods, tierName, freeCancelDays };
     },
     refetchInterval: 30_000, // 30-second polling
   });
@@ -235,7 +242,7 @@ export default function OrderDetailPage() {
   const orderInfoForModal: OrderInfo | null = order
     ? {
         eventTitle,
-        tierName: order.order_type || "Ticket",
+        tierName: orderData?.tierName || t("ticket_fallback"),
         unitPrice: order.unit_price,
         quantity: order.quantity,
         fees: { platformFee: 0, organizerShare: 0 },
@@ -522,6 +529,7 @@ export default function OrderDetailPage() {
             niceCardOnly={payment.niceCardOnly}
             provider={payment.provider}
             onCancelProcessing={payment.cancelProcessing}
+            freeCancelUntilDays={orderData?.freeCancelDays ?? null}
             onAgreedChange={payment.setAgreed}
             onConfirm={payment.executePayment}
             onClose={payment.closeModal}
