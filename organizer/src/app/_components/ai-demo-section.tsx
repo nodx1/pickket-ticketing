@@ -331,7 +331,7 @@ export function AIDemoSection() {
       {/* CTA */}
       <div className="mt-14 flex flex-col items-center gap-4">
         <Button size="lg" asChild>
-          <Link href="/register">
+          <Link href="/login">
             나도 5분 만에 만들어보기
             <ChevronRight className="size-4" />
           </Link>

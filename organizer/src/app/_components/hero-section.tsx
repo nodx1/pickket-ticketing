@@ -50,7 +50,7 @@ export function HeroSection() {
 
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <Button size="lg" asChild>
-              <Link href="/register">
+              <Link href="/login">
                 5분 만에 시작하기
                 <ChevronRight className="size-4" />
               </Link>
