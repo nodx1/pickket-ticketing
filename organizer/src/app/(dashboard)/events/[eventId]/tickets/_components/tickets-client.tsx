@@ -15,6 +15,7 @@
  */
 
 import dynamic from "next/dynamic";
+import { EVIDENCE_SIMPLE_MODE } from "@/lib/evidence-mode";
 import { showsSeatMapEditor, type SeatType } from "@/lib/seats/seat-type";
 import { TierManager } from "../../seat-map/_components/tier-manager";
 import { SalePlanCard } from "./sale-plan-card";
@@ -57,12 +58,15 @@ export function TicketsClient({ eventId, seatType }: TicketsClientProps) {
       {unassigned ? (
         <>
           <div className="max-w-md">
-            <TierManager eventId={eventId} />
+            <TierManager eventId={eventId} unassigned />
           </div>
-          <p className="text-xs text-muted-foreground">
-            좌석을 지정해서 파는 행사로 바꾸려면 이벤트 설정에서 판매 방식을 「지정석 판매」로
-            변경하세요.
-          </p>
+          {/* 증빙용 간단 모드는 지정석 선택지를 숨기므로 이 안내도 숨긴다(@/lib/evidence-mode). */}
+          {EVIDENCE_SIMPLE_MODE ? null : (
+            <p className="text-xs text-muted-foreground">
+              좌석을 지정해서 파는 행사로 바꾸려면 이벤트 설정에서 판매 방식을 「지정석 판매」로
+              변경하세요.
+            </p>
+          )}
         </>
       ) : (
         /* 통합 에디터 — 좌측 등급 관리 + 우측 배치도 */

@@ -11,6 +11,8 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_COLLAPSED_GROUP_IDS,
   EVENT_SIDEBAR_GROUP_IDS,
+  EVIDENCE_MENU,
+  evidenceMenuGroups,
   menuGroups,
   pinnedItem,
   visibleGroupsFor,
@@ -178,5 +180,28 @@ describe("현장 그룹 — 대회 당일 게이트", () => {
     const onsite = visibleGroupsFor(NO_GATES).find((g) => g.id === "onsite");
     expect(onsite?.items.map((i) => i.href)).toContain("check-in");
     expect(onsite?.items.map((i) => i.href)).toContain("attendees");
+  });
+});
+
+describe("과업 증빙용 간단 메뉴", () => {
+  const all = { enabledFeatures: ["ticket_issuance", "group_booking", "participants", "facilities"], hasLotteryPhase: true, raffleEnabled: true };
+  it("시연 동선 메뉴만 남고 순서가 고정된다", () => {
+    const groups = evidenceMenuGroups(visibleGroupsFor(all));
+    expect(groups.map((g) => [g.id, g.items.map((i) => i.href)])).toEqual([
+      ["prepare", ["settings", "tickets", "publish"]],
+      ["sell", ["orders", "lottery-policy", "bids", "fairness", "settlement"]],
+      ["onsite", ["attendees", "onsite"]],
+    ]);
+  });
+  it("그룹 이름은 원래 메뉴 이름을 쓴다", () => {
+    expect(evidenceMenuGroups(visibleGroupsFor(all)).map((g) => g.label)).toEqual(["준비", "판매·발권", "현장"]);
+  });
+  it("추첨 단계가 없으면 추첨 메뉴 3개는 계속 숨는다(게이트 유지)", () => {
+    const sell = evidenceMenuGroups(visibleGroupsFor({ hasLotteryPhase: false })).find((g) => g.id === "sell");
+    expect(sell?.items.map((i) => i.href)).toEqual(["orders", "settlement"]);
+  });
+  it("간단 메뉴의 경로는 모두 원래 메뉴에 실재한다", () => {
+    const hrefs = new Set(menuGroups.flatMap((g) => g.items.map((i) => i.href)));
+    for (const { hrefs: hs } of EVIDENCE_MENU) for (const h of hs) expect(hrefs.has(h)).toBe(true);
   });
 });

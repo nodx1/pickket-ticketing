@@ -11,6 +11,7 @@ import {
   Rocket, Send, Settings, Tag, Ticket, Upload, UserCheck, UserPlus, Users, Webhook,
   FileBadge2, Landmark, MonitorSmartphone, SlidersHorizontal,
 } from "lucide-react";
+import { EVIDENCE_SIMPLE_MODE } from "@/lib/evidence-mode";
 
 export interface EventSidebarItem {
   label: string;
@@ -194,4 +195,36 @@ export function visibleGroupsFor(event: EventSidebarGateInput): EventSidebarGrou
       }),
     }))
     .filter((group) => group.items.length > 0);
+}
+
+/**
+ * 과업 증빙용 간단 메뉴 (2026-11-19).
+ *
+ * 이 브랜치의 예매는 과업(가중치 추첨 · 공정성 증명서 · 현장 입장 관리 · 주최사 PG 정산) 증빙에만
+ * 쓰고 이후 피켓 방향에서는 쓰지 않는다. 시연 동선에 쓰는 메뉴만 **화면에서** 남긴다 — 경로·화면
+ * 코드는 그대로라 주소로 들어가면 열리고, `@/lib/evidence-mode` 를 끄면 원래 메뉴로 돌아간다.
+ * 정산 방식은 기본 접힘인 `고급 설정` 대신 판매·발권 끝에 둔다(시연 중 바로 보이게).
+ */
+export const EVIDENCE_MENU_ONLY = EVIDENCE_SIMPLE_MODE;
+
+export const EVIDENCE_MENU: ReadonlyArray<{ id: string; hrefs: readonly string[] }> = [
+  { id: "prepare", hrefs: ["settings", "tickets", "publish"] },
+  { id: "sell", hrefs: ["orders", "lottery-policy", "bids", "fairness", "settlement"] },
+  { id: "onsite", hrefs: ["attendees", "onsite"] },
+];
+
+/** 게이트를 거친 그룹(visibleGroupsFor 결과)에서 증빙 메뉴만 골라 다시 묶는다. 게이트로 빠진 항목은 계속 빠진다. */
+export function evidenceMenuGroups(groups: EventSidebarGroup[]): EventSidebarGroup[] {
+  const byHref = new Map(groups.flatMap((g) => g.items).map((item) => [item.href, item] as const));
+  return EVIDENCE_MENU.map(({ id, hrefs }) => {
+    const base = menuGroups.find((g) => g.id === id);
+    return {
+      id,
+      label: base?.label ?? id,
+      items: hrefs.flatMap((href) => {
+        const item = byHref.get(href);
+        return item ? [item] : [];
+      }),
+    };
+  }).filter((g) => g.items.length > 0);
 }

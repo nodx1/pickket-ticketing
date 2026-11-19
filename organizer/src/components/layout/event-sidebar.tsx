@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { ChevronDown, ExternalLink, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSidebarGroup } from "@/components/layout/collapsible-sidebar-group";
-import { pinnedItem, visibleGroupsFor } from "@/components/layout/event-sidebar-groups";
+import { EVIDENCE_MENU_ONLY, evidenceMenuGroups, pinnedItem, visibleGroupsFor } from "@/components/layout/event-sidebar-groups";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { marketViewState } from "@/lib/public/lottery-cta";
 import { useUIPreferences } from "@/lib/stores/uiPreferencesStore";
@@ -38,7 +38,8 @@ export function EventSidebar({ event }: EventSidebarProps) {
     hydrate();
   }, [hydrate]);
 
-  const visibleGroups = visibleGroupsFor(event);
+  // 과업 증빙용 간단 메뉴 — 시연 동선 메뉴만(event-sidebar-groups.ts EVIDENCE_MENU).
+  const visibleGroups = EVIDENCE_MENU_ONLY ? evidenceMenuGroups(visibleGroupsFor(event)) : visibleGroupsFor(event);
   const market = marketViewState(event);
   // 🔴 1280px 미만(태블릿·모바일)에서는 메뉴 40여 개가 본문 위에 통째로 쌓였다(UI 감사 P0-3).
   //    좁은 화면은 '현재 화면 + 메뉴 버튼' 한 줄로 접고, 누르면 펼친다. 화면을 옮기면 다시 접힌다

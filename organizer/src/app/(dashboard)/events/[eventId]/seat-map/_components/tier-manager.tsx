@@ -17,6 +17,8 @@ import type { SeatTier } from "@/lib/seats/types";
 interface TierManagerProps {
   eventId: string;
   onTiersChange?: (tiers: SeatTier[]) => void;
+  /** 자유 입장(배치도 없음) 행사 — 수량은 직접 입력한다(배치도로 채우는 안내를 띄우지 않는다). */
+  unassigned?: boolean;
 }
 
 interface TierListResponse {
@@ -30,7 +32,7 @@ interface EditDraft {
   capacity: string;
 }
 
-export function TierManager({ eventId, onTiersChange }: TierManagerProps) {
+export function TierManager({ eventId, onTiersChange, unassigned = false }: TierManagerProps) {
   const [tiers, setTiers] = useState<SeatTier[]>([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -236,7 +238,7 @@ export function TierManager({ eventId, onTiersChange }: TierManagerProps) {
           type="number"
           value={capacity}
           onChange={(e) => setCapacity(e.target.value)}
-          placeholder="수량 (장) — 배치도로 채우려면 비워두세요"
+          placeholder={unassigned ? "수량 (장)" : "수량 (장) — 배치도로 채우려면 비워두세요"}
           aria-label="수량 (장)"
         />
         <Input

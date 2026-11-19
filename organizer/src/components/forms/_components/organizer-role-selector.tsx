@@ -29,11 +29,13 @@ interface OrganizerRoleSelectorProps {
   organizers: OrganizerOption[];
   value: OrganizerEntry[];
   onChange: (value: OrganizerEntry[]) => void;
+  /** 보여 줄 역할. 기본은 주최·주관·후원 전부. 과업 증빙 간단 모드는 주최만. */
+  roles?: OrganizerRole[];
 }
 
 const ROLES: OrganizerRole[] = ["host", "coordinator", "sponsor"];
 
-export function OrganizerRoleSelector({ organizers, value, onChange }: OrganizerRoleSelectorProps) {
+export function OrganizerRoleSelector({ organizers, value, onChange, roles = ROLES }: OrganizerRoleSelectorProps) {
   const [addingRole, setAddingRole] = useState<OrganizerRole | null>(null);
 
   const entriesByRole = useMemo(() => {
@@ -77,7 +79,7 @@ export function OrganizerRoleSelector({ organizers, value, onChange }: Organizer
     <div className="space-y-2">
       <Label>주최자</Label>
       <div className="divide-y divide-border rounded-lg border border-border">
-        {ROLES.map((role) => {
+        {roles.map((role) => {
           const entries = entriesByRole[role];
           const available = getAvailableOrganizers(role);
           const isRequired = role === "host";

@@ -31,6 +31,15 @@ import {
 } from "@/lib/constants";
 import { showError } from "@/lib/hooks/useToast";
 import { slugify } from "@/lib/slug";
+import { EVIDENCE_SIMPLE_MODE } from "@/lib/evidence-mode";
+
+/**
+ * 과업 증빙용 간단 모드(@/lib/evidence-mode)면 과업과 무관한 입력(주관·후원, 공연시간, 온라인 여부,
+ * 입장 방식·경품, RSVP, 단체 예약, 상단 배너, 세로·갤러리 이미지, 교통·주차 안내 등)을 **화면에서만**
+ * 숨긴다. 값·서버·저장 경로는 그대로라 기존 이벤트를 수정해도 숨긴 값은 왕복 보존된다.
+ * 좌석은 자유 입장(등급·수량)으로 만든다.
+ */
+const SHOW_EXTRA_EVENT_FIELDS = !EVIDENCE_SIMPLE_MODE;
 
 const eventSchema = z.object({
   title: z.string().min(2, "이벤트 제목은 2자 이상이어야 합니다"),
@@ -127,7 +136,8 @@ const emptyValue: EventFormValue = {
   groupBookingEnabled: false,
   contextBanner: "",
   admissionMode: "single",
-  seatType: "assigned",
+  // 간단 모드는 자유 입장(등급·수량)만 쓴다 — 배치도 없이 가중치 추첨 등급을 판다.
+  seatType: SHOW_EXTRA_EVENT_FIELDS ? "assigned" : "unassigned",
   raffleEnabled: false,
 };
 
@@ -336,6 +346,7 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
             </div>
           ) : (
             <OrganizerRoleSelector
+              roles={SHOW_EXTRA_EVENT_FIELDS ? undefined : ["host"]}
               organizers={organizers}
               value={form.organizers}
               onChange={(organizers) => editForm((prev) => ({ ...prev, organizers }))}
@@ -384,7 +395,7 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
             </div>
           )}
 
-          <div className="grid gap-5 sm:grid-cols-3">
+          <div className={SHOW_EXTRA_EVENT_FIELDS ? "grid gap-5 sm:grid-cols-3" : "grid gap-5 sm:grid-cols-2"}>
             <div className="space-y-2">
               <Label>이벤트 유형</Label>
               <Select
@@ -436,6 +447,7 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
                 />
               ) : null}
             </div>
+            {SHOW_EXTRA_EVENT_FIELDS ? (
             <div className="space-y-2">
               <Label>최대 참석자 수</Label>
               <div className="flex h-12 items-center justify-between rounded-md border border-border bg-muted/30 px-3 text-sm text-muted-foreground">
@@ -448,6 +460,7 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
                 좌석 배치도의 활성 좌석 + 스탠딩 수용 인원 합산값. 배치도 저장 시 자동 갱신됩니다.
               </p>
             </div>
+            ) : null}
           </div>
 
           <div className="border-t border-border pt-6 first:border-0 first:pt-0">
@@ -476,6 +489,7 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
             </div>
           </div>
 
+          {SHOW_EXTRA_EVENT_FIELDS ? (
           <div className="grid gap-5 lg:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="event-runtime">공연시간 (분)</Label>
@@ -500,6 +514,7 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
               />
             </div>
           </div>
+          ) : null}
 
           <div className="border-t border-border pt-6 first:border-0 first:pt-0">
             <h3 className="text-lg font-bold text-foreground">장소</h3>
@@ -525,6 +540,7 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
             </div>
           </div>
 
+          {SHOW_EXTRA_EVENT_FIELDS ? (
           <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
             <Checkbox
               id="event-is-online"
@@ -535,10 +551,11 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
               온라인 이벤트입니다
             </Label>
           </div>
+          ) : null}
 
           {/* 행사 유형 — 무료 참석(RSVP) vs 유료 티켓 판매. 켜면 랜딩에 참석 등록 폼이 노출된다. */}
 
-          {mode === "edit" ? (
+          {mode === "edit" && SHOW_EXTRA_EVENT_FIELDS ? (
             <div className="grid gap-5 lg:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="event-transport-info">대중교통 안내</Label>
@@ -600,6 +617,8 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
             />
           </div>
 
+          {SHOW_EXTRA_EVENT_FIELDS ? (
+          <>
           <div className="border-t border-border pt-6 first:border-0 first:pt-0">
             <h3 className="text-lg font-bold text-foreground">판매 방식</h3>
             <p className="mt-1 text-sm text-content-subtle">판매·입장 방식은 티켓 발급과 게이트 동작을 결정합니다.</p>
@@ -709,9 +728,13 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
               </div>
             </div>
           </div>
+          </>
+          ) : null}
 
           {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
 
+          {SHOW_EXTRA_EVENT_FIELDS ? (
+          <>
           <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
             <div className="flex items-start gap-3">
               <Checkbox
@@ -770,13 +793,19 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
               공개 상세페이지 최상단에 노출됩니다. 비워두면 배너가 표시되지 않습니다.
             </p>
           </div>
+          </>
+          ) : null}
 
           {/* 좌석 판매 방식 — 지정석(배치도)인지 자유입장(등급 수량만)인지. `티켓 & 좌석` 화면이
               이 값으로 배치도 에디터 노출을 가른다. 기존 이벤트 기본값은 assigned(현행 유지). */}
 
           <div className="border-t border-border pt-6 first:border-0 first:pt-0">
             <h3 className="text-lg font-bold text-foreground">이미지</h3>
-            <p className="mt-1 text-sm text-content-subtle">대표 이미지는 히어로(가로 2520×1080 권장), 세로는 모바일용입니다.</p>
+            <p className="mt-1 text-sm text-content-subtle">
+              {SHOW_EXTRA_EVENT_FIELDS
+                ? "대표 이미지는 히어로(가로 2520×1080 권장), 세로는 모바일용입니다."
+                : "대표 이미지는 피켓 이벤트 화면 맨 위에 쓰입니다(가로 2520×1080 권장)."}
+            </p>
           </div>
 
           <ImageUpload
@@ -810,6 +839,8 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
            * 미업로드면 종전대로 자동 크롭본이 쓰인다(하위호환).
            */}
 
+          {SHOW_EXTRA_EVENT_FIELDS ? (
+          <>
           <ImageUpload
             value={form.imageVariants?.portrait ?? ""}
             onChange={(url) =>
@@ -837,6 +868,8 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
             max={4}
             uploadType="event"
           />
+          </>
+          ) : null}
 
           {/* 대중교통/주차 안내 — 설정(수정) 모드에서만 표시 */}
 

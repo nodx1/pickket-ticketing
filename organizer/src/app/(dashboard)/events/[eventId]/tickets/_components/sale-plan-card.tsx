@@ -25,6 +25,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { EVIDENCE_SIMPLE_MODE } from "@/lib/evidence-mode";
 import {
   AlertTriangle,
   Check,
@@ -348,9 +349,14 @@ export function SalePlanCard({ eventId }: { eventId: string }) {
 
         {/* 모드 선택 체크박스 */}
         <div className="space-y-2">
-          <Label className="text-xs font-semibold">판매 단계 선택 (1~3개, 미선택 시 선착순 단독)</Label>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {(Object.keys(MAIN_MODE_META) as MainMode[]).map((m) => {
+          <Label className="text-xs font-semibold">
+            {EVIDENCE_SIMPLE_MODE
+              ? "판매 단계 — 「공정 추첨」을 체크하면 가중치 추첨으로 팝니다(미선택 시 선착순)"
+              : "판매 단계 선택 (1~3개, 미선택 시 선착순 단독)"}
+          </Label>
+          <div className={EVIDENCE_SIMPLE_MODE ? "grid gap-2" : "grid gap-2 sm:grid-cols-3"}>
+            {/* 증빙용 간단 모드는 과업 대상인 공정 추첨만 보인다(팬클럽 선예매·대기열 판매는 숨김). */}
+            {(EVIDENCE_SIMPLE_MODE ? (["lottery"] as MainMode[]) : (Object.keys(MAIN_MODE_META) as MainMode[])).map((m) => {
               const meta = MAIN_MODE_META[m];
               const ModeIcon = meta.icon;
               const checked = selectedModes.has(m);
