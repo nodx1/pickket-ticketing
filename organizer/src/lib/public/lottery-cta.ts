@@ -29,3 +29,28 @@ export function publicCtaMode(products: ReadonlyArray<{ saleMode?: string | null
   if (lottery === 0) return "purchase";
   return lottery === tickets.length ? "lottery" : "mixed";
 }
+
+/**
+ * 피켓(소비자)에 이벤트가 보이는 상태 — 관리자 승인 이후. 심사 전·심사 중·반려는 피켓에 없다.
+ * 피켓고 화면은 v2 상태를 6-상태로 투영해 받으므로(domain-model `projectToGoEventStatus`:
+ * 승인~배정 → live, 종료·취소 → archived) 투영값과 v2 원래 값을 모두 받는다.
+ */
+const MARKET_VISIBLE_STATUSES = new Set([
+  "live", "archived",
+  "approved", "bidding_open", "bidding_closed", "allocating", "allocated", "completed", "cancelled",
+]);
+
+/**
+ * 피켓고 이벤트 화면의 「피켓에서 보기」 상태.
+ *  - live   : 피켓 마켓 채널이 켜져 있고 승인되어 피켓에 공개됨 → 피켓 이벤트 화면 주소
+ *  - pending: 피켓 마켓은 켰지만 아직 승인 전 → 승인 뒤에 열린다고 안내
+ *  - off    : 피켓 마켓 채널을 안 씀 → 버튼 없음
+ */
+export function marketViewState(
+  event: { id: string; status: string; saleChannels?: ReadonlyArray<string> | null },
+  base = PICKKET_MARKET_URL,
+): { kind: "live"; url: string } | { kind: "pending" } | { kind: "off" } {
+  if (!event.saleChannels?.includes("marketplace")) return { kind: "off" };
+  if (!MARKET_VISIBLE_STATUSES.has(event.status)) return { kind: "pending" };
+  return { kind: "live", url: marketEventUrl(event.id, base) };
+}

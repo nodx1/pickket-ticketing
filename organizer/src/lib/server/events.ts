@@ -74,6 +74,8 @@ export interface EventSummary {
   hasLotteryPhase: boolean;
   /** F4 경품 추첨 활성화 여부(go-local). 추첨 사이드바 항목/화면 게이트. */
   raffleEnabled: boolean;
+  /** 판매 채널(self·marketplace…). marketplace 면 승인 뒤 피켓에 공개된다 — 사이드바 「피켓에서 보기」. */
+  saleChannels: string[];
 }
 
 /**

@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Menu } from "lucide-react";
+import { ChevronDown, ExternalLink, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSidebarGroup } from "@/components/layout/collapsible-sidebar-group";
 import { pinnedItem, visibleGroupsFor } from "@/components/layout/event-sidebar-groups";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { marketViewState } from "@/lib/public/lottery-cta";
 import { useUIPreferences } from "@/lib/stores/uiPreferencesStore";
 import type { EventStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,8 @@ interface EventSidebarProps {
     hasLotteryPhase?: boolean;
     /** F4 경품 추첨(raffle) 활성화 여부. 추첨 실행 화면 노출 게이트. */
     raffleEnabled?: boolean;
+    /** 판매 채널. marketplace 가 켜져 있고 승인되면 「피켓에서 보기」가 피켓 이벤트 화면을 연다. */
+    saleChannels?: string[];
   };
 }
 
@@ -36,6 +39,7 @@ export function EventSidebar({ event }: EventSidebarProps) {
   }, [hydrate]);
 
   const visibleGroups = visibleGroupsFor(event);
+  const market = marketViewState(event);
   // 🔴 1280px 미만(태블릿·모바일)에서는 메뉴 40여 개가 본문 위에 통째로 쌓였다(UI 감사 P0-3).
   //    좁은 화면은 '현재 화면 + 메뉴 버튼' 한 줄로 접고, 누르면 펼친다. 화면을 옮기면 다시 접힌다
   //    (열린 경로를 기억해 비교 — 이펙트로 닫지 않는다).
@@ -77,9 +81,23 @@ export function EventSidebar({ event }: EventSidebarProps) {
             미리보기는 확인이지 이탈이 아니다 — 편집 화면을 그대로 두는 게 맞다.
             ⚠️ 이건 완화지 수정이 아니다. 근본 원인(5분 만료 + 갱신 미배선)은
                `fetchWithRefresh` 배선이 담당한다. */}
-        <Button asChild className="w-full">
+        {/* 피켓 마켓에 올린 이벤트는 팬이 실제로 보는 피켓 화면이 「진짜 이벤트 화면」이다.
+            승인 전에는 피켓에 아직 없으므로 링크 대신 안내만 둔다. 피켓고 자체 페이지는 보조 버튼. */}
+        {market.kind === "live" ? (
+          <Button asChild className="w-full">
+            <a href={market.url} target="_blank" rel="noopener noreferrer">
+              피켓에서 보기
+              <ExternalLink className="size-4" aria-hidden />
+            </a>
+          </Button>
+        ) : market.kind === "pending" ? (
+          <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs leading-relaxed text-content-subtle">
+            피켓 마켓에 올릴 이벤트예요. 게시 준비에서 심사를 요청하고 관리자가 승인하면 피켓에 공개돼요.
+          </p>
+        ) : null}
+        <Button asChild variant={market.kind === "live" ? "outline" : "default"} className="w-full">
           <Link href={`/e/${event.slug}`} target="_blank" rel="noopener noreferrer">
-            이벤트 페이지 미리보기
+            {market.kind === "off" ? "이벤트 페이지 미리보기" : "피켓고 페이지 미리보기"}
           </Link>
         </Button>
       </div>
