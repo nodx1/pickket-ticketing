@@ -25,6 +25,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { EVIDENCE_SIMPLE_MODE } from "@/lib/evidence-mode";
 import {
   AlertTriangle,
@@ -145,6 +146,7 @@ function addHoursToLocal(local: string, hours: number): string {
 const MIN_BETWEEN_PHASES_HOURS = 96;
 
 export function SalePlanCard({ eventId }: { eventId: string }) {
+  const router = useRouter();
   const [phases, setPhases] = useState<PhaseRow[]>([]);
   const [drafts, setDrafts] = useState<PhaseDraft[]>([]);
   const [fcfsOpensAt, setFcfsOpensAt] = useState<string>("");
@@ -314,6 +316,8 @@ export function SalePlanCard({ eventId }: { eventId: string }) {
       }
       showSuccess("판매 방식이 저장되었습니다");
       await fetchPhases();
+      // 왼쪽 메뉴(가중치 추첨 설정·추첨 결과 등)는 서버 레이아웃이 판매 단계를 보고 정하므로 다시 그린다.
+      router.refresh();
     } finally {
       setSaving(false);
     }
