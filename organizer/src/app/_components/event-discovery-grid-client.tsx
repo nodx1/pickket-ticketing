@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EVENT_TYPE_LABELS } from "@/lib/constants";
 import { formatDate } from "@/lib/format";
+// 배포는 https://pickket.kr, 로컬은 NEXT_PUBLIC_PICKKET_MARKET_URL(피켓 3020) — 고정 주소면 로컬에서도 운영 사이트가 열린다.
+import { PICKKET_MARKET_URL } from "@/lib/public/lottery-cta";
 
-const PICKKET_MARKET_URL = "https://pickket.kr";
 
 export interface EventCardData {
   id: string;

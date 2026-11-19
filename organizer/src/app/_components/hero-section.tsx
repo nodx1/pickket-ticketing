@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { marketEventsUrl } from "@/lib/public/lottery-cta";
 import {
   BarChart3,
   Calendar,
@@ -55,7 +56,10 @@ export function HeroSection() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <a href="#events">실제 이벤트 보기</a>
+              {/* 실제 이벤트는 팬이 예매하는 피켓에 있다 — 피켓 이벤트 목록을 새 탭으로 연다. */}
+              <a href={marketEventsUrl()} target="_blank" rel="noopener noreferrer">
+                실제 이벤트 보기
+              </a>
             </Button>
           </div>
 

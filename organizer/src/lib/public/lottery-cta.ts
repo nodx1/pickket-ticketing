@@ -17,6 +17,11 @@ export function marketEventUrl(eventId: string, base = PICKKET_MARKET_URL, local
   return `${base}/${locale}/events/${encodeURIComponent(eventId)}`;
 }
 
+/** 피켓 이벤트 목록 — 피켓고 첫 화면 「실제 이벤트 보기」가 여는 곳(팬이 실제로 예매하는 화면). */
+export function marketEventsUrl(base = PICKKET_MARKET_URL, locale = "ko") {
+  return `${base}/${locale}/events`;
+}
+
 /**
  * 공개 페이지 CTA 모드.
  *  - purchase: 일반 판매 등급만 있음 → 기존 「티켓 구매하기」

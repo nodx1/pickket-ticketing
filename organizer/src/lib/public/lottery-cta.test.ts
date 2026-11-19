@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isLotterySaleMode, marketEventUrl, marketViewState, publicCtaMode } from "./lottery-cta";
+import { isLotterySaleMode, marketEventsUrl, marketEventUrl, marketViewState, publicCtaMode } from "./lottery-cta";
 
 describe("피켓고 공개 페이지 — 추첨 등급 CTA", () => {
   it("추첨 등급만 있으면 피켓 응모로 연결", () => {
@@ -37,5 +37,11 @@ describe("피켓고 이벤트 화면 — 피켓에서 보기", () => {
   it("피켓 마켓을 안 쓰면 버튼 없음", () => {
     expect(marketViewState({ id: "e1", status: "bidding_open", saleChannels: ["self"] }, base).kind).toBe("off");
     expect(marketViewState({ id: "e1", status: "bidding_open" }, base).kind).toBe("off");
+  });
+});
+
+describe("피켓고 첫 화면 — 실제 이벤트 보기", () => {
+  it("피켓 이벤트 목록으로", () => {
+    expect(marketEventsUrl("http://localhost:3020")).toBe("http://localhost:3020/ko/events");
   });
 });
