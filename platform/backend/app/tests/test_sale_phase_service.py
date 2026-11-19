@@ -166,7 +166,7 @@ def test_event_start_must_leave_room_for_waitlist_and_payment():
     phases = [_lottery_spec(now)]
     last_close = phases[-1].closes_at
     # 결제창 72h + 대기자 168h = 240h 이내에 공연이 시작되면 거부
-    with pytest.raises(sps.SalePlanError, match="너무 빠릅니다"):
+    with pytest.raises(sps.SalePlanError, match="공연 시작이 너무 이릅니다"):
         sps.validate_against_event(
             phases, None, last_close + timedelta(hours=239), _policy()
         )
@@ -540,3 +540,30 @@ def test_phase_to_tier_sale_mode_mapping():
     assert sps.tier_sale_mode_for_phase("membership_presale") == "fanclub_presale"
     assert sps.tier_sale_mode_for_phase("queue_sale") == "queue"
     assert sps.tier_sale_mode_for_phase("fcfs_residual") == "fixed_fcfs"
+
+
+def test_event_too_early_message_shows_real_dates():
+    """공연이 너무 이를 때 시간 수가 아니라 실제 날짜(판매 마감 · 가능한 가장 이른 공연 시작 · 지금 공연 시작)로 안내한다."""
+    from datetime import datetime, timedelta, timezone
+
+    import pytest
+
+    from app.services.sale_phase_service import PhaseSpec, SalePlanError, validate_against_event
+
+    kst = timezone(timedelta(hours=9))
+    phases = [
+        PhaseSpec(
+            mode="lottery",
+            ratio_pct=100,
+            opens_at=datetime(2026, 11, 19, 20, 20, tzinfo=kst),
+            closes_at=datetime(2026, 11, 19, 20, 25, tzinfo=kst),
+        )
+    ]
+    with pytest.raises(SalePlanError) as err:
+        validate_against_event(phases, None, datetime(2026, 11, 21, 8, 18, tzinfo=kst))
+    msg = str(err.value)
+    assert "11월 19일 오후 8:25" in msg  # 판매 마감
+    assert "11월 29일 오후 8:25 이후" in msg  # 결제 3일 + 대기자 승격 7일
+    assert "지금 공연 시작: 11월 21일 오전 8:18" in msg
+    # 10일 뒤면 통과
+    validate_against_event(phases, None, datetime(2026, 11, 30, 8, 18, tzinfo=kst))

@@ -186,6 +186,17 @@ def validate_phase_specs(
                 )
 
 
+_KST = timezone(timedelta(hours=9))
+
+
+def _kst_label(dt: datetime) -> str:
+    """주최자 안내용 한국 시각 — 예: 11월 29일 오후 8:25."""
+    k = _as_utc(dt).astimezone(_KST)
+    ampm = "오전" if k.hour < 12 else "오후"
+    hour = k.hour % 12 or 12
+    return f"{k.month}월 {k.day}일 {ampm} {hour}:{k.minute:02d}"
+
+
 def validate_against_event(
     phases: list[PhaseSpec],
     fcfs_opens_at: datetime | None,
@@ -205,12 +216,15 @@ def validate_against_event(
         )
         waitlist_closes = waitlist_opens + timedelta(hours=policy.waitlist_duration_hours)
         if event_starts_at <= waitlist_closes:
-            required = policy.primary_payment_window_hours + policy.waitlist_duration_hours
+            # 시간 수만 알려 주면 주최자가 날짜를 직접 계산해야 한다 — 실제 날짜로 안내한다.
+            pay_days = policy.primary_payment_window_hours / 24
+            wait_days = policy.waitlist_duration_hours / 24
             raise SalePlanError(
-                f"이벤트 시작 시각이 너무 빠릅니다. 마지막 판매 단계 마감 후 최소 {required}시간 "
-                f"(결제창 {policy.primary_payment_window_hours}h + "
-                f"대기자 승격 {policy.waitlist_duration_hours}h) "
-                "이후로 공연 시작 시각을 잡거나, 마지막 판매 단계 마감 시각을 앞당겨주세요."
+                f"공연 시작이 너무 이릅니다. 판매 마감({_kst_label(last_main.closes_at)}) 뒤에 "
+                f"당첨자 결제 {pay_days:g}일 + 대기자 승격 {wait_days:g}일이 필요해서 "
+                f"공연 시작은 {_kst_label(waitlist_closes)} 이후여야 합니다"
+                f"(지금 공연 시작: {_kst_label(event_starts_at)}). "
+                "이벤트 설정에서 시작 일시를 늦추거나, 판매 마감을 앞당겨 주세요."
             )
     elif fcfs_opens_at is not None and event_starts_at <= _as_utc(fcfs_opens_at):
         raise SalePlanError("선착순 시작 시각이 이벤트 시작 시각보다 늦거나 같습니다")
