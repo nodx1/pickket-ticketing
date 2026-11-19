@@ -130,15 +130,15 @@ export default function EventsClient({ initialData }: EventsClientProps) {
       {/* Sort + View toggle */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
         <p className="text-sm text-muted-foreground">{t("totalEvents", { total: total ?? 0 })}</p>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* 정렬 */}
-          <div className="flex flex-wrap items-center gap-1">
+        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+          {/* 정렬 — 휴대폰에선 한 줄로 옆으로 넘겨 보기 */}
+          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scrollbar-hide py-2 -my-2 sm:flex-wrap sm:overflow-visible">
             {SORT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => updateParam("sort", opt.value)}
-                className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 min-h-[36px] ${
+                className={`shrink-0 whitespace-nowrap px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 min-h-[36px] ${
                   (sort || "newest") === opt.value
                     ? "bg-primary text-white shadow-md"
                     : "bg-card/90 backdrop-blur-sm text-foreground shadow-lg hover:shadow-xl hover:-translate-y-0.5"
@@ -148,7 +148,7 @@ export default function EventsClient({ initialData }: EventsClientProps) {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-1 rounded-full bg-card/90 backdrop-blur-sm shadow-lg p-1">
+          <div className="flex shrink-0 items-center gap-1 rounded-full bg-card/90 backdrop-blur-sm shadow-lg p-1">
             <button
               type="button"
               onClick={() => setViewMode("grid")}

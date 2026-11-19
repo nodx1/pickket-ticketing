@@ -8,7 +8,11 @@ import {
   type ReactNode,
 } from "react";
 import { useAuthStore } from "@pickket/store";
-import api from "@pickket/lib/api";
+import api, { setLoginRedirectPolicy } from "@pickket/lib/api";
+import { needsLoginRedirect } from "@/lib/login-redirect-policy";
+
+// 세션 만료 때 공개 화면에서는 로그인으로 튕기지 않는다(login-redirect-policy.ts 참고).
+setLoginRedirectPolicy(needsLoginRedirect);
 
 interface AuthContextValue {
   /** true once the initial session check is done (success or fail) */

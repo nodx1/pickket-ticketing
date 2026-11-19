@@ -264,11 +264,22 @@ api.interceptors.request.use(async (config) => {
 
 // ─── Auth helpers ───────────────────────────────────────────────────────────
 
+/**
+ * 세션 만료(401·refresh 실패) 때 로그인 화면으로 보낼지 정하는 규칙.
+ * 기본은 항상 보낸다(관리자 앱). 피켓은 공개 화면(홈·이벤트 등)에서는 조용히 로그아웃만 하도록
+ * 규칙을 바꾼다 — 홈 화면 앱(PWA)을 며칠 만에 열었을 때 첫 화면이 로그인으로 튕기지 않게.
+ */
+let shouldRedirectToLogin: (pathname: string) => boolean = () => true;
+export function setLoginRedirectPolicy(fn: (pathname: string) => boolean): void {
+  shouldRedirectToLogin = fn;
+}
+
 function _redirectToLogin(): void {
   if (typeof window === "undefined") return;
   const path = window.location.pathname;
   // 이미 auth 페이지면 무한 리다이렉트 방지
   if (path.includes("/auth")) return;
+  if (!shouldRedirectToLogin(path)) return;
   // locale prefix 감지: /ko/.. → /ko/auth, admin은 prefix 없음 → /auth
   const localeMatch = path.match(/^\/([a-z]{2}(?:-[A-Z]{2})?)\//);
   const loginPath = localeMatch ? `/${localeMatch[1]}/auth` : "/auth";

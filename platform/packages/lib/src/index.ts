@@ -1,4 +1,4 @@
-export { default as api, setBehaviorTokenProvider } from "./api";
+export { default as api, setBehaviorTokenProvider, setLoginRedirectPolicy } from "./api";
 export * from "./constants";
 export * from "./domain-config";
 export * from "./env";

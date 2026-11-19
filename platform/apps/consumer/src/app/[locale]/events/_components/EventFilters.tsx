@@ -294,7 +294,8 @@ export default function EventFilters({
 
   return (
     <div className="space-y-3 mb-8">
-      <div className="flex flex-wrap items-center gap-2">
+      {/* 휴대폰: 한 줄로 옆으로 넘겨 보기(필터 버튼은 맨 앞), 넓은 화면: 여러 줄 */}
+      <div className="-mx-4 flex items-center gap-2 overflow-x-auto scrollbar-hide px-4 py-2 -my-2 md:mx-0 md:my-0 md:flex-wrap md:overflow-visible md:px-0 md:py-0">
         {/* Category pills */}
         {CATEGORIES.map((cat) => (
           <button
@@ -306,7 +307,7 @@ export default function EventFilters({
                 currentCategory === cat.slug ? "" : cat.slug,
               )
             }
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+            className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
               currentCategory === cat.slug
                 ? "bg-primary text-white shadow-md"
                 : "bg-card/90 backdrop-blur-sm text-foreground shadow-lg hover:shadow-xl hover:-translate-y-0.5"
@@ -388,8 +389,8 @@ export default function EventFilters({
           </div>
         </FilterDropdown>
 
-        {/* Mobile filter button */}
-        <div className="md:hidden">
+        {/* Mobile filter button — 줄 맨 앞 */}
+        <div className="order-first shrink-0 md:hidden">
           <MobileFilterSheet
             currentCity={currentCity}
             currentStatus={currentStatus}
