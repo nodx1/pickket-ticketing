@@ -708,6 +708,49 @@ export default function BookingPageClient({
     );
   }
 
+  // 데스크톱·모바일이 같은 패널을 쓴다(배치에서만 다름).
+  const seatMapPanel = (
+    <SeatMapPanel
+      eventId={eventId}
+      venue={venue}
+      tiers={tiers}
+      preloadedSeats={seats}
+      selectedTier={selectedTier}
+      selectedSeats={booking.selectedSeats}
+      quantity={booking.quantity}
+      onSelectTier={handleMapSelectTier}
+      onToggleSeat={handleToggleSeat}
+      onSetSelectedSeats={booking.setSelectedSeats}
+      category={event.category}
+      homeTeam={event.home_team}
+      awayTeam={event.away_team}
+      eventImageUrl={event.image_url}
+      eventTitle={event.title}
+      seatSelectionActive={isLotteryEvent ? false : seatSelectionActive}
+      onExitSeatSelection={handleExitSeatSelection}
+      event={event}
+      lotteryMode={isLotteryEvent}
+      onSectionClickForLottery={({ sectionName, tierId }) => {
+        const tier = tiers.find((t) => t.id === tierId);
+        if (tier) setLotteryApplyTarget({ tier, sectionName });
+      }}
+    />
+  );
+  const lotteryApplyPanel = (
+    <LotteryApplyPanel
+      eventId={eventId}
+      locale={(params.locale as string) ?? "ko"}
+      eventTitle={event.title}
+      tiers={tiers}
+      sections={venue?.sections ?? []}
+      entryCountsByTier={entryCountsByTier}
+      myEntry={myLotteryEntry}
+      closesAt={lotteryStats?.closes_at ?? null}
+      refreshKey={myLotteryEntry ? 1 : 0}
+      onOpenApplyModal={handleOpenLotteryApply}
+    />
+  );
+
   return (
     <div
       className="h-full flex flex-col bg-background text-foreground overflow-hidden"
@@ -730,6 +773,7 @@ export default function BookingPageClient({
         imageUrl={event.image_url}
         holdExpiresAt={booking.holdExpiresAt}
         onHoldExpired={handleHoldExpired}
+        backHref={`/events/${eventId}`}
       />
 
       {/* ── 데스크톱: 좌우 분할 ── */}
@@ -740,45 +784,10 @@ export default function BookingPageClient({
         {isGeneralAdmission ? (
           <GeneralAdmissionPanel title={event.title} venue={event.venue} dateText={generalAdmissionDate} imageUrl={event.image_url} />
         ) : (
-          <SeatMapPanel
-            eventId={eventId}
-            venue={venue}
-            tiers={tiers}
-            preloadedSeats={seats}
-            selectedTier={selectedTier}
-            selectedSeats={booking.selectedSeats}
-            quantity={booking.quantity}
-            onSelectTier={handleMapSelectTier}
-            onToggleSeat={handleToggleSeat}
-            onSetSelectedSeats={booking.setSelectedSeats}
-            category={event.category}
-            homeTeam={event.home_team}
-            awayTeam={event.away_team}
-            eventImageUrl={event.image_url}
-            eventTitle={event.title}
-            seatSelectionActive={isLotteryEvent ? false : seatSelectionActive}
-            onExitSeatSelection={handleExitSeatSelection}
-            event={event}
-            lotteryMode={isLotteryEvent}
-            onSectionClickForLottery={({ sectionName, tierId }) => {
-              const tier = tiers.find((t) => t.id === tierId);
-              if (tier) setLotteryApplyTarget({ tier, sectionName });
-            }}
-          />
+          seatMapPanel
         )}
         {isLotteryEvent ? (
-          <LotteryApplyPanel
-            eventId={eventId}
-            locale={(params.locale as string) ?? "ko"}
-            eventTitle={event.title}
-            tiers={tiers}
-            sections={venue?.sections ?? []}
-            entryCountsByTier={entryCountsByTier}
-            myEntry={myLotteryEntry}
-            closesAt={lotteryStats?.closes_at ?? null}
-            refreshKey={myLotteryEntry ? 1 : 0}
-            onOpenApplyModal={handleOpenLotteryApply}
-          />
+          lotteryApplyPanel
         ) : (
           <TicketPanel
             tiers={tiers}
@@ -805,85 +814,70 @@ export default function BookingPageClient({
         )}
       </div>
 
-      {/* ── 모바일: 구역 배치도 + 하단 바 ── */}
-      <div
-        className="flex-1 min-h-0 flex flex-col overflow-hidden lg:hidden pb-[140px]"
-        aria-label={t("mobileSeatMapLabel")}
-        aria-describedby="booking-tier-status"
-      >
-        {isGeneralAdmission ? (
-          <GeneralAdmissionPanel title={event.title} venue={event.venue} dateText={generalAdmissionDate} imageUrl={event.image_url} />
-        ) : (
-          <SeatMapPanel
-            eventId={eventId}
-            venue={venue}
-            tiers={tiers}
-            preloadedSeats={seats}
-            selectedTier={selectedTier}
-            selectedSeats={booking.selectedSeats}
-            quantity={booking.quantity}
-            onSelectTier={handleMapSelectTier}
-            onToggleSeat={handleToggleSeat}
-            onSetSelectedSeats={booking.setSelectedSeats}
-            category={event.category}
-            homeTeam={event.home_team}
-            awayTeam={event.away_team}
-            eventImageUrl={event.image_url}
-            eventTitle={event.title}
-            seatSelectionActive={isLotteryEvent ? false : seatSelectionActive}
-            onExitSeatSelection={handleExitSeatSelection}
-            event={event}
-            lotteryMode={isLotteryEvent}
-            onSectionClickForLottery={({ sectionName, tierId }) => {
-              const tier = tiers.find((t) => t.id === tierId);
-              if (tier) setLotteryApplyTarget({ tier, sectionName });
-            }}
-          />
-        )}
-      </div>
-      <div
-        className="lg:hidden"
-        aria-label={t("mobileBookingPanelLabel")}
-        aria-busy={paying}
-      >
-        {isLotteryEvent ? (
-          <LotteryApplyPanel
-            eventId={eventId}
-            locale={(params.locale as string) ?? "ko"}
-            eventTitle={event.title}
-            tiers={tiers}
-            sections={venue?.sections ?? []}
-            entryCountsByTier={entryCountsByTier}
-            myEntry={myLotteryEntry}
-            closesAt={lotteryStats?.closes_at ?? null}
-            refreshKey={myLotteryEntry ? 1 : 0}
-            onOpenApplyModal={handleOpenLotteryApply}
-          />
-        ) : (
-          <MobileBookingSheet
-            tiers={tiers}
-            sessions={sessions}
-            selectedTierId={booking.selectedTierId}
-            selectedSessionEventId={booking.selectedSessionEventId}
-            selectedSeats={booking.selectedSeats}
-            quantity={booking.quantity}
-            isAssignedSeating={isAssigned}
-            onSelectTier={handleSelectTier}
-            onSetQuantity={handleSetQuantity}
-            onToggleSeat={handleToggleSeat}
-            onSetSelectedSeats={booking.setSelectedSeats}
-            eventTitle={event.title}
-            eventId={eventId}
-            category={event.category}
-            onOrderCreated={handleOrderCreated}
-            onAuthRequired={handleAuthRequired}
-            onLotteryApplied={handleLotteryApplied}
-            seatSelectionActive={seatSelectionActive}
-            onGoToSeatSelection={handleGoToSeatSelection}
-            onExitSeatSelection={handleExitSeatSelection}
-          />
-        )}
-      </div>
+      {/* ── 모바일 ── */}
+      {isLotteryEvent ? (
+        /* 추첨: 화면 하나를 통째로 스크롤 — 구역 배치도(지정석일 때만) 아래에 응모 패널.
+           🔴 옛 구조는 패널이 화면 높이를 넘으면 아래쪽(응모 대상·안내)이 잘려 손이 닿지 않았다. */
+        <div
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain lg:hidden pb-[env(safe-area-inset-bottom)]"
+          aria-label={t("mobileBookingPanelLabel")}
+          aria-busy={paying}
+          aria-describedby="booking-tier-status"
+        >
+          {/* 배치도 정보가 없는 공연장은 「로딩 중」 칸만 화면을 차지하므로 휴대폰에서는 생략(응모는 아래 목록으로) */}
+          {!isGeneralAdmission && venue && (
+            <div
+              className="h-[44vh] min-h-[260px] flex flex-col overflow-hidden border-b border-border"
+              aria-label={t("mobileSeatMapLabel")}
+            >
+              {seatMapPanel}
+            </div>
+          )}
+          {lotteryApplyPanel}
+        </div>
+      ) : (
+        <>
+          {/* 일반 예매: 구역 배치도 + 하단 고정 예매 시트 */}
+          <div
+            className="flex-1 min-h-0 flex flex-col overflow-hidden lg:hidden pb-[140px]"
+            aria-label={t("mobileSeatMapLabel")}
+            aria-describedby="booking-tier-status"
+          >
+            {isGeneralAdmission ? (
+              <GeneralAdmissionPanel title={event.title} venue={event.venue} dateText={generalAdmissionDate} imageUrl={event.image_url} />
+            ) : (
+              seatMapPanel
+            )}
+          </div>
+          <div
+            className="lg:hidden"
+            aria-label={t("mobileBookingPanelLabel")}
+            aria-busy={paying}
+          >              <MobileBookingSheet
+                tiers={tiers}
+                sessions={sessions}
+                selectedTierId={booking.selectedTierId}
+                selectedSessionEventId={booking.selectedSessionEventId}
+                selectedSeats={booking.selectedSeats}
+                quantity={booking.quantity}
+                isAssignedSeating={isAssigned}
+                onSelectTier={handleSelectTier}
+                onSetQuantity={handleSetQuantity}
+                onToggleSeat={handleToggleSeat}
+                onSetSelectedSeats={booking.setSelectedSeats}
+                eventTitle={event.title}
+                eventId={eventId}
+                category={event.category}
+                onOrderCreated={handleOrderCreated}
+                onAuthRequired={handleAuthRequired}
+                onLotteryApplied={handleLotteryApplied}
+                seatSelectionActive={seatSelectionActive}
+                onGoToSeatSelection={handleGoToSeatSelection}
+                onExitSeatSelection={handleExitSeatSelection}
+              />
+          </div>
+        </>
+      )}
 
       {/* 추첨 응모 모달 */}
       <LotteryApplyModal

@@ -305,7 +305,13 @@ export function ImmersiveHero({
             {/* CTA — 당첨/응모대기/예매 분기 */}
             {/* ⚠️ FCFS 전환 후(isLottery=false)는 과거 lottery_entry 상태와 무관하게 */}
             {/* "예매하기" 노출 — 낙첨자/미결제자도 잔여 좌석 구매 가능해야 함 */}
-            <div className="mt-auto flex justify-end">
+            {/* 휴대폰·태블릿은 하단 고정 바(MobileStickyBottom)가 같은 버튼을 띄우므로 여기서는 숨긴다.
+                하단 바가 없는 취소·종료 이벤트만 그대로 보여 준다. */}
+            <div
+              className={`mt-auto justify-end ${
+                status === "cancelled" || status === "completed" ? "flex" : "hidden lg:flex"
+              }`}
+            >
               {/* myStatus 로딩 중에도 텍스트 있는 CTA 보장 — placeholder div 무한 표시 방지.
                   로딩 시엔 phase 기반 fallback("응모하기"/"예매하기"/"결과 확인") 즉시 노출,
                   fetch 끝나면 본인 상태 (당첨/응모완료/예매완료) 로 swap. */}

@@ -68,11 +68,13 @@ export default async function LocaleLayout({
         <link rel="manifest" href="/manifest.json" />
         {/* SW cleanup disabled during dev — causes reload loop with HMR */}
         {/* <script src="/sw-cleanup.js" async /> */}
-        <meta name="theme-color" content="#6366f1" />
+        {/* PWA — 네이티브 앱 없이 홈 화면에 설치해 쓴다(manifest.json · public/sw.js). */}
+        <meta name="theme-color" content="#0a0a0a" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
         <meta name="apple-mobile-web-app-title" content="Pickket" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
       </head>
       <body className={`${pretendard.variable} font-sans antialiased`}>
         <a

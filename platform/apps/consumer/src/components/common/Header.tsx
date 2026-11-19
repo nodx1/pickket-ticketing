@@ -9,6 +9,7 @@ import { getUnreadNotificationCount } from "@pickket/lib/api";
 import { DesktopNavLinks } from "@/components/nav/NavLinks";
 import SearchBar from "@/components/nav/SearchBar";
 import MobileNav from "@/components/nav/MobileNav";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 
@@ -137,13 +138,8 @@ export default function Header({ variant = "default" }: HeaderProps) {
                 <UserRound className="h-4 w-4 text-white/80" />
               </Link>
 
-              {/* 앱 다운로드 CTA */}
-              <button
-                type="button"
-                className="hidden sm:inline-flex items-center h-10 px-[22px] rounded-full bg-white text-black text-xs font-bold uppercase tracking-[0.06em] hover:opacity-80 transition-opacity active:scale-95 whitespace-nowrap"
-              >
-                {t("appDownload")}
-              </button>
+              {/* 홈 화면에 추가(PWA) — 설치 가능한 브라우저에서만 보임 */}
+              <InstallAppButton variant="header" />
 
               <MobileNav
                 open={mobileMenuOpen}

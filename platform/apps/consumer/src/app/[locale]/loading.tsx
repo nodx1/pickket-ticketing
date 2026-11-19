@@ -1,6 +1,6 @@
 /* ── Homepage skeleton ──────────────────────────────────────────────────── */
 
-const SECTION_W = "max-w-7xl mx-auto px-8";
+const SECTION_W = "max-w-7xl mx-auto px-4 sm:px-8";
 
 function SkeletonEventCard() {
   return (
@@ -41,7 +41,7 @@ export default function HomeLoading() {
 
         {/* Content placeholder — bottom-aligned like real hero */}
         <div className="absolute inset-0 flex flex-col justify-end pb-24">
-          <div className="max-w-7xl w-full mx-auto px-8">
+          <div className="max-w-7xl w-full mx-auto px-4 sm:px-8">
             <div className="max-w-2xl space-y-5">
               {/* Label pill */}
               <div className="h-7 w-56 rounded-full bg-white/10 animate-pulse" />

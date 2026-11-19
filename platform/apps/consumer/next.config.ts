@@ -96,6 +96,19 @@ const nextConfig: NextConfig = {
       ],
     },
     {
+      // 🔴 서비스 워커는 위 *.js 1년 캐시 규칙을 덮어써야 한다 — 아니면 배포해도 옛 워커가 남는다.
+      //    (같은 키는 뒤 규칙이 이긴다.)
+      source: "/(sw|sw-push)\\.js",
+      headers: [
+        { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        { key: "Service-Worker-Allowed", value: "/" },
+      ],
+    },
+    {
+      source: "/(manifest\\.json|offline\\.html)",
+      headers: [{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" }],
+    },
+    {
       source: "/(.*)\\.(jpg|jpeg|png|gif|webp|avif|svg|ico)",
       headers: [
         {

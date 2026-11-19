@@ -68,9 +68,11 @@ async function ensureServiceWorker(): Promise<ServiceWorkerRegistration | null> 
   if (!("serviceWorker" in navigator)) return null;
 
   try {
-    const registration = await navigator.serviceWorker.register("/sw-push.js", {
-      scope: "/",
-    });
+    // 같은 범위("/")에는 서비스 워커가 하나만 있을 수 있다. 피켓은 PWA 워커(/sw.js)가 sw-push.js 를
+    // 불러오므로, 이미 등록된 워커가 있으면 그대로 쓴다 — 새로 등록하면 PWA 워커를 덮어쓴다.
+    const existing = await navigator.serviceWorker.getRegistration("/");
+    const registration =
+      existing ?? (await navigator.serviceWorker.register("/sw-push.js", { scope: "/" }));
     // Wait for the service worker to be ready
     await navigator.serviceWorker.ready;
     return registration;

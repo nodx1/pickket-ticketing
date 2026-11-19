@@ -11,6 +11,11 @@ import PaymentReminderBanner from "./payment/PaymentReminderBanner";
 import CookieBanner from "./consent/CookieBanner";
 import PolicyUpdateBanner from "./legal/PolicyUpdateBanner";
 import { routing } from "@/i18n/routing";
+import { PwaProvider } from "@/components/pwa/PwaProvider";
+import { InstallBanner } from "@/components/pwa/InstallBanner";
+
+// 모바일 「홈 화면에 추가」 배너를 띄우는 화면 — 하단 고정 버튼(응모·결제)이 있는 화면은 제외.
+const INSTALL_BANNER_PATHS = new Set(["/", "/events", "/mypage"]);
 
 export default function ClientLayout({
   children,
@@ -70,6 +75,8 @@ export default function ClientLayout({
         </main>
         {!isFocusFlow && !isCheckoutFlow && !isBooking && <Footer />}
         {!isBooking && <CookieBanner />}
+        <PwaProvider />
+        {INSTALL_BANNER_PATHS.has(canonicalPath) && <InstallBanner />}
         <Toaster position="bottom-right" richColors />
       </MotionConfig>
     </LazyMotion>

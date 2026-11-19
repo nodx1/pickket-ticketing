@@ -13,6 +13,7 @@ import {
   Eye,
   EyeOff,
   ShieldCheck,
+  ChevronLeft,
 } from "lucide-react";
 import { Button } from "@pickket/ui";
 import { Input } from "@pickket/ui";
@@ -48,6 +49,12 @@ export default function AuthPage() {
   const t = useTranslations("auth");
   const { setAuth } = useAuthStore();
   const router = useRouter();
+  const tCommon = useTranslations("common");
+  // 로그인 화면엔 상단 메뉴가 없어서, 홈 화면 앱(PWA)에선 빠져나갈 길이 없었다 → 화면 안 뒤로 가기.
+  const goBack = () => {
+    if (window.history.length > 1) router.back();
+    else router.push("/");
+  };
   const searchParams = useSearchParams();
   // AUDIT 2026-05-28 §P0: dev 크레덴셜 프리필 완전 제거 — 컨테이너 빌드 오류 시 노출 위험 차단.
   const [isLogin, setIsLogin] = useState(true);
@@ -342,7 +349,15 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-2 sm:px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-2 sm:px-4 py-16">
+      <button
+        type="button"
+        onClick={goBack}
+        aria-label={tCommon("back")}
+        className="fixed left-2 top-[calc(env(safe-area-inset-top)+8px)] z-10 flex h-11 w-11 items-center justify-center rounded-full text-foreground hover:bg-muted active:scale-95 sm:left-4 sm:top-4"
+      >
+        <ChevronLeft className="h-6 w-6" />
+      </button>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -180,7 +180,7 @@ export default function ProfileEditPage() {
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="min-h-screen bg-background"
     >
-      <div className="max-w-7xl mx-auto px-8 pt-24 pb-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-24 pb-10">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <Link href="/mypage">

@@ -1,7 +1,7 @@
 export default function MyPageLoading() {
   return (
     <div className="bg-background min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6 px-8 pb-5 pt-20">
+      <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-8 pb-5 pt-20">
         {/* Profile Hero Card */}
         <div className="rounded-2xl bg-background border border-border/50 shadow-sm p-5 lg:p-6">
           <div className="flex items-center justify-between">

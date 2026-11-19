@@ -106,10 +106,11 @@ export function EventChatbot({
           type="button"
           onClick={() => setOpen(true)}
           aria-label="이벤트 도우미 열기"
-          className="fixed bottom-24 right-5 z-40 flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-lg transition hover:scale-105 lg:bottom-6"
+          // 휴대폰: 하단 고정 예매 바 위에 아이콘만(본문을 덜 가리게), 넓은 화면: 문구까지
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+92px)] right-4 z-40 flex items-center gap-2 rounded-full bg-primary p-3.5 text-sm font-bold text-primary-foreground shadow-lg transition hover:scale-105 sm:right-5 sm:px-5 sm:py-3 lg:bottom-6"
         >
           <MessageCircle className="size-5" />
-          궁금한 점이 있으세요?
+          <span className="hidden sm:inline">궁금한 점이 있으세요?</span>
         </button>
       ) : null}
 

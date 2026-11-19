@@ -77,7 +77,7 @@ function parseActiveTab(tab: string | null): ActiveTab {
 /* ---------- Skeleton Loader ---------- */
 function MyPageSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto space-y-6 px-8 py-5">
+    <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-8 py-5">
       <div className="h-9 bg-card rounded-2xl animate-pulse w-40" />
       <div className="h-10 bg-card rounded-2xl animate-pulse w-64" />
       <div className="rounded-2xl shadow-sm p-5 lg:p-6 space-y-4 bg-background border border-border/50">
@@ -189,7 +189,7 @@ function MyPageContent() {
 
   if (error)
     return (
-      <div className="max-w-7xl mx-auto px-8 py-20 text-center space-y-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-20 text-center space-y-4">
         <p className="text-lg font-semibold text-foreground">
           {t("load_error_title")}
         </p>
@@ -207,7 +207,7 @@ function MyPageContent() {
   return (
     <div className="bg-background min-h-screen">
       <motion.main
-        className="max-w-7xl mx-auto space-y-6 px-8 pb-5 pt-24"
+        className="max-w-7xl mx-auto space-y-6 px-4 sm:px-8 pb-5 pt-20 sm:pt-24"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -218,29 +218,30 @@ function MyPageContent() {
           transition={{ delay: 0.05 }}
           className={CARD.base}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-primary to-cyan flex items-center justify-center text-white text-xl font-bold">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-full bg-gradient-to-br from-primary to-cyan flex items-center justify-center text-white text-xl font-bold">
                 {user?.name?.charAt(0) || "P"}
               </div>
-              <div>
-                <h1 className="text-2xl font-bold">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold truncate">
                   {user.name || t("default_name")}
                 </h1>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
+                <p className="text-sm text-muted-foreground break-all">{user.email}</p>
               </div>
             </div>
-            <div className="text-right">
-              <div className="flex items-center gap-1.5 justify-end">
-                <Star className="h-6 w-6 text-amber-500 fill-amber-500" />
-                <span className="text-4xl font-bold text-primary/70 font-tabular">
+            {/* 휴대폰: 이름 아래 한 줄(점수 · 등급), 넓은 화면: 오른쪽 정렬 */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-3 sm:block sm:border-0 sm:pt-0 sm:text-right">
+              <div className="flex items-center gap-1.5 sm:justify-end">
+                <Star className="h-5 w-5 sm:h-6 sm:w-6 text-amber-500 fill-amber-500" />
+                <span className="text-2xl sm:text-4xl font-bold text-primary/70 font-tabular">
                   {weight.toFixed(2)}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {t("activity_score")}
               </p>
-              <Badge className={`mt-1 ${BTN.primary}`}>
+              <Badge className={`sm:mt-1 ${BTN.primary}`}>
                 {weight >= 1.5
                   ? t("level_super")
                   : weight >= 1.0
@@ -254,7 +255,7 @@ function MyPageContent() {
         {/* Pill Toggle Tabs */}
         <div
           role="tablist"
-          className="inline-flex gap-1 bg-muted rounded-full p-1 overflow-x-auto scrollbar-hide"
+          className="inline-flex max-w-full gap-1 bg-muted rounded-full p-1 overflow-x-auto scrollbar-hide"
         >
           {TABS.map(({ key, icon: Icon, labelKey }) => (
             <button

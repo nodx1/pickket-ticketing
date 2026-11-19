@@ -48,7 +48,7 @@ export default function FavoritesPage() {
   if (!ready || loading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-8 pt-24 pb-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-24 pb-10">
           <div className="flex items-center gap-3 mb-8">
             <div className="h-10 w-10 bg-white/10 rounded-full animate-pulse" />
             <div className="h-6 w-32 bg-white/10 rounded animate-pulse" />
@@ -83,7 +83,7 @@ export default function FavoritesPage() {
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="min-h-screen bg-background"
     >
-      <div className="max-w-7xl mx-auto px-8 pt-24 pb-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-24 pb-10">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <Link href="/mypage">

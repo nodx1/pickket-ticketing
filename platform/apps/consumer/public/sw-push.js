@@ -19,8 +19,8 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "Pickket";
   const options = {
     body: payload.body || "",
-    icon: "/icons/icon-192x192.png",
-    badge: "/icons/badge-72x72.png",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/badge-72.png",
     tag: payload.category || "general",
     renotify: true,
     data: {

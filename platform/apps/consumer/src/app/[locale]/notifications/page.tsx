@@ -101,7 +101,7 @@ function getNotificationIconBg(type: string) {
 
 function SkeletonNotifications() {
   return (
-    <div className="max-w-7xl mx-auto space-y-4 px-8 pt-24 pb-5">
+    <div className="max-w-7xl mx-auto space-y-4 px-4 sm:px-8 pt-24 pb-5">
       <div className="h-10 bg-white/5 rounded-2xl animate-pulse w-48" />
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="h-20 bg-white/5 rounded-2xl animate-pulse" />
@@ -198,7 +198,7 @@ export default function NotificationsPage() {
 
   return (
     <motion.div
-      className="bg-background min-h-screen max-w-7xl mx-auto space-y-6 px-8 pt-24 pb-5"
+      className="bg-background min-h-screen max-w-7xl mx-auto space-y-6 px-4 sm:px-8 pt-24 pb-5"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}

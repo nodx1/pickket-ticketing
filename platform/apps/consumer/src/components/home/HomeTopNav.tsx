@@ -7,7 +7,6 @@ import {
   Search,
   Bell,
   UserRound,
-  Smartphone,
 } from "lucide-react";
 import { useAuthStore } from "@pickket/store";
 import { useTranslations } from "next-intl";
@@ -160,14 +159,6 @@ export default function HomeTopNav() {
           >
             <UserRound className="h-4 w-4 text-violet-300" />
           </Link>
-
-          {/* 앱 다운로드 CTA — 추가 */}
-          <button
-            type="button"
-            className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold tracking-wide transition-colors active:scale-95"
-          >
-            <Smartphone className="h-3.5 w-3.5" />{t("appDownload")}
-          </button>
         </div>
       </div>
     </nav>

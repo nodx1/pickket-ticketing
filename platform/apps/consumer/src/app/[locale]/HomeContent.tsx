@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Flame } from "lucide-react";
 import { useTranslations } from "next-intl";
-import AppDownloadSection from "@/components/home/AppDownloadSection";
 import B2BCTABanner from "@/components/home/B2BCTABanner";
 import EventCardUnified from "@/components/event/EventCardUnified";
 import FanRequestSection from "@/components/home/FanRequestSection";
@@ -70,9 +69,6 @@ export default function HomeContent({
 
       {/* ── 팬 요청 */}
       <FanRequestSection artists={fanRequests} />
-
-      {/* ── 앱 다운로드 (App Exclusive) */}
-      <AppDownloadSection />
 
       {/* ── B2B CTA */}
       <B2BCTABanner />

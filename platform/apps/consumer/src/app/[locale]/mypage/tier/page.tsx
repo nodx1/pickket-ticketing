@@ -214,7 +214,7 @@ export default function TierPage() {
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="min-h-screen bg-background pt-24"
     >
-      <div className="max-w-7xl mx-auto px-8 pb-5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-5">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <Link href="/mypage">

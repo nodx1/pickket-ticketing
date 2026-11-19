@@ -22,6 +22,7 @@ import {
 } from "./NavLinks";
 import LocaleSwitcher from "@/components/nav/LocaleSwitcher";
 import ThemeToggle from "@/components/nav/ThemeToggle";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 
 interface MobileNavProps {
   open: boolean;
@@ -161,6 +162,7 @@ export default function MobileNav({
 
           {/* User actions */}
           <div className="border-t border-border mt-3 pt-3 space-y-1">
+            <InstallAppButton variant="menu" onDone={closeMenu} />
             {user ? (
               <>
                 <Link
