@@ -72,37 +72,24 @@ export function OrganizerRoleSelector({ organizers, value, onChange }: Organizer
     return organizers.filter((o) => !used.has(o.id));
   }
 
+  // 주최·주관·후원을 칸 하나씩 크게 그리면 화면을 길게 차지한다 — 한 상자 안에 한 줄씩(이름 · 선택값 · 추가).
   return (
-    <div className="space-y-4">
-      <Label>주최자 관리</Label>
-      {ROLES.map((role) => {
-        const entries = entriesByRole[role];
-        const available = getAvailableOrganizers(role);
-        const isRequired = role === "host";
+    <div className="space-y-2">
+      <Label>주최자</Label>
+      <div className="divide-y divide-border rounded-lg border border-border">
+        {ROLES.map((role) => {
+          const entries = entriesByRole[role];
+          const available = getAvailableOrganizers(role);
+          const isRequired = role === "host";
 
-        return (
-          <div key={role} className="rounded-xl border border-border bg-bg-muted p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">
+          return (
+            <div key={role} className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2">
+              <span className="w-14 shrink-0 text-sm font-medium text-foreground">
                 {ORGANIZER_ROLE_LABELS[role]}
-                {isRequired && <span className="ml-1 text-xs text-destructive">*필수</span>}
+                {isRequired && <span className="ml-0.5 text-destructive" aria-label="필수">*</span>}
               </span>
-              {available.length > 0 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => setAddingRole(addingRole === role ? null : role)}
-                >
-                  <Plus className="size-3" />
-                  추가
-                </Button>
-              )}
-            </div>
 
-            {entries.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-2">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                 {entries.map((entry) => (
                   <Badge
                     key={`${entry.role}-${entry.organizerId}`}
@@ -112,6 +99,7 @@ export function OrganizerRoleSelector({ organizers, value, onChange }: Organizer
                     {nameMap.get(entry.organizerId) ?? "알 수 없음"}
                     <button
                       type="button"
+                      aria-label={`${nameMap.get(entry.organizerId) ?? "주최자"} 빼기`}
                       onClick={() => handleRemove(entry.role, entry.organizerId)}
                       className="rounded-full p-0.5 hover:bg-bg-subtle"
                     >
@@ -119,32 +107,45 @@ export function OrganizerRoleSelector({ organizers, value, onChange }: Organizer
                     </button>
                   </Badge>
                 ))}
+
+                {entries.length === 0 && addingRole !== role && (
+                  <span className={isRequired ? "text-xs text-destructive" : "text-xs text-muted-foreground/70"}>
+                    {isRequired ? "주최자를 추가해주세요" : "없음"}
+                  </span>
+                )}
+
+                {addingRole === role && available.length > 0 && (
+                  <Select onValueChange={(id) => handleAdd(role, id)}>
+                    <SelectTrigger className="h-8 w-56 text-xs">
+                      <SelectValue placeholder="주최자를 선택해주세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {available.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
-            )}
 
-            {entries.length === 0 && addingRole !== role && (
-              <p className="text-xs text-muted-foreground/60">
-                {isRequired ? "주최자를 추가해주세요" : "없음"}
-              </p>
-            )}
-
-            {addingRole === role && available.length > 0 && (
-              <Select onValueChange={(id) => handleAdd(role, id)}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="주최자를 선택해주세요" />
-                </SelectTrigger>
-                <SelectContent>
-                  {available.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        );
-      })}
+              {available.length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 shrink-0 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setAddingRole(addingRole === role ? null : role)}
+                >
+                  {addingRole === role ? <X className="size-3" /> : <Plus className="size-3" />}
+                  {addingRole === role ? "닫기" : "추가"}
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

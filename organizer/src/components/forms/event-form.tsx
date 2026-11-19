@@ -342,7 +342,7 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
             />
           )}
 
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid gap-5">
             <div className="space-y-2">
               <Label htmlFor="event-title">이벤트 제목</Label>
               <Input
@@ -384,7 +384,7 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
             </div>
           )}
 
-          <div className="grid gap-5 lg:grid-cols-4">
+          <div className="grid gap-5 sm:grid-cols-3">
             <div className="space-y-2">
               <Label>이벤트 유형</Label>
               <Select
@@ -438,7 +438,7 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
             </div>
             <div className="space-y-2">
               <Label>최대 참석자 수</Label>
-              <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+              <div className="flex h-12 items-center justify-between rounded-md border border-border bg-muted/30 px-3 text-sm text-muted-foreground">
                 <span>
                   {form.maxAttendees ? `${form.maxAttendees}명` : "좌석 배치도 저장 후 자동 산출"}
                 </span>

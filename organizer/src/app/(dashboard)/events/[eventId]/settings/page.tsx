@@ -150,7 +150,8 @@ export default async function EventSettingsPage({ params }: PageProps) {
   };
 
   return (
-    <div className="space-y-6">
+    // 생성 화면과 같은 폭 — 입력칸이 화면 끝까지 늘어나지 않게. 이벤트 메뉴 옆에 붙인다(가운데 정렬하면 사이가 뜬다).
+    <div className="w-full max-w-4xl space-y-6">
       <div>
         <p className="text-sm text-muted-foreground">이벤트 설정</p>
         <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-foreground">이벤트 설정</h2>
