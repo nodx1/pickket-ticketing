@@ -315,6 +315,9 @@ export interface EventWriteInput {
   description?: string | null;
   /** go events.venue_address — 공연장 주소. */
   venue_address?: string | null;
+  /** 지도 API 연동 — 「장소 찾기」로 고른 좌표(둘 다 보내거나 둘 다 null). */
+  venue_lat?: number | null;
+  venue_lng?: number | null;
   /** go events.age_rating — 연령 등급(all/12+/15+/18+ 등). */
   age_rating?: string | null;
   /** go events.is_online — 온라인 이벤트 여부. */
@@ -618,6 +621,8 @@ export interface EventDetail {
   comp_capacity_cap?: number | null;
   timezone?: string | null;
   venue_address?: string | null;
+  venue_lat?: number | null;
+  venue_lng?: number | null;
   age_rating?: string | null;
   is_online?: boolean;
   homepage_url?: string | null;

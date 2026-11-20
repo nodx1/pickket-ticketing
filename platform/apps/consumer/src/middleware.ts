@@ -97,7 +97,8 @@ function buildCspHeader(
     // 위해 토스 도메인을 허용한다. open.spotify.com: 아티스트 플레이리스트 임베드.
     // 나이스 구형 goPay 는 결제창(pg-web)·카드사 인증을 나이스 도메인에서 렌더하므로
     // frame-src/child-src 에 *.nicepay.co.kr(pg-web·dc1/dc2-api) 을 허용한다.
-    "frame-src 'self' https://*.tosspayments.com https://open.spotify.com https://*.nicepay.co.kr",
+    // www.openstreetmap.org: 이벤트 장소 지도(임베드). 지도 API 연동(과업지시서 2-1).
+    "frame-src 'self' https://*.tosspayments.com https://open.spotify.com https://*.nicepay.co.kr https://www.openstreetmap.org",
     "child-src 'self' https://*.nicepay.co.kr",
     "object-src 'none'",
     "base-uri 'self'",

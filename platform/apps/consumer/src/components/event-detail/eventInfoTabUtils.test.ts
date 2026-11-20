@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPeriod } from "./eventInfoTabUtils";
+import { formatPeriod, osmEmbedUrl, venueCoordsOf } from "./eventInfoTabUtils";
 
 /**
  * 레벨2 컷오버(W2-EVT) 회귀.
@@ -51,5 +51,31 @@ describe("ageRatingLabel — 관람연령 코드를 문구로", () => {
     expect(ageRatingLabel("15+", "ko")).toBe("15세 이상");
     expect(ageRatingLabel("all", "en")).toBe("All ages");
     expect(ageRatingLabel("초등학생 이상 보호자 동반", "ko")).toBe("초등학생 이상 보호자 동반");
+  });
+});
+
+describe("venueCoordsOf — 지도 API 연동 장소 좌표", () => {
+  it("좌표 둘 다 있으면 장소명과 함께 돌려준다", () => {
+    expect(venueCoordsOf({ venue: "블루스퀘어", venue_lat: 37.5409, venue_lng: 127.0026 })).toEqual({
+      lat: 37.5409,
+      lng: 127.0026,
+      name: "블루스퀘어",
+    });
+  });
+
+  it("한쪽만 있거나 범위 밖이면 지도를 그리지 않는다", () => {
+    expect(venueCoordsOf({ venue: "x", venue_lat: 37.5, venue_lng: null })).toBeNull();
+    expect(venueCoordsOf({ venue: "x", venue_lat: 120, venue_lng: 127 })).toBeNull();
+    expect(venueCoordsOf({ venue: "x" })).toBeNull();
+  });
+
+  it("장소명이 없으면 기본 이름", () => {
+    expect(venueCoordsOf({ venue: " ", venue_lat: 37.5, venue_lng: 127 })?.name).toBe("이벤트 장소");
+  });
+
+  it("임베드 주소는 오픈스트리트맵 핀을 가리킨다", () => {
+    const url = new URL(osmEmbedUrl(37.5409, 127.0026));
+    expect(url.hostname).toBe("www.openstreetmap.org");
+    expect(url.searchParams.get("marker")).toBe("37.540900,127.002600");
   });
 });

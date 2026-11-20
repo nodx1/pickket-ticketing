@@ -482,6 +482,9 @@ class EventResponse(BaseModel):
     age_rating: str | None = None
     # 상세페이지 통합 트랙B U1 — go→v2 흡수, NULL 시 소비자 상세 미노출(비파괴).
     venue_address: str | None = None  # 공연장 주소
+    # 지도 API 연동 — 주최사가 「장소 찾기」로 고른 좌표. 둘 다 있을 때만 소비자 상세가 지도를 그린다.
+    venue_lat: float | None = None
+    venue_lng: float | None = None
     is_online: bool = False  # 온라인 이벤트 여부
     homepage_url: str | None = None  # 공식 홈페이지
     # 상세페이지 통합 트랙B U3 공개 랜딩 부속기능 게이트 — go→v2 흡수, from_attributes 자동 매핑.

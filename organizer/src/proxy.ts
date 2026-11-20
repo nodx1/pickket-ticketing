@@ -50,7 +50,8 @@ export function buildCsp(nonce: string, isDev: boolean): string {
     "font-src 'self' data:",
     "connect-src 'self' https://*.pickket.kr https://api.tosspayments.com https://*.sentry.io https://pickket-assets.s3.ap-northeast-2.amazonaws.com wss://*.pickket.kr ws://localhost:* http://localhost:*",
     // 나이스 구형 goPay 는 결제창(pg-web)·카드사 인증을 나이스 도메인 프레임에서 렌더한다.
-    "frame-src 'self' https://pay.toss.im https://*.nicepay.co.kr",
+    // www.openstreetmap.org: 「장소 찾기」·장소 지도 임베드(지도 API 연동, 과업지시서 2-1).
+    "frame-src 'self' https://pay.toss.im https://*.nicepay.co.kr https://www.openstreetmap.org",
     "child-src 'self' https://*.nicepay.co.kr",
     "media-src 'self' blob:",
     "object-src 'none'",

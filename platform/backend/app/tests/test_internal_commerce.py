@@ -4763,3 +4763,72 @@ async def test_new_tier_inherits_lottery_sale_plan(client, db_session):
     lst = (await client.get(f"/api/v1/internal/events/{eid}/tiers", headers=_HDR)).json()["data"]["tiers"]
     mode = {t["external_ref"]: t["sale_mode"] for t in lst}
     assert mode == {"t_new": "point_lottery", "t_addon": "fixed_fcfs", "t_queue": "queue"}
+
+
+# ── 지도 API 연동(과업지시서 2-1) — 장소 좌표 ─────────────────────────────
+
+
+async def test_venue_coords_create_patch_read(client, db_session):
+    """「장소 찾기」 좌표: create 저장 → 주최사 조회에 실림 → 주소만 바꾸면 옛 좌표는 지워진다."""
+    await _seed_organizer(db_session)
+    created = await client.post(
+        "/api/v1/internal/events",
+        json=_event_body(venue_address="서울특별시 용산구 이태원로 294", venue_lat=37.5409, venue_lng=127.0026),
+        headers={**_HDR, "Idempotency-Key": str(uuid.uuid4())},
+    )
+    assert created.status_code == 200, created.text
+    event_id = created.json()["data"]["event_id"]
+    event = await db_session.get(Event, uuid.UUID(event_id))
+    assert (event.venue_lat, event.venue_lng) == (37.5409, 127.0026)
+
+    read = await client.get(f"/api/v1/internal/events/{event_id}", headers=_HDR)
+    assert read.status_code == 200, read.text
+    detail = read.json()["data"] if "data" in read.json() else read.json()
+    assert (detail["venue_lat"], detail["venue_lng"]) == (37.5409, 127.0026)
+
+    # 주소만 바꾸고 좌표는 안 보냄 → 옛 좌표는 다른 곳을 가리키므로 지운다.
+    r = await client.patch(
+        f"/api/v1/internal/events/{event_id}",
+        json={"venue_address": "경기도 고양시 일산서구 킨텍스로 217-60"},
+        headers={**_HDR, "Idempotency-Key": str(uuid.uuid4())},
+    )
+    assert r.status_code == 200, r.text
+    await db_session.refresh(event)
+    assert event.venue_lat is None and event.venue_lng is None
+
+    # 주소와 좌표를 함께 → 둘 다 반영
+    r = await client.patch(
+        f"/api/v1/internal/events/{event_id}",
+        json={"venue_address": "경기도 고양시 일산서구 킨텍스로 217-60", "venue_lat": 37.668, "venue_lng": 126.745},
+        headers={**_HDR, "Idempotency-Key": str(uuid.uuid4())},
+    )
+    assert r.status_code == 200, r.text
+    await db_session.refresh(event)
+    assert (event.venue_lat, event.venue_lng) == (37.668, 126.745)
+
+    # 주소를 그대로 다시 보내면(설정 화면 저장) 좌표는 유지
+    r = await client.patch(
+        f"/api/v1/internal/events/{event_id}",
+        json={"venue_address": "경기도 고양시 일산서구 킨텍스로 217-60", "title": "제목만 수정"},
+        headers={**_HDR, "Idempotency-Key": str(uuid.uuid4())},
+    )
+    assert r.status_code == 200, r.text
+    await db_session.refresh(event)
+    assert (event.venue_lat, event.venue_lng) == (37.668, 126.745)
+
+
+@pytest.mark.parametrize(
+    "coords",
+    [
+        {"venue_lat": 37.5},  # 한쪽만
+        {"venue_lat": 95.0, "venue_lng": 127.0},  # 범위 밖
+    ],
+)
+async def test_venue_coords_invalid_rejected(client, db_session, coords):
+    await _seed_organizer(db_session)
+    r = await client.post(
+        "/api/v1/internal/events",
+        json=_event_body(**coords),
+        headers={**_HDR, "Idempotency-Key": str(uuid.uuid4())},
+    )
+    assert r.status_code == 400, r.text

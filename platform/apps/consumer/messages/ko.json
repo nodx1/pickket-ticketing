@@ -305,7 +305,8 @@
       "onlineEvent": "온라인 이벤트",
       "onlineVenueHint": "이 이벤트는 온라인으로 진행됩니다. 참여 방법은 예매 후 안내됩니다.",
       "officialHomepage": "공식 홈페이지",
-      "openMap": "지도 보기"
+      "openMap": "지도 보기",
+      "directions": "길찾기"
     },
     "priceAdvisor": {
       "title": "AI AP 어드바이저",

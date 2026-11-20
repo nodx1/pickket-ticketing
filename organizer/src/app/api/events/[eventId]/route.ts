@@ -51,6 +51,8 @@ const eventSchema = z.object({
   endsAt: z.string().min(1, "종료 일시는 필수입니다"),
   venueName: z.string().optional(),
   venueAddress: z.string().optional(),
+  venueLat: z.number().min(-90).max(90).nullable().optional(),
+  venueLng: z.number().min(-180).max(180).nullable().optional(),
   eventType: z.enum(EVENT_TYPES),
   ageRating: z.string().min(1, "연령 제한을 선택해주세요"),
   maxAttendees: z.string().optional(),
@@ -250,6 +252,13 @@ export const PATCH = withRole<Params>("organizer", async (request, { session, pa
   if (body.venueName !== undefined) { patch.venue = body.venueName || null; mark(); }
   if (body.description !== undefined) { patch.description = body.description || null; mark(); }
   if (body.venueAddress !== undefined) { patch.venue_address = body.venueAddress || null; mark(); }
+  // 좌표는 짝으로만 — 한쪽만 오면 둘 다 지운다(v2 가 짝 아닌 값은 400). 주소만 바뀌고 좌표 미전송이면 v2 가 옛 좌표를 지운다.
+  if (body.venueLat !== undefined || body.venueLng !== undefined) {
+    const paired = body.venueLat != null && body.venueLng != null;
+    patch.venue_lat = paired ? body.venueLat : null;
+    patch.venue_lng = paired ? body.venueLng : null;
+    mark();
+  }
   if (body.ageRating !== undefined) { patch.age_rating = body.ageRating || null; mark(); }
   if (body.isOnline !== undefined) { patch.is_online = body.isOnline; mark(); }
   if (body.homepageUrl !== undefined) { patch.homepage_url = body.homepageUrl || null; mark(); }

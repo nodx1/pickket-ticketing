@@ -305,7 +305,8 @@
       "onlineEvent": "Online event",
       "onlineVenueHint": "This event is held online. Access details are provided after booking.",
       "officialHomepage": "Official homepage",
-      "openMap": "View map"
+      "openMap": "View map",
+      "directions": "Directions"
     },
     "priceAdvisor": {
       "title": "AI AP Advisor",

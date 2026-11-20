@@ -118,6 +118,8 @@ export default async function EventSettingsPage({ params }: PageProps) {
     endsAt: toDateTimeLocal(event.endsAt),
     venueName: event.venueName ?? "",
     venueAddress: event.venueAddress ?? "",
+    venueLat: event.venueLat ?? null,
+    venueLng: event.venueLng ?? null,
     eventType: event.eventType as EventFormValue["eventType"],
     ageRating: event.ageRating as EventFormValue["ageRating"],
     maxAttendees: event.maxAttendees ? String(event.maxAttendees) : "",

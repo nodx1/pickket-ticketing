@@ -12,6 +12,7 @@ import {
   Globe,
   MapPin,
   Music,
+  Navigation,
   Train,
   Tv,
 } from "lucide-react";
@@ -21,6 +22,8 @@ import {
   EventInfoTabsEvent,
   formatPeriod,
   getFaqItems,
+  osmEmbedUrl,
+  venueCoordsOf,
 } from "@/components/event-detail/eventInfoTabUtils";
 
 interface EventInfoTabsProps {
@@ -35,6 +38,7 @@ export default function EventInfoTabs({
   saleModeDescription,
 }: EventInfoTabsProps) {
   const t = useTranslations("event.infoTabs");
+  const venueCoords = venueCoordsOf(event);
   const locale = useLocale();
   const [descExpanded, setDescExpanded] = useState(false);
 
@@ -471,7 +475,29 @@ export default function EventInfoTabs({
                       {event.venue_address}
                     </p>
                   )}
-                  {event.venue_address?.trim() && (
+                  {venueCoords ? (
+                    /* 좌표가 있으면 정확한 위치로 연다(주소 검색은 동명 장소로 빗나갈 수 있다). */
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                      <a
+                        href={`https://map.kakao.com/link/map/${encodeURIComponent(venueCoords.name)},${venueCoords.lat},${venueCoords.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                      >
+                        <MapPin className="h-3.5 w-3.5" />
+                        {t("openMap")}
+                      </a>
+                      <a
+                        href={`https://map.kakao.com/link/to/${encodeURIComponent(venueCoords.name)},${venueCoords.lat},${venueCoords.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                      >
+                        <Navigation className="h-3.5 w-3.5" />
+                        {t("directions")}
+                      </a>
+                    </div>
+                  ) : event.venue_address?.trim() ? (
                     <a
                       href={`https://map.kakao.com/?q=${encodeURIComponent(event.venue_address)}`}
                       target="_blank"
@@ -481,10 +507,26 @@ export default function EventInfoTabs({
                       <MapPin className="h-3.5 w-3.5" />
                       {t("openMap")}
                     </a>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )
+          )}
+
+          {/* 장소 지도 — 지도 API 연동(과업지시서 2-1). 주최사가 「장소 찾기」로 고른 좌표가 있을 때만. */}
+          {!event.is_online && venueCoords && (
+            <figure className="overflow-hidden rounded-xl border border-border bg-muted">
+              <iframe
+                title={`${venueCoords.name} 지도`}
+                src={osmEmbedUrl(venueCoords.lat, venueCoords.lng)}
+                className="h-56 w-full border-0 sm:h-64"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+              <figcaption className="px-3 py-1.5 text-[10px] text-muted-foreground">
+                © OpenStreetMap contributors
+              </figcaption>
+            </figure>
           )}
 
           {/* Match info (sports only) */}

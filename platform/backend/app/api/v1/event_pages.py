@@ -123,6 +123,8 @@ async def get_event_by_subdomain(
         # 동일한 EventDetail 을 렌더하도록 핵심 상세 필드 노출. NULL 시 consumer 미노출(비파괴).
         # marketplace EventResponse(app/schemas/event.py) 와 필드 정합 유지.
         "venue_address": event.venue_address,
+        "venue_lat": event.venue_lat,
+        "venue_lng": event.venue_lng,
         "age_rating": event.age_rating,
         "is_online": event.is_online,
         "homepage_url": event.homepage_url,

@@ -34,6 +34,9 @@ const BASELINE_KEYS = [
   "endsAt",
   "venueName",
   "venueAddress",
+  // 2026-11-20 지도 API 연동 — 「장소 찾기」로 고른 좌표(둘 다 보내거나 둘 다 null).
+  "venueLat",
+  "venueLng",
   "eventType",
   "ageRating",
   "isOnline",

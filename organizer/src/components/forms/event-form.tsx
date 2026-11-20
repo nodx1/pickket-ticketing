@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { MapPin, Search } from "lucide-react";
 import { mergeKeepingManualPortrait } from "@/lib/images/merge-variants";
 import { fetchWithRefresh } from "@/lib/fetchWithAuth";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,9 @@ import {
 import { showError } from "@/lib/hooks/useToast";
 import { slugify } from "@/lib/slug";
 import { EVIDENCE_SIMPLE_MODE } from "@/lib/evidence-mode";
+import { hasCoords, osmPageUrl } from "@/lib/map/osm";
+import { VenueSearchDialog } from "@/components/forms/_components/venue-search-dialog";
+import { VenueMapPreview } from "@/components/forms/_components/venue-map-preview";
 
 /**
  * 과업 증빙용 간단 모드(@/lib/evidence-mode)면 과업과 무관한 입력(주관·후원, 공연시간, 온라인 여부,
@@ -50,6 +54,8 @@ const eventSchema = z.object({
   endsAt: z.string().min(1, "종료 일시는 필수입니다"),
   venueName: z.string().optional(),
   venueAddress: z.string().optional(),
+  venueLat: z.number().nullable(),
+  venueLng: z.number().nullable(),
   eventType: z.enum(EVENT_TYPES),
   ageRating: z.string().min(1, "연령 제한을 선택해주세요"),
   maxAttendees: z.string().optional(),
@@ -84,6 +90,9 @@ export interface EventFormValue {
   endsAt: string;
   venueName: string;
   venueAddress: string;
+  /** 「장소 찾기」로 고른 좌표(지도 API 연동). 직접 입력만 했으면 null. */
+  venueLat: number | null;
+  venueLng: number | null;
   eventType: "concert" | "festival" | "conference" | "exhibition" | "mice" | "workshop" | "fan_meeting" | "flea_market" | "lecture" | "preview" | "local_festival" | "party" | "networking";
   ageRating: string;
   maxAttendees: string;
@@ -118,6 +127,8 @@ const emptyValue: EventFormValue = {
   endsAt: "",
   venueName: "",
   venueAddress: "",
+  venueLat: null,
+  venueLng: null,
   eventType: "conference",
   ageRating: "all",
   maxAttendees: "",
@@ -151,6 +162,7 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
   const router = useRouter();
   const [organizers, setOrganizers] = useState<OrganizerOption[]>([]);
   const [form, setForm] = useState<EventFormValue>({ ...emptyValue, ...initialValue });
+  const [venueSearchOpen, setVenueSearchOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -262,6 +274,9 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
       endsAt: form.endsAt,
       venueName: form.venueName,
       venueAddress: form.venueAddress,
+      // 좌표는 항상 짝으로 보낸다(null 이면 지도 없음). 주소를 조금 고쳐도 고른 위치는 유지된다.
+      venueLat: form.venueLat,
+      venueLng: form.venueLng,
       eventType: form.eventType,
       ageRating: form.ageRating,
       // maxAttendees 는 좌석 배치도에서 자동 산출되므로 폼 payload 에서 제외
@@ -521,23 +536,75 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
             <p className="mt-1 text-sm text-content-subtle">장소를 정한 뒤 가는 길을 안내합니다. 안내물 이미지는 아래 「상세 안내 이미지」에서 이 자리로 보낼 수 있습니다.</p>
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="event-venue-name">장소명</Label>
-              <Input
-                id="event-venue-name"
-                value={form.venueName}
-                onChange={(event) => editForm((prev) => ({ ...prev, venueName: event.target.value }))}
-              />
+          <div className="space-y-3">
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="event-venue-name">장소명</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="event-venue-name"
+                    value={form.venueName}
+                    placeholder="예: 블루스퀘어 마스터카드홀"
+                    onChange={(event) => editForm((prev) => ({ ...prev, venueName: event.target.value }))}
+                  />
+                  <Button type="button" variant="outline" className="shrink-0" onClick={() => setVenueSearchOpen(true)}>
+                    <Search className="size-4" />
+                    장소 찾기
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="event-venue-address">주소</Label>
+                <Input
+                  id="event-venue-address"
+                  value={form.venueAddress}
+                  placeholder="「장소 찾기」로 고르면 자동으로 채워져요"
+                  onChange={(event) => editForm((prev) => ({ ...prev, venueAddress: event.target.value }))}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="event-venue-address">주소</Label>
-              <Input
-                id="event-venue-address"
-                value={form.venueAddress}
-                onChange={(event) => editForm((prev) => ({ ...prev, venueAddress: event.target.value }))}
-              />
-            </div>
+            {hasCoords(form.venueLat, form.venueLng) ? (
+              <div className="space-y-1.5">
+                <VenueMapPreview lat={form.venueLat as number} lng={form.venueLng as number} title={form.venueName || "이벤트 장소"} />
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-content-subtle">
+                  <span className="inline-flex items-center gap-1 text-success">
+                    <MapPin className="size-3.5" />
+                    지도 위치가 정해졌어요 — 피켓 이벤트 화면에 이 지도가 나와요
+                  </span>
+                  <a
+                    href={osmPageUrl(form.venueLat as number, form.venueLng as number)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline-offset-2 hover:underline"
+                  >
+                    크게 보기
+                  </a>
+                  <button
+                    type="button"
+                    className="underline-offset-2 hover:underline"
+                    onClick={() => editForm((prev) => ({ ...prev, venueLat: null, venueLng: null }))}
+                  >
+                    위치 지우기
+                  </button>
+                </div>
+              </div>
+            ) : form.venueAddress.trim() ? (
+              <p className="text-xs text-content-subtle">「장소 찾기」로 장소를 고르면 피켓 이벤트 화면에 지도가 함께 나와요.</p>
+            ) : null}
+            <VenueSearchDialog
+              open={venueSearchOpen}
+              onOpenChange={setVenueSearchOpen}
+              initialQuery={form.venueName.trim() || form.venueAddress.trim()}
+              onPick={(place) =>
+                editForm((prev) => ({
+                  ...prev,
+                  venueName: place.name,
+                  venueAddress: place.address || prev.venueAddress,
+                  venueLat: place.lat,
+                  venueLng: place.lng,
+                }))
+              }
+            />
           </div>
 
           {SHOW_EXTRA_EVENT_FIELDS ? (

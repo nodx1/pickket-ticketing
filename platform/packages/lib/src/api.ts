@@ -635,6 +635,8 @@ export interface EventDetail {
   age_rating?: string | null;
   // 상세페이지 통합 트랙B U1 — go 정본 필드, v2 EventResponse 노출. NULL/빈값·false 시 소비자 상세 미노출(비파괴).
   venue_address?: string | null; // 공연장 주소 — 장소 섹션 venue 명 아래 주소 라인
+  venue_lat?: number | null; // 지도 API 연동 — 「장소 찾기」 좌표(둘 다 있을 때만 지도)
+  venue_lng?: number | null;
   is_online?: boolean; // 온라인 이벤트 여부 — true 시 온라인 배지 + 장소/오시는길 온라인 표기
   homepage_url?: string | null; // 공식 홈페이지 외부 링크
   seat_type?: string;

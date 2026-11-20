@@ -74,6 +74,8 @@ export function toGoEventView(event: EventDetail) {
     description: event.description,
     venueName: event.venue,
     venueAddress: event.venue_address ?? null,
+    venueLat: event.venue_lat ?? null,
+    venueLng: event.venue_lng ?? null,
     startsAt: event.event_date,
     endsAt: resolveEndsAt(event),
     timezone: event.timezone ?? "Asia/Seoul",

@@ -140,6 +140,12 @@ class Settings(BaseSettings):
     # 공개 증명서 페이지 기본 주소 (PDF·QR 에 실린다)
     FAIRNESS_PUBLIC_BASE_URL: str = "https://www.pickket.kr"
 
+    # 지도 API 연동 (과업지시서 2-1) — 이벤트 장소 검색. 기본은 OpenStreetMap Nominatim(키 불필요).
+    # 이용 정책상 식별 가능한 User-Agent 가 필요하다 — 운영에서는 연락처를 담은 값으로 바꿔 둔다.
+    MAP_SEARCH_BASE_URL: str = "https://nominatim.openstreetmap.org"
+    MAP_SEARCH_USER_AGENT: str = "pickket-venue-search/1.0"
+    MAP_SEARCH_TIMEOUT_SECONDS: float = 6.0
+
     # TossPayments (PAYMENT_PROVIDER="toss")
     TOSS_API_BASE_URL: str = "https://api.tosspayments.com/v1"
     TOSS_SECRET_KEY: str = ""  # live_sk_* / test_sk_* (서버 전용). 미설정 시 mock.

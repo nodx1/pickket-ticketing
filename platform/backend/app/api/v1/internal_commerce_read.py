@@ -1369,6 +1369,8 @@ def _public_event_row(e: Event, attendee_count: int, tier_count: int) -> dict:
         "description": e.description,
         "venue": e.venue,
         "venue_address": e.venue_address,
+        "venue_lat": e.venue_lat,
+        "venue_lng": e.venue_lng,
         "event_type": e.event_type,
         "category": e.category,
         "age_rating": e.age_rating,

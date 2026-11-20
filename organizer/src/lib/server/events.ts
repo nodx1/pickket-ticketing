@@ -56,6 +56,9 @@ export interface EventSummary {
   endsAt: string;
   venueName: string | null;
   venueAddress: string | null;
+  /** 「장소 찾기」로 고른 좌표(지도 API 연동). 없으면 null. */
+  venueLat: number | null;
+  venueLng: number | null;
   eventType: string;
   ageRating: string;
   maxAttendees: number | null;

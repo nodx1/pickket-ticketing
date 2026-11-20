@@ -160,6 +160,9 @@ class Event(Base):
     # go events 에만 있고 v2 미배선이던 핵심 상세 필드. nullable 가산·비파괴.
     # 소비자 상세는 NULL 시 해당 섹션 미노출(계약 무변).
     venue_address: Mapped[str | None] = mapped_column(Text, nullable=True)  # go venue_address — 공연장 주소
+    # 지도 API 연동(과업지시서 2-1) — 「장소 찾기」로 고른 장소의 좌표. 둘 다 있거나 둘 다 NULL(마이그 gwasup07).
+    venue_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    venue_lng: Mapped[float | None] = mapped_column(Float, nullable=True)
     # 온라인 이벤트 여부. server_default false → 기존 행 안전(비파괴).
     is_online: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false"), nullable=False

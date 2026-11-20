@@ -41,6 +41,9 @@ const eventSchema = z.object({
   endsAt: z.string().min(1, "종료 일시는 필수입니다"),
   venueName: z.string().optional(),
   venueAddress: z.string().optional(),
+  // 지도 API 연동 — 「장소 찾기」로 고른 좌표. 직접 입력한 주소는 null.
+  venueLat: z.number().min(-90).max(90).nullable().optional(),
+  venueLng: z.number().min(-180).max(180).nullable().optional(),
   eventType: z.enum(EVENT_TYPES),
   ageRating: z.string().min(1, "연령 제한을 선택해주세요"),
   maxAttendees: z.string().optional(),
@@ -225,6 +228,9 @@ export const POST = withRole("organizer", async (request, { session }) => {
         venue: body.venueName ?? null,
         description: body.description ?? null,
         venue_address: body.venueAddress ?? null,
+        ...(body.venueLat != null && body.venueLng != null
+          ? { venue_lat: body.venueLat, venue_lng: body.venueLng }
+          : {}),
         age_rating: body.ageRating ?? null,
         is_online: body.isOnline,
         // 정원(max_attendees) → v2 total_seats. 미입력(무제한)이면 미전송(v2 default 유지).

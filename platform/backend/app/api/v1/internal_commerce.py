@@ -476,6 +476,8 @@ class EventCreateRequest(BaseModel):
     venue: str | None = None
     # ── 상세페이지 통합 트랙B U1 핵심 상세 필드(전부 optional·가산) ──
     venue_address: str | None = None                 # go venue_address — 공연장 주소
+    venue_lat: float | None = None                   # 지도 API 연동 — 「장소 찾기」로 고른 위도
+    venue_lng: float | None = None                   # 경도. 둘 다 있거나 둘 다 없음(_venue_coords)
     age_rating: str | None = None                    # go age_rating — 연령 등급(all/12+/15+/18+ 등)
     is_online: bool | None = None                    # go is_online — 온라인 이벤트 여부
     homepage_url: str | None = None                  # go homepage_url — 공식 홈페이지
@@ -544,6 +546,8 @@ class EventPatchRequest(BaseModel):
     # ── 상세페이지 통합 트랙B U1 핵심 상세 필드(전부 optional·가산). PATCH 는 model_fields_set 로
     #    "미포함(보존)" vs "명시 null/빈값(삭제)"을 구분한다. ──
     venue_address: str | None = None                 # go venue_address — 공연장 주소
+    venue_lat: float | None = None                   # 지도 API 연동 — 「장소 찾기」로 고른 위도
+    venue_lng: float | None = None                   # 경도. 둘 다 있거나 둘 다 없음(_venue_coords)
     age_rating: str | None = None                    # go age_rating — 연령 등급
     is_online: bool | None = None                    # go is_online — 온라인 이벤트 여부
     homepage_url: str | None = None                  # go homepage_url — 공식 홈페이지
@@ -626,6 +630,20 @@ class OrganizerFeePlanRequest(FeePlanRequest):
 _GO_EVT_MAX_FEATURES = 100      # enabled_features 원소 상한
 _GO_EVT_MAX_FEATURE_LEN = 60    # 개별 feature 키 길이 상한
 _CUSTOM_DOMAIN_RE = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$")
+
+
+def _venue_coords(lat, lng) -> tuple[float | None, float | None]:
+    """장소 좌표 — 둘 다 있거나 둘 다 없어야 하고 범위 안이어야 한다(400 봉투).
+
+    한쪽만 저장되면 지도가 엉뚱한 곳(위도 0 등)을 찍는다. DB CHECK(gwasup07)와 같은 규칙.
+    """
+    if lat is None and lng is None:
+        return None, None
+    if lat is None or lng is None:
+        raise ApiError("VALIDATION_ERROR", "venue_lat and venue_lng must be sent together", 400, "venue_lat")
+    if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
+        raise ApiError("VALIDATION_ERROR", "venue coordinates out of range", 400, "venue_lat")
+    return float(lat), float(lng)
 
 
 def _validate_enabled_features(value) -> list[str]:
@@ -833,6 +851,7 @@ async def _do_create_event(db: AsyncSession, body: EventCreateRequest) -> dict:
     if gap_seat_map is not None:
         gap_kwargs["seat_map_data"] = gap_seat_map
 
+    _coords = _venue_coords(body.venue_lat, body.venue_lng)
     event = Event(
         id=event_id,
         organizer_id=organizer_id,
@@ -843,6 +862,8 @@ async def _do_create_event(db: AsyncSession, body: EventCreateRequest) -> dict:
         venue=body.venue or "장소 미정",
         # 트랙B U1 핵심 상세 필드 — 전송된 것만 세팅(is_online 미전송 시 모델/DB default false).
         venue_address=body.venue_address,
+        venue_lat=_coords[0],
+        venue_lng=_coords[1],
         age_rating=body.age_rating,
         homepage_url=body.homepage_url,
         **({"is_online": body.is_online} if body.is_online is not None else {}),
@@ -952,7 +973,18 @@ async def _do_patch_event(db: AsyncSession, event_id: uuid.UUID, body: EventPatc
     # model_fields_set 로 "미포함(보존)" vs "명시 null/빈값(삭제)"을 구분(read-after-write 정합).
     _u1_fields = body.model_fields_set
     if "venue_address" in _u1_fields:
+        _prev_address = event.venue_address
         event.venue_address = body.venue_address or None
+        # 주소만 바뀌고 좌표가 안 왔으면 옛 좌표는 다른 곳을 가리킨다 → 지운다(지도는 숨김).
+        if (
+            event.venue_address != _prev_address
+            and "venue_lat" not in _u1_fields
+            and "venue_lng" not in _u1_fields
+        ):
+            event.venue_lat = None
+            event.venue_lng = None
+    if "venue_lat" in _u1_fields or "venue_lng" in _u1_fields:
+        event.venue_lat, event.venue_lng = _venue_coords(body.venue_lat, body.venue_lng)
     if "age_rating" in _u1_fields:
         event.age_rating = body.age_rating or None
     if "homepage_url" in _u1_fields:
@@ -1577,6 +1609,8 @@ def _event_detail_dict(
         "organizer_name": organizer_name,
         # 트랙B U1 핵심 상세 필드 read-after-write(go resync/검증용).
         "venue_address": event.venue_address,
+        "venue_lat": event.venue_lat,
+        "venue_lng": event.venue_lng,
         "age_rating": event.age_rating,
         "is_online": event.is_online,
         "homepage_url": event.homepage_url,
@@ -1638,6 +1672,8 @@ def _event_detail_dict(
         "event_date_end": event.event_date_end.isoformat() if event.event_date_end else None,
         "cancellation_fee_tiers": event.cancellation_fee_tiers or None,
         "venue_address": event.venue_address,
+        "venue_lat": event.venue_lat,
+        "venue_lng": event.venue_lng,
         "sales_paused_at": None,  # go 호환 자리(별도 원장 없음)
         "timezone": event.event_timezone,
         # ── ctevt_0727: go events 전용 컬럼(go DB 제거 후 이 응답이 유일한 출처) ──

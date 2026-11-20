@@ -12,6 +12,9 @@ export interface EventInfoTabsEvent {
   // 상세통합 트랙B U1 — go 정본 필드. NULL/빈값·false 시 미노출(비파괴).
   age_rating?: string | null; // 관람연령(go 정본, age_restriction 우선)
   venue_address?: string | null; // 공연장 주소
+  // 지도 API 연동(과업지시서 2-1) — 주최사가 「장소 찾기」로 고른 좌표. 둘 다 있을 때만 지도를 그린다.
+  venue_lat?: number | null;
+  venue_lng?: number | null;
   is_online?: boolean | null; // 온라인 이벤트 여부
   homepage_url?: string | null; // 공식 홈페이지
   tags?: string | null;
@@ -100,4 +103,25 @@ export function ageRatingLabel(value: string, locale: string): string {
   const hit = AGE_RATING_LABELS[value.trim().toLowerCase()];
   if (!hit) return value;
   return locale === "ko" ? hit.ko : hit.en;
+}
+
+/**
+ * 지도 API 연동(과업지시서 2-1) — 장소 좌표. 둘 다 숫자이고 범위 안일 때만 돌려준다
+ * (한쪽만 있거나 잘못된 값이면 지도를 엉뚱한 곳에 찍으므로 그리지 않는다).
+ */
+export function venueCoordsOf(
+  event: Pick<EventInfoTabsEvent, "venue" | "venue_lat" | "venue_lng">,
+): { lat: number; lng: number; name: string } | null {
+  const { venue_lat: lat, venue_lng: lng } = event;
+  if (typeof lat !== "number" || typeof lng !== "number") return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng, name: event.venue?.trim() || "이벤트 장소" };
+}
+
+/** 좌표 주변 오픈스트리트맵 임베드 주소(가운데 핀). 지도 라이브러리·키 없이 iframe 으로 그린다. */
+export function osmEmbedUrl(lat: number, lng: number, span = 0.004): string {
+  const dLat = span * 0.6;
+  const bbox = [lng - span, lat - dLat, lng + span, lat + dLat].map((v) => v.toFixed(6)).join(",");
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat.toFixed(6)},${lng.toFixed(6)}`;
 }
