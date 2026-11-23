@@ -356,7 +356,8 @@ class LotteryService:
         # Check for duplicate entry
         existing = await self.entry_repo.get_user_entry(pool.id, user_id)
         if existing:
-            raise ValueError("User already applied to this lottery pool")
+            # 팬 화면에 그대로 뜨는 문구라 한국어로 둔다(2026-11-23 시연에서 영어로 노출됨).
+            raise ValueError("이미 이 등급에 응모했습니다. 응모 결과는 마감 후 알려 드려요")
 
         # Compute fan weight
         fan_weight = await self.fan_weight_service.compute_weight(user_id)

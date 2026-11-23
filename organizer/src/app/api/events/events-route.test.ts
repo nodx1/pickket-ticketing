@@ -9,6 +9,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest } from "next/server";
+import { EVIDENCE_SIMPLE_MODE } from "@/lib/evidence-mode";
 
 const h = vi.hoisted(() => {
   class V2CommerceError extends Error {
@@ -250,6 +251,13 @@ describe("POST /api/events (생성)", () => {
     const p = createPayload();
     expect(p.event_type).toBe("conference");
     expect(p.category).toBeTruthy();
+  });
+
+  it("🔴 간단 모드면 피켓 마켓 채널을 함께 켠다(승인 뒤 피켓에서 응모로 이어지게)", async () => {
+    await post(postBody());
+    expect(createPayload().sale_channels).toEqual(
+      EVIDENCE_SIMPLE_MODE ? ["self", "marketplace"] : ["self"],
+    );
   });
 
   it("기본 취소정책(옛 go DB DEFAULT)을 전파한다", async () => {

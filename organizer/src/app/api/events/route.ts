@@ -23,6 +23,16 @@ import {
   V2CommerceError,
 } from "@/lib/v2/commerce-client";
 import { DEFAULT_CANCELLATION_FEE_TIERS, toGoEventListView } from "@/lib/v2/event-view";
+import { EVIDENCE_SIMPLE_MODE } from "@/lib/evidence-mode";
+
+/**
+ * 새 이벤트의 판매 채널.
+ * 🔴 간단 모드(과업 시연)는 「피켓고에서 만들기 → 관리자 승인 → 피켓에서 응모」가 한 흐름이다.
+ *    자체 페이지만 켜 두면 승인돼도 피켓에 안 나와 응모로 이어지지 않았다(2026-11-23 시연 중 확인).
+ *    간단 모드를 끄면 예전처럼 자체 페이지만 — 피켓 마켓은 「이벤트 설정 → 판매 채널」에서 켠다.
+ */
+// route 파일은 HTTP 메서드 외 export 를 허용하지 않아(Next 빌드 오류) 모듈 안에만 둔다.
+const NEW_EVENT_SALE_CHANNELS: string[] = EVIDENCE_SIMPLE_MODE ? ["self", "marketplace"] : ["self"];
 
 const organizerEntrySchema = z.object({
   organizerId: z.string().uuid("올바른 주최자 ID가 아닙니다"),
@@ -248,7 +258,7 @@ export const POST = withRole("organizer", async (request, { session }) => {
         // 🔴 시작이 이미 지난 행사(당일 급조·진행 중·기록용 등록)에서 closes_at 이 과거가 되어
         //    v2 가 400 으로 거절하던 것을 막는다 — 상세 근거는 resolveInitialSaleWindow 참조.
         sale_window: resolveInitialSaleWindow(startsAtIso, endsAtIso, new Date().toISOString()),
-        sale_channels: ["self"],
+        sale_channels: NEW_EVENT_SALE_CHANNELS,
         status: goToV2WriteEventStatus(body.status) ?? "draft",
         image_url: body.heroImageUrl || null,
         image_variants: body.imageVariants ?? null,

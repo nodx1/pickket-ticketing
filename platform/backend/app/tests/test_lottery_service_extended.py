@@ -357,7 +357,7 @@ class TestLotteryApply:
             mock_repo.get.return_value = event
             MockEventRepo.return_value = mock_repo
 
-            with pytest.raises(ValueError, match="already applied"):
+            with pytest.raises(ValueError, match="이미 이 등급에 응모했습니다"):
                 await svc.apply(uuid.uuid4(), event.id, tier.id)
 
     @pytest.mark.asyncio
