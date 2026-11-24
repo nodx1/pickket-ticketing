@@ -273,7 +273,16 @@ class PaymentService:
             )
 
         payment_id = order.payment_id or self.gateway.generate_payment_id(order.id)
+        # 결제창 세션 기한은 지금+15분이지만, 주문에 이미 **더 늦은 기한**이 있으면 줄이지 않는다.
+        # 추첨 당첨자 주문은 72시간 결제 기한을 받는데, 예전엔 결제창을 여는 순간 15분으로
+        # 덮어써서 창을 닫았다 다시 오면 「결제 기한 지남」으로 표를 잃었다(2026-11-24 실결제 시험).
         payment_deadline = self._now() + timedelta(minutes=settings.PAYMENT_EXPIRY_MINUTES)
+        existing_deadline = order.payment_deadline
+        if existing_deadline is not None:
+            if existing_deadline.tzinfo is None:
+                existing_deadline = existing_deadline.replace(tzinfo=payment_deadline.tzinfo)
+            if existing_deadline > payment_deadline:
+                payment_deadline = existing_deadline
         success_url = success_url or settings.PAYMENT_SUCCESS_URL
         fail_url = fail_url or settings.PAYMENT_FAIL_URL
         idem_key = idempotency_key or order.payment_idempotency_key or uuid.uuid4().hex

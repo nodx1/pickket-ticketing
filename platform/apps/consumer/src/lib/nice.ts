@@ -147,6 +147,23 @@ function buildPayForm(form: Record<string, string>): HTMLFormElement {
  * 정상 흐름에서 goPay 는 결제창 팝업/리다이렉트로 넘어가므로 이 함수는 반환 전에 화면을 떠난다.
  * @throws provider_params 누락/형식오류·SDK 로드 실패·goPay 미정의 시 명확한 에러(조용한 실패 금지).
  */
+/**
+ * 나이스 결제창 레이어를 우리 모달보다 위로 올린다.
+ *
+ * SDK 가 만드는 `#nice_layer`(z 9999)·`#bg_layer`(z 9998)는 인라인 z-index 다. 그런데 결제 전에 띄우는
+ * 주문서 확인 모달은 z 99999 라서, 결제창이 열려도 모달이 그 위를 덮어 **카드 입력을 할 수 없었다**
+ * (2026-11-24 운영 상점 1,000원 실결제 시험에서 발견). 인라인 값은 스타일시트의 `!important` 가
+ * 이기므로, 규칙 하나를 한 번만 넣어 어느 화면에서 결제창을 열어도 맨 위에 오게 한다.
+ */
+function ensureNiceLayerOnTop(): void {
+  if (typeof document === "undefined" || document.getElementById("nice-layer-on-top")) return;
+  const style = document.createElement("style");
+  style.id = "nice-layer-on-top";
+  style.textContent =
+    "#nice_layer{z-index:100001 !important}#bg_layer{z-index:100000 !important}";
+  document.head.appendChild(style);
+}
+
 export async function startNicePayment(
   providerParams: NicePayProviderParams | null | undefined,
   options?: NicePaymentOptions,
@@ -161,6 +178,7 @@ export async function startNicePayment(
   }
 
   await loadNiceSdk(providerParams.js_url);
+  ensureNiceLayerOnTop();
   if (typeof window.goPay !== "function") {
     throw new Error("나이스 결제 모듈을 초기화하지 못했습니다. 잠시 후 다시 시도해주세요.");
   }

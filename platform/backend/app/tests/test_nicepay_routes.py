@@ -830,6 +830,10 @@ async def test_return_route_redirects_302_on_success(client, db_session, monkeyp
     assert resp.status_code == 302
     assert "/payment/success" in resp.headers["location"]
     assert "reason=confirmed" in resp.headers["location"]
+    # 피켓 착지는 주문 UUID 로 이어져야 한다 — 결제 ID(Moid)를 넘기면 결제는 성공했는데
+    # 「주문 정보를 찾을 수 없습니다」가 뜬다(2026-11-24 운영 상점 실결제 시험).
+    assert f"orderId={bundle['order'].id}" in resp.headers["location"]
+    assert "orderId=ord_route_succ_a1" not in resp.headers["location"]
     await db_session.refresh(bundle["order"])
     assert bundle["order"].status == OrderStatus.CONFIRMED
 

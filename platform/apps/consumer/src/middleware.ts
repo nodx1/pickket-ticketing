@@ -51,7 +51,7 @@ const REFRESH_COOKIE_NAMES = [
 
 /* ────────────────────── CSP ────────────────────── */
 
-function buildCspHeader(
+export function buildCspHeader(
   nonce: string,
   apiOrigin: string,
   cdnUrl: string,
@@ -108,7 +108,10 @@ function buildCspHeader(
     // 나이스 구형 goPay 는 payForm 을 나이스 결제창(pg-web)/인증(dc1·dc2-api)으로 POST 하므로
     // form-action 에 *.nicepay.co.kr 을 허용한다(토스/self 유지). 승인 API(dc1/dc2·webapi)는
     // v2 backend 의 서버간 호출이라 connect-src 불필요.
-    "form-action 'self' https://*.nicepay.co.kr",
+    // 🔴 인증이 끝나면 SDK 가 같은 폼을 ReturnURL(= v2 `/api/v1/payments/nice/return`)로 POST 한다.
+    //    v2 오리진이 없으면 브라우저가 그 전송을 막아 「Please, wait...」가 영원히 돈다.
+    //    피켓고는 2026-08-10(0f4f81fd)에 고쳤고, 피켓은 2026-11-24 실결제 시험에서 같은 증상을 확인했다.
+    `form-action 'self' https://*.nicepay.co.kr ${apiOrigin}`,
     ...(isDev ? [] : ["upgrade-insecure-requests"]),
   ].join("; ");
 }

@@ -47,6 +47,21 @@ describe("nice.ts — 나이스페이 구형(goPay) 결제창 클라이언트", 
     delete (window as unknown as { nicepaySubmit?: unknown }).nicepaySubmit;
   });
 
+  it("결제창 레이어(#nice_layer·#bg_layer)를 주문서 모달(z 99999)보다 위로 올리는 규칙을 한 번만 넣는다", async () => {
+    // 2026-11-24 운영 상점 실결제 시험: 주문서 확인 모달이 나이스 결제창을 덮어 카드 입력을 못 했다.
+    const startNicePayment = await freshStartNicePayment();
+    await startNicePayment(makeParams());
+    await startNicePayment(makeParams());
+
+    const rules = document.head.querySelectorAll("style#nice-layer-on-top");
+    expect(rules.length).toBe(1);
+    const css = rules[0].textContent ?? "";
+    expect(css).toMatch(/#nice_layer\{z-index:(\d+) !important\}/);
+    expect(css).toMatch(/#bg_layer\{z-index:(\d+) !important\}/);
+    const layerZ = Number(css.match(/#nice_layer\{z-index:(\d+)/)?.[1]);
+    expect(layerZ).toBeGreaterThan(99999);
+  });
+
   it("provider_params.form 필드를 hidden payForm 에 무변형 주입하고 goPay(payForm) 호출", async () => {
     const startNicePayment = await freshStartNicePayment();
     await startNicePayment(makeParams());

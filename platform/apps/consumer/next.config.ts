@@ -63,7 +63,10 @@ const nextConfig: NextConfig = {
           key: "Permissions-Policy",
           value: "camera=(), microphone=(), geolocation=()",
         },
-        { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+        // same-origin 이면 나이스 결제창이 띄운 카드사 인증 창(신한·토스뱅크 등)과의 연결이 끊겨
+        // 「결제완료」를 눌러도 결과가 돌아오지 않고 결제창이 계속 돈다(2026-11-24 실결제 시험).
+        // 결제 팝업을 쓰는 PG 는 same-origin-allow-popups 를 쓴다 — 우리 창을 남이 여는 경우의 격리는 그대로다.
+        { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
         { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
       ],
     },

@@ -641,6 +641,13 @@ async def nicepay_return(
                 next_app_url=_nice_field(form, "NextAppURL", "nextAppUrl", "NextAppUrl"),
                 net_cancel_url=_nice_field(form, "NetCancelURL", "NetCancelUrl", "netCancelUrl"),
             )
+            # 착지용 주문 UUID 는 commit/rollback **전에** 읽어 둔다(세션이 닫히면 만료 객체라 못 읽는다).
+            result_order_uuid: str | None = None
+            try:
+                if getattr(result, "order", None) is not None:
+                    result_order_uuid = str(result.order.id)
+            except Exception:  # 착지 표기용일 뿐 — 결제 처리에 영향 주지 않는다.
+                result_order_uuid = None
             if result.ok:
                 await db.commit()
             else:
@@ -669,12 +676,20 @@ async def nicepay_return(
         except Exception:
             logger.exception("나이스 returnUrl v2→go 전파 큐잉 실패(non-fatal)")
 
+    # 피켓(consumer) 착지 페이지는 `/orders/{주문 UUID}` 로 이어진다. 나이스가 돌려준 Moid 는
+    # 우리 결제 ID(`ord_…_a1`)라 그대로 넘기면 결제는 성공했는데 「주문 정보를 찾을 수 없습니다」가
+    # 뜬다(2026-11-24 운영 상점 실결제 시험). 원장 주문을 찾았으면 그 UUID 로 바꿔 넘긴다.
+    # 피켓고(go) 착지는 기존 계약(Moid)을 그대로 둔다.
+    landing_order_id = order_id
+    if origin != "go" and result_order_uuid:
+        landing_order_id = result_order_uuid
+
     if result.ok:
         return RedirectResponse(
-            _nice_redirect_url(success_url, order_id, result.reason), status_code=302
+            _nice_redirect_url(success_url, landing_order_id, result.reason), status_code=302
         )
     return RedirectResponse(
-        _nice_redirect_url(fail_url, order_id, result.reason), status_code=302
+        _nice_redirect_url(fail_url, landing_order_id, result.reason), status_code=302
     )
 
 

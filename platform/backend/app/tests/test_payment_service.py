@@ -137,6 +137,46 @@ async def test_initiate_payment_success(db_session):
 
 
 @pytest.mark.asyncio
+async def test_initiate_payment_keeps_longer_lottery_deadline(db_session):
+    """추첨 당첨자 주문의 72시간 결제 기한을 결제창 세션(15분)으로 줄이지 않는다.
+
+    2026-11-24 운영 상점 실결제 시험: 결제창을 연 뒤 15분이 지나 「결제 기한 지남」으로
+    당첨 주문을 잃을 뻔했다. 더 늦은 기한이 있으면 그대로 두고, 없거나 더 이르면 15분을 준다.
+    """
+    lottery_deadline = datetime.now(timezone.utc) + timedelta(hours=72)
+    bundle = await _create_order_bundle(
+        db_session,
+        order_status=OrderStatus.PAYMENT_REQUIRED,
+        payment_deadline=lottery_deadline,
+        payment_id=None,
+    )
+    svc = PaymentService(db_session)
+
+    resp = await svc.initiate_payment(bundle["order"].id, idempotency_key="idem_lottery_deadline")
+    await db_session.refresh(bundle["order"])
+    kept = bundle["order"].payment_deadline
+    if kept.tzinfo is None:
+        kept = kept.replace(tzinfo=timezone.utc)
+    assert abs((kept - lottery_deadline).total_seconds()) < 2
+    assert resp.payment_deadline is not None
+
+    # 기한이 곧 끝나는 주문은 결제창 세션 15분을 받는다(기존 동작 유지).
+    short = datetime.now(timezone.utc) + timedelta(minutes=1)
+    bundle2 = await _create_order_bundle(
+        db_session,
+        order_status=OrderStatus.PAYMENT_REQUIRED,
+        payment_deadline=short,
+        payment_id=None,
+    )
+    await svc.initiate_payment(bundle2["order"].id, idempotency_key="idem_short_deadline")
+    await db_session.refresh(bundle2["order"])
+    extended = bundle2["order"].payment_deadline
+    if extended.tzinfo is None:
+        extended = extended.replace(tzinfo=timezone.utc)
+    assert extended > short + timedelta(minutes=10)
+
+
+@pytest.mark.asyncio
 async def test_initiate_payment_cancelled_order(db_session):
     bundle = await _create_order_bundle(db_session, order_status=OrderStatus.CANCELLED)
     svc = PaymentService(db_session)
