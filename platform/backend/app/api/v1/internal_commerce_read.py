@@ -949,6 +949,27 @@ async def _order_detail_response(o: Order, response: Response, db: AsyncSession)
         "line_amount": float(oi.line_amount or 0),
         "seat_id": str(oi.seat_id) if oi.seat_id else None,
     } for oi, name, ext in item_rows]
+    # 🔴 피켓(소비자) 주문은 order_items 행이 없다 — 단일 등급 주문이라 등급·수량·단가가 orders 에
+    #    있다. 그대로 두면 피켓고 주문 상세의 「주문 항목」이 빈칸이 된다(2026-11-24 나이스 실결제
+    #    주문에서 확인). 행이 하나도 없을 때만 orders 값으로 한 줄을 만든다.
+    if not items and o.tier_id is not None:
+        tier = await db.get(SeatTier, o.tier_id)
+        items = [{
+            "tier_id": str(o.tier_id),
+            "external_ref": tier.external_ref if tier else None,
+            "product_name": tier.name if tier else None,
+            "quantity": o.quantity or 1,
+            "unit_price": float(o.unit_price or 0),
+            "line_amount": float(o.total_amount or 0),
+            "seat_id": None,
+        }]
+    # 피켓 주문의 구매자는 buyer_* 가 아니라 회원(user_id)이다. 이름·이메일만 회원 정보로 채운다
+    # (전화번호는 주문에 적힌 값만 — 회원 연락처까지 넓히지 않는다).
+    buyer_name, buyer_email = o.buyer_name, o.buyer_email
+    if not (buyer_name or buyer_email) and o.user_id is not None:
+        member = await db.get(User, o.user_id)
+        if member is not None:
+            buyer_name, buyer_email = member.name, member.email
     tk_rows = (await db.execute(
         select(Ticket).where(Ticket.purchase_order_id == order_id)
     )).scalars().all()
@@ -963,7 +984,7 @@ async def _order_detail_response(o: Order, response: Response, db: AsyncSession)
     return _ok({
         "order_id": str(o.id), "external_order_id": o.external_ref,
         "order_number": o.external_ref or str(o.id), "event_id": str(o.event_id),
-        "buyer": {"name": o.buyer_name, "email": o.buyer_email, "phone": o.buyer_phone},
+        "buyer": {"name": buyer_name, "email": buyer_email, "phone": o.buyer_phone},
         "status": _go_order_status(o.status),
         "status_v2": o.status.value if hasattr(o.status, "value") else o.status,
         "total_amount": float(o.total_amount or 0),

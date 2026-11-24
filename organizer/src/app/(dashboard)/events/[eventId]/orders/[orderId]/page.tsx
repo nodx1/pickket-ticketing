@@ -25,6 +25,9 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
   expired: "만료됨",
 };
 
+/** 환불 라우트(`POST .../refund`)가 받는 상태와 같다. */
+const REFUNDABLE_STATUSES = new Set(["completed", "partially_refunded"]);
+
 type PageProps = {
   params: Promise<{ eventId: string; orderId: string }>;
 };
@@ -176,6 +179,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
           </CardHeader>
           <CardContent className="space-y-3">
             <OrderItemsManager
+              ticketCancelAvailable={detail.source === "go"}
               items={(detail.items as Array<Record<string, unknown>>).map((item) => ({
                 id: String(item.id),
                 productName: String(item.productName),
@@ -196,6 +200,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
           <OrderAttendeesManager
             eventId={eventId}
             orderId={orderId}
+            readOnly={detail.source === "v2"}
             attendees={(detail.attendees as Array<Record<string, unknown>>).map((attendee) => ({
               id: String(attendee.id),
               name: String(attendee.name),
@@ -209,7 +214,19 @@ export default async function OrderDetailPage({ params }: PageProps) {
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <OrderMemoForm eventId={eventId} orderId={orderId} initialMemo={String(detail.memo ?? "")} />
+        {/* 피켓에서 결제한 주문(v2 에만 있음)은 메모를 둘 go 앵커가 없다 — 칸을 보이지 않는다. */}
+        {detail.source === "go" ? (
+          <OrderMemoForm eventId={eventId} orderId={orderId} initialMemo={String(detail.memo ?? "")} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-foreground">주문 경로</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              피켓에서 응모·결제한 주문이에요. 참석자 정보는 피켓 회원 정보를 따르고, 여기서는 환불만 처리할 수 있어요.
+            </CardContent>
+          </Card>
+        )}
         {isAwaitingDeposit ? (
           <OrderDepositConfirmAction eventId={eventId} orderId={orderId} amount={orderTotal} />
         ) : (
@@ -219,7 +236,8 @@ export default async function OrderDetailPage({ params }: PageProps) {
             policyLabel={refundPolicy.policyLabel}
             refundPercent={refundPolicy.refundPercent}
             refundAmount={refundPolicy.refundAmount}
-            canRefund={refundPolicy.canRefund}
+            // 환불 API 는 결제완료·부분환불 주문만 받는다 — 이미 환불·취소된 주문에서 버튼을 열어 두지 않는다.
+            canRefund={refundPolicy.canRefund && REFUNDABLE_STATUSES.has(String(detail.status))}
           />
         )}
       </div>

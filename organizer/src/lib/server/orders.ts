@@ -12,7 +12,8 @@ import {
   listTierCatalog,
   V2CommerceError,
 } from "@/lib/v2/commerce-client";
-import { EventAccessError, requireOwnedEvent } from "@/lib/v2/event-access";
+import type { OrderDetail as V2OrderDetail } from "@/lib/v2/commerce-client";
+import { EventAccessError, requireOwnedEvent, resolveOwnedV2EventId } from "@/lib/v2/event-access";
 import { recordPaymentConfirmOutbox } from "@/lib/payment/confirm-v2";
 
 interface CreateOrderItemInput {
@@ -567,7 +568,9 @@ export async function getOrderDetail(accountId: string, eventId: string, orderId
   ]);
 
   if (orderResult.rows.length === 0) {
-    return null;
+    // 피켓(소비자)에서 결제한 주문은 go orders 행이 없다 — v2 에서 소유를 확인하고 연다.
+    const v2Order = await findV2OnlyOrder(accountId, eventId, orderId);
+    return v2Order ? buildV2OnlyOrderDetail(orderId, v2Order) : null;
   }
 
   const header = orderResult.rows[0]!;
@@ -575,6 +578,8 @@ export async function getOrderDetail(accountId: string, eventId: string, orderId
     await resolveOrderLines(header);
 
   return {
+    /** go = 피켓고에서 만든 주문(go 앵커 있음), v2 = 피켓에서 결제한 주문(v2 에만 있음). */
+    source: "go" as "go" | "v2",
     ...header,
     // platformFee/netAmount: v2 단건 read SoT(fee 동결 전이면 null). invoice/정산표시 정합.
     platformFee,
@@ -618,7 +623,10 @@ interface ResolvedOrderLines {
  * 세율/취소시각은 v2 order read 에 미존재 → 0/false 폴백(go 세금처리 boundary).
  * v2 앵커 미연결(v2_order_id 누락) 시 빈 라인 + null fee(UI 안전). V2CommerceError 는 전파(swallow 금지).
  */
-async function resolveOrderLines(header: OrderDetailHeader): Promise<ResolvedOrderLines> {
+async function resolveOrderLines(
+  header: OrderDetailHeader,
+  prefetched?: V2OrderDetail,
+): Promise<ResolvedOrderLines> {
   const v2OrderId = header.v2OrderId;
   // 앵커 미연결(v2_order_id 누락) — v2 read 불가. 빈 라인으로 안전 표시.
   if (!v2OrderId) {
@@ -630,9 +638,9 @@ async function resolveOrderLines(header: OrderDetailHeader): Promise<ResolvedOrd
     };
   }
 
-  let detail;
+  let detail = prefetched;
   try {
-    detail = await v2GetOrder(v2OrderId, { idempotencyKey: `go-order-items:${v2OrderId}` });
+    detail ??= await v2GetOrder(v2OrderId, { idempotencyKey: `go-order-items:${v2OrderId}` });
   } catch (err: unknown) {
     // v2 read 실패는 전파(미러 swallow 금지) — 주문상세 자체가 실패해야 정합 깨짐을 숨기지 않음.
     if (err instanceof V2CommerceError) {
@@ -671,5 +679,86 @@ async function resolveOrderLines(header: OrderDetailHeader): Promise<ResolvedOrd
     // 종전엔 「현장결제」로 보였다(0원인데).
     isManualIssue: detail.is_manual_issue,
     paymentAttempt: paymentAttemptView(detail.payment_attempts, header.status),
+  };
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * go orders 행이 없는 주문을 v2 에서 찾는다 — 피켓(소비자)에서 결제한 주문이 여기 해당한다.
+ *
+ * 🔴 주문 목록은 v2 에서 읽고 행 id 를 `external_ref ?? order_id` 로 준다. 피켓 주문은
+ *    external_ref 가 없어 **v2 order_id** 가 그대로 링크가 되는데, 상세·환불은 go orders 행만
+ *    찾아서 목록에서 누른 주문이 목록으로 튕겼다(2026-11-24 나이스 실결제 시험에서 확인).
+ * 🔴 v2 내부 주문 조회는 주최자 스코프가 없다(서비스 토큰). 그래서 **이벤트가 이 계정 소유인지,
+ *    주문이 그 이벤트 것인지**를 여기서 확인한다. 하나라도 아니면 없는 주문으로 본다.
+ *
+ * @returns 이 계정·이벤트의 v2 주문. 없거나 남의 주문이면 `null`.
+ * @throws EventAccessError(unavailable)·V2CommerceError(404 외) — v2 장애는 호출측이 503 으로.
+ */
+export async function findV2OnlyOrder(
+  accountId: string,
+  eventId: string,
+  orderId: string,
+): Promise<V2OrderDetail | null> {
+  if (!UUID_RE.test(orderId)) return null;
+  const v2EventId = await resolveOwnedV2EventId(eventId, accountId);
+  if (!v2EventId) return null;
+  let order: V2OrderDetail;
+  try {
+    order = await v2GetOrder(orderId, { idempotencyKey: `go-order-items:${orderId}` });
+  } catch (err: unknown) {
+    if (err instanceof V2CommerceError && err.status === 404) return null;
+    throw err;
+  }
+  return order.event_id === v2EventId ? order : null;
+}
+
+/** v2 티켓 상태 → 피켓고 참석자 상태(ATTENDEE_STATUS_LABELS 어휘). */
+function attendeeStatusFromV2Ticket(status: string, checkedInAt: string | null): string {
+  if (checkedInAt !== null || status === "used") return "checked_in";
+  if (status === "active") return "confirmed";
+  if (status === "pending") return "pending";
+  return "cancelled"; // cancelled · expired · transferred — 이 주문으로는 더 입장할 수 없다
+}
+
+const PAID_STATUSES = new Set(["completed", "refunded", "partially_refunded"]);
+
+/** v2 에만 있는 주문을 getOrderDetail 과 같은 모양으로 만든다. 메모·참석자 수정은 go 앵커가 없어 읽기 전용. */
+async function buildV2OnlyOrderDetail(orderId: string, v2Order: V2OrderDetail) {
+  const header: OrderDetailHeader = {
+    id: orderId,
+    orderNumber: v2Order.order_number,
+    buyerName: v2Order.buyer.name ?? "",
+    buyerEmail: v2Order.buyer.email ?? "",
+    buyerPhone: v2Order.buyer.phone,
+    totalAmount: v2Order.total_amount,
+    // v2 paid_amount 는 결제 전에도 total 과 같다 — 결제된 상태에서만 결제금액으로 본다.
+    paidAmount: PAID_STATUSES.has(v2Order.status) ? v2Order.paid_amount : 0,
+    refundAmount: v2Order.total_refunded,
+    status: v2Order.status,
+    paymentMethod: v2Order.payment_method,
+    paymentStatus: null,
+    paymentReference: null,
+    memo: null,
+    expiresAt: null,
+    orderedAt: v2Order.ordered_at,
+    v2OrderId: v2Order.order_id,
+  };
+  const lines = await resolveOrderLines(header, v2Order);
+  return {
+    source: "v2" as "go" | "v2",
+    ...header,
+    ...lines,
+    attendees: v2Order.tickets.map((t) => ({
+      id: t.ticket_id,
+      ticketNumber: deriveTicketNumber(t.ticket_id),
+      name: v2Order.buyer.name ?? "",
+      email: v2Order.buyer.email,
+      phone: v2Order.buyer.phone,
+      status: attendeeStatusFromV2Ticket(t.status, t.checked_in_at),
+      checkedInAt: t.checked_in_at,
+      v2TicketId: t.ticket_id,
+    })),
   };
 }

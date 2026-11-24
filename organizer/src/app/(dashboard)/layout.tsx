@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "@/lib/auth/server-session";
+import { NOT_ORGANIZER_LOGIN_PATH } from "@/lib/auth/not-organizer";
+import { getServerSessionResult } from "@/lib/auth/server-session";
 import { Header } from "@/components/layout/header";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { TutorialProvider } from "@/components/tutorial/tutorial-provider";
@@ -13,9 +14,10 @@ export default async function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession();
+  const { session, failure } = await getServerSessionResult();
   if (!session) {
-    redirect("/login");
+    // 피켓 팬 계정으로 로그인된 채 들어오면 로그인 화면에서 「주최사 계정으로」 안내한다.
+    redirect(failure === "not_organizer" ? NOT_ORGANIZER_LOGIN_PATH : "/login");
   }
 
   return (

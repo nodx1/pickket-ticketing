@@ -7,6 +7,7 @@ import { projectToGoOrderStatus } from "@/lib/domain-model";
 import { ERR } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { notifyRefundRequest } from "@/lib/notifications/create";
+import { findV2OnlyOrder } from "@/lib/server/orders";
 import { calculateCancellationRefund, toLegacyPreview, toTiers } from "@/lib/refund/cancellation-fee";
 import { getEventForRefund, refundPolicyErrorStatus } from "@/lib/refund/policy";
 import type { OrderStatus } from "@/lib/types";
@@ -118,11 +119,28 @@ export const POST = withRole<Params>("organizer", async (request, { session, par
     [session.accountId, params.eventId, params.orderId],
   );
 
-  if (orderResult.rows.length === 0) {
-    return errorResponse(ERR.NOT_FOUND, 404);
+  let order = orderResult.rows[0];
+  if (!order) {
+    // 피켓(소비자)에서 결제한 주문은 go orders 행이 없다 — v2 에서 이 이벤트 주문인지 확인해 쓴다.
+    // go 앵커 UPDATE(아래)는 0행이 되고, 상태·환불액 정본은 원래대로 v2 다.
+    let v2Only: Awaited<ReturnType<typeof findV2OnlyOrder>>;
+    try {
+      v2Only = await findV2OnlyOrder(session.accountId, params.eventId, params.orderId);
+    } catch (err: unknown) {
+      if (err instanceof EventAccessError || err instanceof V2CommerceError) {
+        return errorResponse("환불을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.", 503);
+      }
+      throw err;
+    }
+    if (!v2Only) {
+      return errorResponse(ERR.NOT_FOUND, 404);
+    }
+    order = {
+      status: v2Only.status as OrderStatus,
+      orderNumber: v2Only.order_number,
+      v2OrderId: v2Only.order_id,
+    };
   }
-
-  const order = orderResult.rows[0]!;
 
   if (order.status !== "completed" && order.status !== "partially_refunded") {
     return errorResponse("현재 주문 상태에서는 환불할 수 없습니다", 400);

@@ -12,13 +12,15 @@ interface OrderItemRow {
 
 interface OrderItemsManagerProps {
   items: OrderItemRow[];
+  /** 참석자 목록에서 티켓을 취소할 수 없는 주문(피켓에서 결제한 주문)이면 안내 문구를 숨긴다. */
+  ticketCancelAvailable?: boolean;
 }
 
 /**
  * 주문 라인(상품 단위) 표시. 취소는 티켓(참석자) 단위로만 정확히 매핑되므로
  * "참석자 목록"의 티켓 취소로 이동했다(라인 아이템은 v2 상품 라인이라 개별 티켓 id 를 갖지 않음).
  */
-export function OrderItemsManager({ items }: OrderItemsManagerProps) {
+export function OrderItemsManager({ items, ticketCancelAvailable = true }: OrderItemsManagerProps) {
   return (
     <div className="space-y-3">
       {items.map((item) => (
@@ -34,7 +36,9 @@ export function OrderItemsManager({ items }: OrderItemsManagerProps) {
           </p>
         </div>
       ))}
-      <p className="text-xs text-muted-foreground">개별 티켓 취소·환불은 아래 &quot;참석자 목록&quot;에서 진행할 수 있습니다.</p>
+      {ticketCancelAvailable ? (
+        <p className="text-xs text-muted-foreground">개별 티켓 취소·환불은 아래 &quot;참석자 목록&quot;에서 진행할 수 있습니다.</p>
+      ) : null}
     </div>
   );
 }

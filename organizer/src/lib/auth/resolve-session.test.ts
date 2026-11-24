@@ -10,7 +10,7 @@ vi.mock("@/lib/auth/v2-token", () => ({
   verifyV2TokenRemote: (...a: unknown[]) => h.remote(...a),
 }));
 
-import { resolveSessionFromToken } from "@/lib/auth/resolve-session";
+import { resolveSessionFromToken, resolveSessionResult } from "@/lib/auth/resolve-session";
 
 const V2_SUB = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
@@ -83,3 +83,46 @@ describe("resolveSessionFromToken (레벨2 2차 D2 세션 단일소스 — go DB
     expect(session).toBeNull();
   });
 });
+
+/**
+ * 2026-11-24 — 피켓(팬)과 피켓고가 로그인 쿠키를 공유한다. 팬 계정이 피켓고 세션이 되면
+ * v2 커머스가 「주최자 아님」으로 거절하고, 화면엔 「커머스 서버 연결 불가」(503)가 떴다.
+ */
+describe("주최사가 아닌 계정 (피켓 팬 로그인 공유)", () => {
+  it("주최사 프로필·팀 멤버십이 없는 팬 계정은 세션을 만들지 않고 이유를 not_organizer 로 준다", async () => {
+    h.verify.mockReturnValue({ sub: V2_SUB, type: "access" });
+    h.remote.mockResolvedValue(
+      remoteOk({ isOrganizer: false, organizerRef: null, goAccountId: null, organizerRole: null }),
+    );
+
+    expect(await resolveSessionFromToken("fan.token")).toBeNull();
+    expect(await resolveSessionResult("fan.token")).toEqual({ session: null, failure: "not_organizer" });
+  });
+
+  it("본인은 주최사가 아니어도 주최사 팀 멤버(organizer_ref 있음)면 세션을 만든다", async () => {
+    const OWNER = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    h.verify.mockReturnValue({ sub: V2_SUB, type: "access" });
+    h.remote.mockResolvedValue(
+      remoteOk({ isOrganizer: false, organizerRef: OWNER, goAccountId: OWNER, organizerRole: "organizer" }),
+    );
+
+    const result = await resolveSessionResult("member.token");
+    expect(result.failure).toBeNull();
+    expect(result.session?.role).toBe("organizer");
+    expect(result.session?.v2UserId).toBe(OWNER);
+  });
+
+  it("organizer_ref 를 아직 안 주는 v2 라도 is_organizer 면 종전대로 통과한다(하위호환)", async () => {
+    h.verify.mockReturnValue({ sub: V2_SUB, type: "access" });
+    h.remote.mockResolvedValue(remoteOk({ organizerRef: null }));
+
+    const result = await resolveSessionResult("legacy.token");
+    expect(result.session?.role).toBe("owner");
+  });
+
+  it("토큰 자체가 무효면 이유는 invalid 다(주최사 안내가 아니라 다시 로그인)", async () => {
+    h.verify.mockReturnValue(null);
+    expect(await resolveSessionResult("bad.token")).toEqual({ session: null, failure: "invalid" });
+  });
+});
+

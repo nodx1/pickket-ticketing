@@ -25,9 +25,11 @@ interface OrderAttendeesManagerProps {
   eventId: string;
   orderId: string;
   attendees: AttendeeRow[];
+  /** 수정·취소 버튼을 숨긴다 — 피켓에서 결제한 주문처럼 go 참석자 앵커가 없을 때. */
+  readOnly?: boolean;
 }
 
-export function OrderAttendeesManager({ eventId, orderId, attendees }: OrderAttendeesManagerProps) {
+export function OrderAttendeesManager({ eventId, orderId, attendees, readOnly = false }: OrderAttendeesManagerProps) {
   const router = useRouter();
   const [selected, setSelected] = useState<AttendeeRow | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
@@ -111,19 +113,23 @@ export function OrderAttendeesManager({ eventId, orderId, attendees }: OrderAtte
             <p className="text-content-subtle">{attendee.ticketNumber}</p>
             <p className="text-content-subtle">{ATTENDEE_STATUS_LABELS[attendee.status] ?? attendee.status}</p>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => openEditor(attendee)} disabled={attendee.status === "cancelled"}>
-                <Pencil className="size-4" />
-                수정
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCancelTarget(attendee)}
-                disabled={attendee.status === "cancelled" || attendee.status === "checked_in"}
-              >
-                <XCircle className="size-4" />
-                {attendee.status === "cancelled" ? "취소됨" : "취소"}
-              </Button>
+              {readOnly ? null : (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => openEditor(attendee)} disabled={attendee.status === "cancelled"}>
+                    <Pencil className="size-4" />
+                    수정
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCancelTarget(attendee)}
+                    disabled={attendee.status === "cancelled" || attendee.status === "checked_in"}
+                  >
+                    <XCircle className="size-4" />
+                    {attendee.status === "cancelled" ? "취소됨" : "취소"}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         ))}

@@ -13,7 +13,11 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { errorResponse } from "@/lib/apiResponse";
 import { ERR } from "@/lib/errors";
-import { resolveSessionFromToken } from "@/lib/auth/resolve-session";
+import {
+  NOT_ORGANIZER_CODE,
+  NOT_ORGANIZER_MESSAGE,
+  resolveSessionResult,
+} from "@/lib/auth/resolve-session";
 import { logger } from "@/lib/logger";
 import { getRequestContext } from "@/lib/request-context";
 import type { User } from "@/lib/types";
@@ -43,7 +47,12 @@ export function withAuth<TParams = unknown>(handler: Handler<TParams>) {
     }
 
     try {
-      const session = await resolveSessionFromToken(token);
+      const { session, failure } = await resolveSessionResult(token);
+      if (failure === "not_organizer") {
+        // 로그인은 됐지만 주최사 계정이 아니다(피켓 팬 로그인 공유) — 갱신해도 안 바뀌므로 403.
+        // 화면(fetchWithAuth)은 이 코드를 보고 로그인 화면으로 보내 안내한다.
+        return errorResponse(NOT_ORGANIZER_MESSAGE, 403, NOT_ORGANIZER_CODE);
+      }
       if (!session) {
         return errorResponse(ERR.UNAUTHORIZED, 401);
       }

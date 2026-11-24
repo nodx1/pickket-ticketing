@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Shield } from "lucide-react";
 import { AuthShell } from "@/app/(auth)/_components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NOT_ORGANIZER_MESSAGE } from "@/lib/auth/not-organizer";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,6 +16,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // 피켓 팬 계정으로 로그인된 채 피켓고에 들어와 돌려보내진 경우의 안내(`?reason=not_organizer`).
+  // useSearchParams 는 Suspense 경계를 요구해 이 화면 구조를 바꿔야 하므로 주소를 직접 읽는다.
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("reason") === "not_organizer") {
+      setNotice(NOT_ORGANIZER_MESSAGE);
+    }
+  }, []);
 
   // MFA 2단계
   const [mfaToken, setMfaToken] = useState<string | null>(null);
@@ -147,6 +156,11 @@ export default function LoginPage() {
       }
     >
       <form className="space-y-5" onSubmit={handleSubmit}>
+        {notice ? (
+          <p role="status" className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground">
+            {notice}
+          </p>
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor="email">이메일</Label>
           <Input

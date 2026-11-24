@@ -341,6 +341,35 @@ async def test_get_order_detail(client, db_session):
     assert len(d["tickets"]) == 1
 
 
+async def test_get_order_detail_consumer_order_fills_items_and_buyer(client, db_session):
+    """피켓(소비자) 주문 — order_items·buyer_* 가 비어 있어도 상세가 빈칸이 되지 않는다.
+
+    2026-11-24 나이스 실결제 주문을 피켓고 상세에서 열었더니 구매자·주문 항목이 비어 있었다.
+    """
+    organizer, event, tier = await _seed(db_session)
+    fan = User(email="fan@o.test", hashed_password="!x!", name="응모자", phone="01012345678")
+    db_session.add(fan)
+    await db_session.flush()
+    o = Order(user_id=fan.id, event_id=event.id, tier_id=tier.id, quantity=1, unit_price=1000,
+              total_amount=1000, status=OrderStatus.CONFIRMED)
+    db_session.add(o)
+    await db_session.flush()
+    db_session.add(Ticket(event_id=event.id, tier_id=tier.id, current_owner_id=fan.id,
+                          purchase_order_id=o.id, purchase_price=1000, sale_mode="lottery",
+                          status=TicketStatus.ACTIVE))
+    await db_session.commit()
+
+    r = await client.get(f"/api/v1/internal/orders/{o.id}", headers=_HDR)
+    assert r.status_code == 200, r.text
+    d = r.json()["data"]
+    assert d["buyer"]["name"] == "응모자" and d["buyer"]["email"] == "fan@o.test"
+    assert d["buyer"]["phone"] is None  # 회원 연락처까지 넓히지 않는다
+    assert d["items"] == [{
+        "tier_id": str(tier.id), "external_ref": tier.external_ref, "product_name": "GA",
+        "quantity": 1, "unit_price": 1000.0, "line_amount": 1000.0, "seat_id": None,
+    }]
+
+
 async def test_get_order_not_found(client, db_session):
     r = await client.get(f"/api/v1/internal/orders/{uuid.uuid4()}", headers=_HDR)
     assert r.status_code == 404

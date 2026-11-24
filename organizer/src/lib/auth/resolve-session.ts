@@ -23,6 +23,29 @@ import { verifyV2AccessToken, verifyV2TokenRemote } from "@/lib/auth/v2-token";
 import { parseUserRole } from "@/lib/auth/permissions";
 import type { User } from "@/lib/types";
 
+/** 세션을 못 만든 이유 — `not_organizer` 는 로그인은 됐지만 주최사 계정이 아닌 경우다. */
+export type SessionFailure = "invalid" | "not_organizer";
+
+export type SessionResult =
+  | { session: User; failure: null }
+  | { session: null; failure: SessionFailure };
+
+export { NOT_ORGANIZER_CODE, NOT_ORGANIZER_MESSAGE } from "@/lib/auth/not-organizer";
+
+/**
+ * 피켓고를 쓸 수 있는 계정인가 — 주최사 본인이거나 주최사 팀 멤버.
+ *
+ * 🔴 2026-11-24: 피켓(pickket.kr)과 피켓고는 로그인 쿠키(`pickket_access`, `.pickket.kr`)를
+ *    공유한다. 피켓에서 팬 계정으로 로그인하면 피켓고도 그 계정이 되는데, 종전엔 여기서
+ *    걸러내지 않고 역할을 `owner` 로 폴백해 통과시켰다. 그 뒤 v2 커머스가 「주최자 아님」으로
+ *    거절하면 라우트들이 그걸 「커머스 서버에 연결할 수 없습니다」(503)로 보여 줬다.
+ * ⚠️ `organizerRef` 는 주최사 프로필 또는 팀 멤버십이 있을 때만 채워진다. `isOrganizer` 도
+ *    함께 보는 이유는 organizer_ref 를 아직 안 주는 v2 배포본과의 하위호환이다.
+ */
+export function isOrganizerAccount(remote: { organizerRef: string | null; isOrganizer: boolean }): boolean {
+  return Boolean(remote.organizerRef) || remote.isOrganizer;
+}
+
 /**
  * v2 access token 문자열로부터 세션(User)을 구성한다.
  * 토큰 무효/유저 없음/비활성 → null.
@@ -30,21 +53,31 @@ import type { User } from "@/lib/types";
  * @param token v2 access JWT (cookie `pickket_access` 또는 Bearer).
  */
 export async function resolveSessionFromToken(token: string): Promise<User | null> {
+  return (await resolveSessionResult(token)).session;
+}
+
+/**
+ * {@link resolveSessionFromToken} 과 같지만 실패 이유를 함께 준다.
+ * 화면이 「다시 로그인」과 「주최사 계정으로 로그인」을 구분해 안내할 때 쓴다.
+ */
+export async function resolveSessionResult(token: string): Promise<SessionResult> {
+  const invalid = { session: null, failure: "invalid" } as const;
   // 1) 로컬 자체검증 — 서명·만료·issuer/audience 확정. 실패면 HTTP 없이 즉시 null.
   const payload = verifyV2AccessToken(token);
-  if (!payload) return null;
+  if (!payload) return invalid;
 
   // 2) v2 verify-token — 프로필/앵커(go_account_id, organizer_ref) 수신. go DB 미조회.
   const remote = await verifyV2TokenRemote(token);
-  if (!remote || !remote.valid || !remote.userId) return null;
+  if (!remote || !remote.valid || !remote.userId) return invalid;
   // sub 불일치는 신뢰경계 위반 — 거부.
-  if (remote.userId !== payload.sub) return null;
+  if (remote.userId !== payload.sub) return invalid;
+  if (!isOrganizerAccount(remote)) return { session: null, failure: "not_organizer" };
 
   // accountId 앵커: go_account_id 우선, 부재 시(레거시 미보정) v2 user_id 폴백.
   const accountId = remote.goAccountId ?? remote.userId;
   const nowIso = new Date().toISOString();
 
-  return {
+  const session: User = {
     id: remote.userId,
     accountId,
     email: remote.email ?? "",
@@ -71,4 +104,5 @@ export async function resolveSessionFromToken(token: string): Promise<User | nul
     // 앵커: JWT sub = v2 canonical user id. resolveOrganizerRef 가 go DB 재조회 없이 소비.
     v2UserId: remote.organizerRef ?? payload.sub,
   };
+  return { session, failure: null };
 }

@@ -1,3 +1,5 @@
+import { NOT_ORGANIZER_CODE, NOT_ORGANIZER_LOGIN_PATH } from "@/lib/auth/not-organizer";
+
 type FetchWithAuthOptions = RequestInit & {
   redirectOnUnauthorized?: boolean;
 };
@@ -5,6 +7,7 @@ type FetchWithAuthOptions = RequestInit & {
 interface ApiErrorPayload {
   success?: boolean;
   error?: string;
+  code?: string;
 }
 
 let refreshPromise: Promise<boolean> | null = null;
@@ -124,6 +127,17 @@ export async function fetchWithAuth<T>(
     : null;
 
   if (!response.ok) {
+    // 주최사가 아닌 계정(피켓 팬 로그인 공유) — 로그인 화면에서 주최사 계정으로 바꾸게 한다.
+    if (
+      response.status === 403 &&
+      payload &&
+      typeof payload === "object" &&
+      "code" in payload &&
+      payload.code === NOT_ORGANIZER_CODE &&
+      typeof window !== "undefined"
+    ) {
+      window.location.href = NOT_ORGANIZER_LOGIN_PATH;
+    }
     const message =
       payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string"
         ? payload.error

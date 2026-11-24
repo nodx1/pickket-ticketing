@@ -3,6 +3,8 @@ import { errorResponse, successResponse } from "@/lib/apiResponse";
 import { withRateLimit } from "@/lib/auth/withRateLimit";
 import { v2MfaVerify, forwardSetCookies, extractClientContext } from "@/lib/auth/v2-proxy";
 import { verifyV2TokenRemote } from "@/lib/auth/v2-token";
+import { isOrganizerAccount } from "@/lib/auth/resolve-session";
+import { NOT_ORGANIZER_CODE, NOT_ORGANIZER_LOGIN_MESSAGE } from "@/lib/auth/not-organizer";
 import { ERR } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
@@ -51,6 +53,11 @@ async function challengeHandler(request: Request) {
       source: "mfa-challenge",
     });
     return errorResponse("사용자 정보를 불러오지 못했습니다", 500);
+  }
+  // 주최사가 아닌 계정(피켓 팬 등)은 피켓고 세션을 주지 않는다 — 쿠키를 넘기지 않고 안내만 한다.
+  // (넘기면 로그인은 성공한 듯 보이고 대시보드가 다시 로그인 화면으로 돌려보낸다.)
+  if (!isOrganizerAccount(profile)) {
+    return errorResponse(NOT_ORGANIZER_LOGIN_MESSAGE, 403, NOT_ORGANIZER_CODE);
   }
   // accountId 앵커: go_account_id(=신규는 v2_user_id, 기존은 옛 accounts.id) 우선. login 라우트와 대칭.
   const accountId = profile.goAccountId ?? profile.userId;
