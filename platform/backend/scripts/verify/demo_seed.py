@@ -1,7 +1,7 @@
 """과업 시연용 데이터 — 데모 주최사(demo@pickket.kr) 이벤트 하나를 추첨·증명서·현장 입장까지 채운다.
 
 주최사 대시보드 화면(가중치 추첨 설정 · 공정성 증명서 · 현장 입장 관리 · 정산 방식) 캡처용.
-실행: 백엔드 서버(:8021)가 떠 있는 상태에서  .venv/bin/python scripts/verify/gwasup_demo_seed.py [이벤트제목]
+실행: 백엔드 서버(:8021)가 떠 있는 상태에서  .venv/bin/python scripts/verify/demo_seed.py [이벤트제목]
 """
 
 from __future__ import annotations

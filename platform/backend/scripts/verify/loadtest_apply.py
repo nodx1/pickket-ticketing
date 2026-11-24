@@ -7,7 +7,7 @@
   A. 피크: 서로 다른 N 명이 동시성 C 로 한 번씩 응모 → 지연 분포·처리량·오류율·정합성(응모 행 = N)
   B. 중복 폭주: D 명이 각자 B 번씩 동시에 연타 → 사람당 응모 1행·AP 차감 1회(분산 락)
 
-  .venv/bin/python scripts/verify/gwasup_loadtest_apply.py --users 1000 --concurrency 200 --label "workers=1"
+  .venv/bin/python scripts/verify/loadtest_apply.py --users 1000 --concurrency 200 --label "workers=1"
 """
 
 from __future__ import annotations

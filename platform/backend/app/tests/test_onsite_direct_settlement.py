@@ -1,6 +1,6 @@
 """과업 WP6·WP7 — 현장 단말 입장 판정 · 부정 탐지 · 주최사 PG 직결 정산 (DB 통합).
 
-실시간 소켓·TimescaleDB·연동 원장 해시 체인은 실 인프라가 필요해 scripts/verify/gwasup_e2e_pg.py 에서 검증한다.
+실시간 소켓·TimescaleDB·연동 원장 해시 체인은 실 인프라가 필요해 scripts/verify/e2e_fairness_pg.py 에서 검증한다.
 """
 
 import hashlib

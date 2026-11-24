@@ -1,66 +1,84 @@
-# Pickket — 통합 플랫폼 모노레포 (v3)
+# 피켓 예매 플랫폼 (pickket-ticketing)
 
-공정 티켓 플랫폼 Pickket의 전체 소스를 한 레포로 통합한 모노레포입니다.
-기존 3개 레포(`pickket-v2`, `pickket-go`, `pickket-mobile`)를 합쳐 새 히스토리로 시작합니다.
+주최사가 정한 가중치로 공정하게 추첨해 표를 나누는 예매 플랫폼이다.
+
+- **피켓**: 팬이 응모하고, 당첨되면 결제하고, 입장권을 받는 사이트
+- **피켓고**: 주최사 대시보드. 이벤트를 만들고, 가중치 추첨을 설정하고, 공정성 증명서를 발행하고, 현장 입장을 관리한다
+- **현장 단말**: 입장권 회전 QR을 읽어 입장을 판정한다(웹 단말, REST·Socket.IO)
+
+이 저장소는 「가중치 추첨 알고리즘 적용과 파트너사 연결 기능 개발 용역」(2026. 10. 1. ~ 2026. 11. 30.)의 소스코드 결과물이다.
 
 ## 구조
 
 ```
-pickket-v3/
-├── platform/     FastAPI 백엔드(SoT) + 소비자/관리자 웹 + 공유 패키지 + 엔진 (pnpm 모노레포)
-│   ├── backend/      FastAPI + SQLAlchemy + Alembic + Celery (커머스 SoT)
-│   ├── apps/
-│   │   ├── consumer/ 소비자 웹 (Next.js 16)
-│   │   └── admin/    관리자 대시보드 (Next.js 16)
-│   ├── packages/     공유 lib/ui/store/contracts/tailwind-config
-│   └── engine/       talkfile_engine (공정 추첨 E-S + 팬 가중치)
-├── organizer/    주최자 SaaS 대시보드 (Next.js 16) — v2 백엔드에 HMAC write-through
-└── mobile/       소비자 모바일 앱 (Expo 54 + RN) — v2 백엔드 API 소비
+platform/       FastAPI 백엔드(커머스 기준 서버) + 소비자·관리자 웹 + 공유 패키지 + 추첨 엔진
+  backend/        FastAPI · SQLAlchemy · Alembic · Celery
+  apps/consumer/  피켓 (Next.js)
+  apps/admin/     관리자 (Next.js)
+  engine/         추첨 엔진 talkfile_engine (가중 비복원 추출, 가중 VCG, Merkle)
+  docker/         docker compose 설정
+organizer/      피켓고 — 주최사 대시보드·웹 현장 단말 (Next.js)
+mobile/         피켓 모바일 앱 (Expo)
+scripts/        배포·백업·점검 스크립트
+docs/deliverables/  과업 붙임 문서와 증빙
 ```
 
-> **아키텍처**: `platform/backend`가 커머스 단일 진실원(SoT). `organizer`는 HMAC HTTP write-through, `mobile`은 순수 API 소비자. 도메인 표준 정본: `platform/docs/architecture/standards/DOMAIN_MODEL_STANDARD.md`.
+## 과업지시서 항목과 코드 위치
 
-## 빠른 시작 (각 앱 독립 실행)
+| 과업지시서 | 코드 |
+|---|---|
+| 가중치 추첨 데이터·캐싱, VCG 기반 가중 공정 추첨 | `platform/backend/app/services/fairness_service.py`, `platform/engine/talkfile_engine/` |
+| Merkle 트리 무결성, 공정성 증명서 | `platform/engine/talkfile_engine/merkle.py`, `platform/apps/consumer/src/app/[locale]/fairness/` |
+| 계정 복제 차단, Slash, 누적 시간 가중치 | `platform/backend/app/services/sanction_service.py`, `tenure_service.py` |
+| TimescaleDB 시계열 로그 | `platform/backend/app/services/timeseries_log.py`, `alembic/versions/gwasup02_1117_timeseries.py` |
+| 현장 단말 입장권 검증, Socket.IO | `platform/backend/app/services/onsite_service.py`, `app/realtime/` |
+| PG 결제(나이스페이), 주최사 PG 직결(무경유) | `platform/backend/app/services/nicepay_gateway.py`, `direct_settlement.py` |
+| Pull 구조 연동, append-only 감사 로그 | `platform/backend/app/services/integration_ledger.py` |
+| 지도 API 연동 | `platform/backend/app/services/map_service.py` |
+| 주최사 대시보드, 현장 입장 관리 | `organizer/src/app/(dashboard)/events/[eventId]/` (`lottery-policy`, `fairness`, `onsite`, `settlement`) |
+
+과업으로 추가한 DB 변경은 `platform/backend/alembic/versions/gwasup01~07` 7건이다(파일 이름의 `gwasup`은 「과업」을 뜻하는 작업 묶음 이름).
+
+## 로컬 실행
 
 ```bash
-# 인프라 (Docker — DB/Redis)
-cd platform/docker && docker compose -p pickket-v2 up -d db redis
+# DB(TimescaleDB)·Redis
+cd platform/docker && docker compose -p pickket-ticketing -f docker-compose.yml -f docker-compose.timescale.yml up -d db redis
 
-# 백엔드 (FastAPI :8021)
-cd platform/backend && python -m venv .venv && .venv/bin/pip install -e . && \
-  .venv/bin/alembic upgrade head && .venv/bin/uvicorn app.main:app --port 8021 --reload
+# 백엔드 (:8021)
+cd platform/backend && python -m venv .venv && .venv/bin/pip install -e . \
+  && .venv/bin/alembic upgrade head && .venv/bin/uvicorn app.main:app --port 8021
 
-# 소비자 웹 (:3020) / 관리자 (:3022)
+# 피켓 (:3020), 관리자 (:3022)
 cd platform && pnpm install && pnpm dev:consumer   # 또는 pnpm dev:admin
 
-# 주최자 SaaS (:3013)
+# 피켓고
 cd organizer && npm install && npm run dev
-
-# 모바일 (Expo)
-cd mobile && npm install && npx expo start
 ```
 
-각 앱은 자기 `package.json`/lockfile/툴링을 그대로 유지합니다(나란히 모노레포). 통합 워크스페이스(turborepo) 전환은 로드맵 참조.
+설정값은 각 폴더의 `.env.example`을 복사해 채운다. 비밀값(상점키, 서명키 등)은 환경 변수로만 넣고 저장소에 두지 않는다.
 
-## 포트맵
+## 검증
 
-| 서비스 | 포트 | DB | Redis |
-|---|---|---|---|
-| backend (FastAPI) | 8021 | 5435 | 6381 |
-| consumer | 3020 | | |
-| admin | 3022 | | |
-| organizer | 3013 | 5434 | 6380 |
-| mobile (Expo) | 8081 | (백엔드 경유) | |
-| rise-engine | 8100 | | |
+| 종류 | 실행 |
+|---|---|
+| 백엔드 테스트 | `cd platform/backend && .venv/bin/python -m pytest` |
+| 추첨 엔진 테스트 | `cd platform/engine && python -m pytest` |
+| 피켓·피켓고 테스트 | `pnpm test`(platform), `npm test`(organizer) |
+| 실환경 시나리오(추첨·증명서) | `platform/backend/scripts/verify/e2e_fairness_pg.py` |
+| 실환경 시나리오(현장·결제) | `platform/backend/scripts/verify/e2e_onsite_pg.py` |
+| 응모 부하 테스트 | `platform/backend/scripts/verify/loadtest_apply.py` |
 
-## 환경변수
+결과와 화면 캡처는 `docs/deliverables/evidence/`에 있다.
 
-각 앱의 `.env.example`을 복사해 `.env`(또는 `.env.local`)로 만들고 값을 채우세요. **실 시크릿은 절대 커밋 금지** (`.gitignore` 처리됨, 정본은 AWS Secrets Manager).
+## 문서
 
-## 다음 단계 — 유지보수 정석화 로드맵
+- `docs/deliverables/01-연동-대상-규격-확정서.md`
+- `docs/deliverables/02-부하-테스트-결과.md`
+- `docs/deliverables/03-코드-리뷰-기록.md`
 
-이 레포는 "나란히 모노레포"(1단계)로 시작합니다. 정석(turborepo 통합 + 계약중심 + 트렁크 기반 + CI 게이트)으로의 전환 계획은 [`docs/MONOREPO_ROADMAP.md`](docs/MONOREPO_ROADMAP.md) 참조.
+기술 구조 명세서와 최종 완료 보고서는 별도 문서로 제출한다.
 
-## 온보딩
+## 이력
 
-새 팀원은 [`docs/ONBOARDING.md`](docs/ONBOARDING.md)부터 읽으세요.
+첫 커밋은 과업 착수 전 운영 코드(2026-08-21 기준)를 한 번에 가져온 기준본이다. 내부 설계·사업 문서와 접속 정보 문서는 넣지 않았다. 그 뒤 커밋이 과업 기간(2026-11-17~)의 작업이다.

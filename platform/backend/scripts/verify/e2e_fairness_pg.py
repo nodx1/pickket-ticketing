@@ -10,7 +10,7 @@ SQLite 단위 테스트가 닿지 않는 부분을 실제로 돌려 본다:
   · TimescaleDB: hypertable 기록과 1분 연속 집계
 
 실행 (백엔드 디렉터리, 서버가 :8021 에 떠 있어야 함):
-    .venv/bin/python scripts/verify/gwasup_e2e_pg.py [--out ../../docs/gwasup/evidence]
+    .venv/bin/python scripts/verify/e2e_fairness_pg.py [--out ../../docs/deliverables/evidence]
 """
 
 from __future__ import annotations

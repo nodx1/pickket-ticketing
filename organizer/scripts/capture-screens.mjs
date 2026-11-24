@@ -1,7 +1,7 @@
 /**
  * 과업 증빙 화면 캡처 — 주최사 대시보드 새 화면 4종 + 웹 현장 단말.
  *
- *   node scripts/gwasup-capture.mjs <eventId> [baseUrl] [outDir] [terminalKey]
+ *   node scripts/capture-screens.mjs <eventId> [baseUrl] [outDir] [terminalKey]
  *
  * 데모 주최사(demo@pickket.kr)로 로그인해 각 화면을 데스크톱·모바일 폭으로 찍는다.
  */
@@ -9,7 +9,7 @@ import { chromium } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 
-const [eventId, baseUrl = "http://localhost:3033", outDir = "../docs/gwasup/evidence/screens", terminalKey = ""] = process.argv.slice(2);
+const [eventId, baseUrl = "http://localhost:3033", outDir = "../docs/deliverables/evidence/screens", terminalKey = ""] = process.argv.slice(2);
 if (!eventId) {
   console.error("eventId 가 필요합니다");
   process.exit(2);

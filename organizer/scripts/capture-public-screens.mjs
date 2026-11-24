@@ -1,12 +1,12 @@
 /**
  * 과업 증빙 — 소비자 공개 증명서 검증 페이지 캡처(브라우저가 직접 검증한 결과 화면).
- *   node scripts/gwasup-capture-public.mjs <certNo> [consumerBase] [outDir] [email] [password]
+ *   node scripts/capture-public-screens.mjs <certNo> [consumerBase] [outDir] [email] [password]
  * email/password 를 주면 그 응모자로 로그인해 '내 응모 확인'까지 찍는다.
  */
 import { chromium } from "@playwright/test";
 import path from "node:path";
 
-const [certNo, base = "http://localhost:3020", outDir = "../docs/gwasup/evidence/screens", email, password] = process.argv.slice(2);
+const [certNo, base = "http://localhost:3020", outDir = "../docs/deliverables/evidence/screens", email, password] = process.argv.slice(2);
 const browser = await chromium.launch({ channel: process.env.CAPTURE_CHANNEL ?? "chrome" });
 
 for (const [name, viewport] of [["10-public-certificate", { width: 1280, height: 900 }], ["10-public-certificate-mobile", { width: 390, height: 844 }]]) {

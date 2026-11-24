@@ -10,7 +10,7 @@
   · ts_admission_events(hypertable)·1분 집계, integration_ledger 해시 체인 검증·변조 거부
   · 주최사 PG 키 확인: 토스 공식 문서의 **공개 테스트 키**로 실제 샌드박스 호출(실결제 없음)
 
-실행 (백엔드 디렉터리):  .venv/bin/python scripts/verify/gwasup_e2e_onsite.py
+실행 (백엔드 디렉터리):  .venv/bin/python scripts/verify/e2e_onsite_pg.py
 """
 
 from __future__ import annotations
