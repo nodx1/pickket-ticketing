@@ -2,6 +2,7 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore, type User } from "@pickket/store";
 import { getApiConfig } from "./api-config";
 import { API_URL } from "./env";
+import { DEVICE_FINGERPRINT_HEADER, getDeviceFingerprint } from "./device-fingerprint";
 import { handleRetryAfter, isOnCooldown } from "./retry-guard";
 
 const api = axios.create({
@@ -2412,7 +2413,13 @@ export async function applyLottery(
     invested_ap?: number;
   },
 ) {
-  return api.post(`/events/${eventId}/tiers/${tierId}/lottery/apply`, data);
+  // 과업 1-3) 계정 복제 차단: 같은 브라우저의 다중 계정 응모를 서버가 셀 수 있게 기기 식별값을 싣는다.
+  const fingerprint = getDeviceFingerprint();
+  return api.post(
+    `/events/${eventId}/tiers/${tierId}/lottery/apply`,
+    data,
+    fingerprint ? { headers: { [DEVICE_FINGERPRINT_HEADER]: fingerprint } } : undefined,
+  );
 }
 
 export async function getLotteryStatus(eventId: string, tierId: string) {
