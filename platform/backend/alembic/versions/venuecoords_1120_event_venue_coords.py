@@ -4,8 +4,8 @@
 피켓 이벤트 상세의 장소 지도가 이 값을 쓴다. 둘 다 nullable — 기존 행·직접 입력한 주소는 NULL 로 두고
 화면은 좌표가 있을 때만 지도를 그린다(비파괴·가산).
 
-Revision ID: gwasup07_1120
-Revises: gwasup06_1117
+Revision ID: venuecoords_1120
+Revises: poolunique_1117
 Create Date: 2026-11-20
 """
 from __future__ import annotations
@@ -13,8 +13,8 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "gwasup07_1120"
-down_revision = "gwasup06_1117"
+revision = "venuecoords_1120"
+down_revision = "poolunique_1117"
 branch_labels = None
 depends_on = None
 

@@ -15,8 +15,8 @@
    - 아니면 일반 테이블 + BRIN 시간 인덱스 + date_trunc 뷰
    어느 쪽이 적용됐는지는 ts_storage_mode() 함수로 조회한다.
 
-Revision ID: gwasup02_1117
-Revises: gwasup01_1117
+Revision ID: timeseries_1117
+Revises: fairness_1117
 Create Date: 2026-11-17
 """
 from __future__ import annotations
@@ -24,8 +24,8 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "gwasup02_1117"
-down_revision = "gwasup01_1117"
+revision = "timeseries_1117"
+down_revision = "fairness_1117"
 branch_labels = None
 depends_on = None
 
@@ -98,14 +98,14 @@ def upgrade() -> None:
     op.execute("CREATE INDEX idx_ts_admission_event_time ON ts_admission_events (event_id, time DESC)")
     op.execute("CREATE INDEX idx_ts_weight_user_time ON ts_weight_snapshots (user_id, time DESC)")
 
-    # append-only (gwasup01 의 함수 재사용). hypertable 은 행 트리거를 청크로 전파한다.
+    # append-only (fairness_1117 의 함수 재사용). hypertable 은 행 트리거를 청크로 전파한다.
     for table in TABLES:
         op.execute(
             f"""
             CREATE TRIGGER trg_{table}_no_update BEFORE UPDATE ON {table}
-                FOR EACH ROW EXECUTE FUNCTION trg_gwasup_append_only();
+                FOR EACH ROW EXECUTE FUNCTION trg_append_only();
             CREATE TRIGGER trg_{table}_no_delete BEFORE DELETE ON {table}
-                FOR EACH ROW EXECUTE FUNCTION trg_gwasup_append_only();
+                FOR EACH ROW EXECUTE FUNCTION trg_append_only();
             """
         )
 

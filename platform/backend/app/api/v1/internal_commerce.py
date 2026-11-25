@@ -635,7 +635,7 @@ _CUSTOM_DOMAIN_RE = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9](
 def _venue_coords(lat, lng) -> tuple[float | None, float | None]:
     """장소 좌표 — 둘 다 있거나 둘 다 없어야 하고 범위 안이어야 한다(400 봉투).
 
-    한쪽만 저장되면 지도가 엉뚱한 곳(위도 0 등)을 찍는다. DB CHECK(gwasup07)와 같은 규칙.
+    한쪽만 저장되면 지도가 엉뚱한 곳(위도 0 등)을 찍는다. DB CHECK(venuecoords_1120)와 같은 규칙.
     """
     if lat is None and lng is None:
         return None, None

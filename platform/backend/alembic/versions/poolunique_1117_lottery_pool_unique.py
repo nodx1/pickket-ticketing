@@ -9,8 +9,8 @@
    (자동 병합은 응모·AP 기록을 잘못 옮길 수 있다). 아래 조회로 확인 후 정리하고 다시 실행:
      SELECT event_id, tier_id, count(*) FROM lottery_pools GROUP BY 1,2 HAVING count(*) > 1;
 
-Revision ID: gwasup06_1117
-Revises: gwasup05_1117
+Revision ID: poolunique_1117
+Revises: integration_1117
 Create Date: 2026-11-17
 """
 from __future__ import annotations
@@ -18,8 +18,8 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "gwasup06_1117"
-down_revision = "gwasup05_1117"
+revision = "poolunique_1117"
+down_revision = "integration_1117"
 branch_labels = None
 depends_on = None
 

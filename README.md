@@ -30,14 +30,14 @@ docs/deliverables/  과업 붙임 문서와 증빙
 | 가중치 추첨 데이터·캐싱, VCG 기반 가중 공정 추첨 | `platform/backend/app/services/fairness_service.py`, `platform/engine/talkfile_engine/` |
 | Merkle 트리 무결성, 공정성 증명서 | `platform/engine/talkfile_engine/merkle.py`, `platform/apps/consumer/src/app/[locale]/fairness/` |
 | 계정 복제 차단, Slash, 누적 시간 가중치 | `platform/backend/app/services/sanction_service.py`, `tenure_service.py` |
-| TimescaleDB 시계열 로그 | `platform/backend/app/services/timeseries_log.py`, `alembic/versions/gwasup02_1117_timeseries.py` |
+| TimescaleDB 시계열 로그 | `platform/backend/app/services/timeseries_log.py`, `alembic/versions/timeseries_1117_timescale_logs.py` |
 | 현장 단말 입장권 검증, Socket.IO | `platform/backend/app/services/onsite_service.py`, `app/realtime/` |
 | PG 결제(나이스페이), 주최사 PG 직결(무경유) | `platform/backend/app/services/nicepay_gateway.py`, `direct_settlement.py` |
 | Pull 구조 연동, append-only 감사 로그 | `platform/backend/app/services/integration_ledger.py` |
 | 지도 API 연동 | `platform/backend/app/services/map_service.py` |
 | 주최사 대시보드, 현장 입장 관리 | `organizer/src/app/(dashboard)/events/[eventId]/` (`lottery-policy`, `fairness`, `onsite`, `settlement`) |
 
-과업으로 추가한 DB 변경은 `platform/backend/alembic/versions/gwasup01~07` 7건이다(파일 이름의 `gwasup`은 「과업」을 뜻하는 작업 묶음 이름).
+과업으로 추가한 DB 변경은 `platform/backend/alembic/versions/`의 7건이다. 적용 순서대로 `fairness_1117`(가중치 추첨·공정성 증명서), `timeseries_1117`(시계열 로그), `sanctions_1117`(계정 제재), `onsite_1117`(현장 단말), `integration_1117`(연동 원장·직결 정산), `poolunique_1117`(추첨 풀 중복 차단), `venuecoords_1120`(장소 좌표)이다.
 
 ## 로컬 실행
 

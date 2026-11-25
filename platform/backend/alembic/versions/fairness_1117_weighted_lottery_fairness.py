@@ -14,7 +14,7 @@
 
 ✅ 운영 영향 없음: 새 테이블은 새 기능만 쓴다. 정책이 없는 풀은 기존 상수(기본 정책)로 동작한다.
 
-Revision ID: gwasup01_1117
+Revision ID: fairness_1117
 Revises: inv50_0809
 Create Date: 2026-11-17
 """
@@ -24,7 +24,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = "gwasup01_1117"
+revision = "fairness_1117"
 down_revision = "inv50_0809"
 branch_labels = None
 depends_on = None
@@ -113,7 +113,7 @@ def upgrade() -> None:
     # ── append-only 강제 ──
     op.execute(
         """
-        CREATE OR REPLACE FUNCTION trg_gwasup_append_only()
+        CREATE OR REPLACE FUNCTION trg_append_only()
         RETURNS TRIGGER AS $$
         BEGIN
             RAISE EXCEPTION '% is append-only: % not allowed', TG_TABLE_NAME, TG_OP;
@@ -125,11 +125,11 @@ def upgrade() -> None:
         op.execute(
             f"""
             CREATE TRIGGER trg_{table}_no_update BEFORE UPDATE ON {table}
-                FOR EACH ROW EXECUTE FUNCTION trg_gwasup_append_only();
+                FOR EACH ROW EXECUTE FUNCTION trg_append_only();
             CREATE TRIGGER trg_{table}_no_delete BEFORE DELETE ON {table}
-                FOR EACH ROW EXECUTE FUNCTION trg_gwasup_append_only();
+                FOR EACH ROW EXECUTE FUNCTION trg_append_only();
             CREATE TRIGGER trg_{table}_no_truncate BEFORE TRUNCATE ON {table}
-                FOR EACH STATEMENT EXECUTE FUNCTION trg_gwasup_append_only();
+                FOR EACH STATEMENT EXECUTE FUNCTION trg_append_only();
             """
         )
 
@@ -139,4 +139,4 @@ def downgrade() -> None:
         op.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
     op.execute("DROP SEQUENCE IF EXISTS fairness_certificate_seq")
     op.execute("DROP TABLE IF EXISTS lottery_weight_policies CASCADE")
-    op.execute("DROP FUNCTION IF EXISTS trg_gwasup_append_only()")
+    op.execute("DROP FUNCTION IF EXISTS trg_append_only()")

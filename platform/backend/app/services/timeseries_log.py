@@ -1,6 +1,6 @@
 """TimescaleDB 시계열 로그 (과업 WP5).
 
-테이블은 마이그레이션 gwasup02_1117 이 만든다(TimescaleDB 면 hypertable, 아니면 일반 테이블).
+테이블은 마이그레이션 timeseries_1117 이 만든다(TimescaleDB 면 hypertable, 아니면 일반 테이블).
 
 원칙
 - 기록 실패가 본 업무(응모·입장)를 깨뜨리지 않는다: SAVEPOINT 안에서 쓰고, 실패하면 경고만 남긴다.

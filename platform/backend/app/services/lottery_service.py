@@ -301,7 +301,7 @@ class LotteryService:
         # 🔴 과업 WP11 부하 테스트에서 발견(2026-11-17): 첫 응모가 동시에 몰리면 풀이 여러 개 생겼다.
         #    예전 코드는 Redis 락 안에서 풀을 만들고 flush 만 한 채 락을 풀었다 — 커밋 전이라 다음 대기자의
         #    재확인 조회에 안 보였고, 각자 풀을 또 만들었다. 이후 모든 응모가 MultipleResultsFound(500).
-        #    ⟹ (event_id, tier_id) UNIQUE(gwasup06) 를 정본으로 삼고, 생성은 SAVEPOINT 안에서 한다.
+        #    ⟹ (event_id, tier_id) UNIQUE(poolunique_1117) 를 정본으로 삼고, 생성은 SAVEPOINT 안에서 한다.
         #       동시에 만든 쪽은 상대 커밋까지 기다렸다가 UNIQUE 위반 → 되돌리고 커밋된 풀을 다시 읽는다.
         pool = await self.pool_repo.get_by_event_tier(event_id, tier_id)
         if not pool:

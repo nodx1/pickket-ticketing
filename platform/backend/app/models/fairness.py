@@ -9,7 +9,7 @@
 - lottery_merkle_roots    : 응모/결과 트리 루트. append-only.
 - fairness_certificates   : Ed25519 서명된 공정성 증명서. append-only.
 
-append-only 는 DB 트리거(UPDATE/DELETE/TRUNCATE 거부)로 강제한다 — 마이그레이션 gwasup01_1117.
+append-only 는 DB 트리거(UPDATE/DELETE/TRUNCATE 거부)로 강제한다 — 마이그레이션 fairness_1117.
 """
 
 from __future__ import annotations

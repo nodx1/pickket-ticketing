@@ -11,8 +11,8 @@
    event_settlement_modes  이벤트별 정산 방식(platform 기본 | direct)
    platform_fee_invoices   direct 주문 플랫폼 수수료 청구
 
-Revision ID: gwasup05_1117
-Revises: gwasup04_1117
+Revision ID: integration_1117
+Revises: onsite_1117
 Create Date: 2026-11-17
 """
 from __future__ import annotations
@@ -21,8 +21,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = "gwasup05_1117"
-down_revision = "gwasup04_1117"
+revision = "integration_1117"
+down_revision = "onsite_1117"
 branch_labels = None
 depends_on = None
 
@@ -50,11 +50,11 @@ def upgrade() -> None:
     op.execute(
         """
         CREATE TRIGGER trg_integration_ledger_no_update BEFORE UPDATE ON integration_ledger
-            FOR EACH ROW EXECUTE FUNCTION trg_gwasup_append_only();
+            FOR EACH ROW EXECUTE FUNCTION trg_append_only();
         CREATE TRIGGER trg_integration_ledger_no_delete BEFORE DELETE ON integration_ledger
-            FOR EACH ROW EXECUTE FUNCTION trg_gwasup_append_only();
+            FOR EACH ROW EXECUTE FUNCTION trg_append_only();
         CREATE TRIGGER trg_integration_ledger_no_truncate BEFORE TRUNCATE ON integration_ledger
-            FOR EACH STATEMENT EXECUTE FUNCTION trg_gwasup_append_only();
+            FOR EACH STATEMENT EXECUTE FUNCTION trg_append_only();
         """
     )
 

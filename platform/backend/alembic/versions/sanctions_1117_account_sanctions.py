@@ -7,8 +7,8 @@
 무엇을 만드나 (추가만)
    account_sanctions   부과·검토 표시·해제를 모두 새 행으로 남기는 append-only 원장
 
-Revision ID: gwasup03_1117
-Revises: gwasup02_1117
+Revision ID: sanctions_1117
+Revises: timeseries_1117
 Create Date: 2026-11-17
 """
 from __future__ import annotations
@@ -17,8 +17,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = "gwasup03_1117"
-down_revision = "gwasup02_1117"
+revision = "sanctions_1117"
+down_revision = "timeseries_1117"
 branch_labels = None
 depends_on = None
 
@@ -45,11 +45,11 @@ def upgrade() -> None:
     op.execute(
         """
         CREATE TRIGGER trg_account_sanctions_no_update BEFORE UPDATE ON account_sanctions
-            FOR EACH ROW EXECUTE FUNCTION trg_gwasup_append_only();
+            FOR EACH ROW EXECUTE FUNCTION trg_append_only();
         CREATE TRIGGER trg_account_sanctions_no_delete BEFORE DELETE ON account_sanctions
-            FOR EACH ROW EXECUTE FUNCTION trg_gwasup_append_only();
+            FOR EACH ROW EXECUTE FUNCTION trg_append_only();
         CREATE TRIGGER trg_account_sanctions_no_truncate BEFORE TRUNCATE ON account_sanctions
-            FOR EACH STATEMENT EXECUTE FUNCTION trg_gwasup_append_only();
+            FOR EACH STATEMENT EXECUTE FUNCTION trg_append_only();
         """
     )
 

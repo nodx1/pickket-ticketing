@@ -8,8 +8,8 @@
    onsite_terminals   단말 등록부 — 키는 SHA-256 해시만 저장
    admission_blocks   티켓 입장 차단/해제 원장 (append-only)
 
-Revision ID: gwasup04_1117
-Revises: gwasup03_1117
+Revision ID: onsite_1117
+Revises: sanctions_1117
 Create Date: 2026-11-17
 """
 from __future__ import annotations
@@ -18,8 +18,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = "gwasup04_1117"
-down_revision = "gwasup03_1117"
+revision = "onsite_1117"
+down_revision = "sanctions_1117"
 branch_labels = None
 depends_on = None
 
@@ -60,11 +60,11 @@ def upgrade() -> None:
     op.execute(
         """
         CREATE TRIGGER trg_admission_blocks_no_update BEFORE UPDATE ON admission_blocks
-            FOR EACH ROW EXECUTE FUNCTION trg_gwasup_append_only();
+            FOR EACH ROW EXECUTE FUNCTION trg_append_only();
         CREATE TRIGGER trg_admission_blocks_no_delete BEFORE DELETE ON admission_blocks
-            FOR EACH ROW EXECUTE FUNCTION trg_gwasup_append_only();
+            FOR EACH ROW EXECUTE FUNCTION trg_append_only();
         CREATE TRIGGER trg_admission_blocks_no_truncate BEFORE TRUNCATE ON admission_blocks
-            FOR EACH STATEMENT EXECUTE FUNCTION trg_gwasup_append_only();
+            FOR EACH STATEMENT EXECUTE FUNCTION trg_append_only();
         """
     )
 

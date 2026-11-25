@@ -4,7 +4,7 @@
 - 한 행 = 외부와 주고받은 요청·응답 한 번. 상대(pg·terminal·partner·webhook), 방향, 작업, 결과, 지연.
 - 개인정보·비밀값은 저장 전에 가린다(전화번호·이메일·카드번호·키·토큰·서명).
 - 해시 체인: hash = SHA-256(prev_hash ‖ canonical(행 내용)). 중간 행을 고치거나 지우면 이후 체인이 깨진다.
-  DB 트리거가 UPDATE/DELETE/TRUNCATE 를 막고(gwasup05), verify_chain() 이 체인을 다시 계산해 확인한다.
+  DB 트리거가 UPDATE/DELETE/TRUNCATE 를 막고(integration_1117), verify_chain() 이 체인을 다시 계산해 확인한다.
 - 체인 순서는 PostgreSQL advisory lock 으로 직렬화한다(동시 기록 시 prev_hash 경합 방지).
 - 기록 실패는 본 업무를 막지 않는다(SAVEPOINT, 오류 로그) — 결제·입장 가용성 우선.
 """
