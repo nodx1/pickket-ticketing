@@ -27,4 +27,6 @@ export interface TicketQrResponse {
   ticket_id: string;
   qr_data: string;
   expires_in_seconds: number;
+  /** 화면이 새 QR 을 받아 올 주기(초). expires_in_seconds(입구에서 인정하는 시간)보다 짧다. 옛 서버는 안 보낸다. */
+  refresh_in_seconds?: number | null;
 }

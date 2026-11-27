@@ -57,3 +57,43 @@ def test_queue_processor_smoke(monkeypatch):
 
     monkeypatch.setattr("app.tasks.queue_processor._process_queues_async", _noop)
     process_queues.run()
+
+
+def test_draw_pool_opens_redis_in_worker(monkeypatch):
+    """🔴 Celery 워커에는 API 서버의 시작 훅(init_redis)이 없다.
+
+    추첨의 분산 락이 「Redis not initialized」로 실패해 마감 뒤 자동 추첨이 한 건도 안 됐다
+    (2026-11-27 로컬 실측: 밀린 추첨 6건 모두 실패). 자동 추첨은 추첨 전에 Redis 를 열고 끝나면 닫아야 한다.
+    """
+    import app.core.redis as rc
+    from app.services.lottery_service import LotteryService
+    from app.tasks.async_runner import run_async
+    from app.tasks.lottery_draw import _draw_pool
+
+    events: list[str] = []
+
+    async def fake_init():
+        events.append("init")
+        rc.redis_pool = object()
+
+    async def fake_close():
+        events.append("close")
+        rc.redis_pool = None
+
+    async def fake_commit(self, pool_id):
+        events.append("commit")
+
+    async def fake_draw(self, pool_id):
+        rc.get_redis()  # 워커에서는 바로 여기서 RuntimeError("Redis not initialized") 가 났다
+        events.append("draw")
+        return {"ok": True}
+
+    monkeypatch.setattr(rc, "redis_pool", None)
+    monkeypatch.setattr(rc, "init_redis", fake_init)
+    monkeypatch.setattr(rc, "close_redis", fake_close)
+    monkeypatch.setattr(LotteryService, "ensure_commitment", fake_commit)
+    monkeypatch.setattr(LotteryService, "draw", fake_draw)
+
+    assert run_async(_draw_pool("pool-1")) == {"ok": True}
+    assert events == ["init", "commit", "draw", "close"]
+    assert rc.redis_pool is None

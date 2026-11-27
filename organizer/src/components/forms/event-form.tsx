@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { MapPin, Search } from "lucide-react";
 import { mergeKeepingManualPortrait } from "@/lib/images/merge-variants";
 import { fetchWithRefresh } from "@/lib/fetchWithAuth";
 import { useRouter } from "next/navigation";
-import { useUnsavedChanges } from "@/lib/hooks/useUnsavedChanges";
+import { useUnsavedSection } from "@/lib/hooks/unsaved-sections";
+import { UnsavedBadge } from "@/components/shared/unsaved-badge";
+import { FloatingSaveBar } from "@/components/shared/floating-save-bar";
 import { z } from "zod";
 import { ImageUpload } from "@/components/shared/image-upload";
 import { GalleryUpload, type GalleryItem } from "@/components/shared/gallery-upload";
@@ -30,7 +32,7 @@ import {
   EVENT_TYPE_LABELS,
   EVENT_TYPES,
 } from "@/lib/constants";
-import { showError } from "@/lib/hooks/useToast";
+import { showError, showSuccess } from "@/lib/hooks/useToast";
 import { slugify } from "@/lib/slug";
 import { EVIDENCE_SIMPLE_MODE } from "@/lib/evidence-mode";
 import { hasCoords, osmPageUrl } from "@/lib/map/osm";
@@ -168,7 +170,20 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
   const [dirty, setDirty] = useState(false);
 
   // 수정 모드에서만 미저장 이탈 경고를 활성화한다. 생성 모드는 이탈이 자연스럽다.
-  useUnsavedChanges(mode === "edit" && dirty);
+  // 설정 화면은 저장 버튼이 구획마다 있어서, 경고는 화면의 UnsavedSectionsGuard 하나가 모아서 묻는다.
+  useUnsavedSection("event-basic", "기본 정보", mode === "edit" && dirty);
+
+  // 맨 아래 저장 버튼이 화면에 보이는지 — 안 보일 때만 떠 있는 저장 막대를 띄운다(같은 버튼 두 개 방지).
+  const formId = `event-form-${useId().replace(/:/g, "")}`;
+  const footerRef = useRef<HTMLDivElement>(null);
+  const [footerVisible, setFooterVisible] = useState(true);
+  useEffect(() => {
+    const el = footerRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([entry]) => setFooterVisible(entry?.isIntersecting ?? true));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const [organizerError, setOrganizerError] = useState<string | null>(null);
 
@@ -322,14 +337,19 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
 
       setDirty(false);
 
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem(
-          "pickket:event-flash",
-          mode === "create" ? "이벤트가 생성되었습니다" : "이벤트가 수정되었습니다",
-        );
+      if (mode === "edit") {
+        // 설정 화면에는 저장 버튼이 구획마다 있다. 기본 정보를 저장했다고 대시보드로 보내면
+        // 아직 저장 안 한 다른 구획(취소 정책·판매 채널 등)의 수정이 경고 없이 사라진다. 그래서 화면에 남는다.
+        showSuccess("기본 정보를 저장했어요");
+        router.refresh();
+        return;
       }
 
-      router.push(mode === "create" ? `/events/${payload.data?.id}/dashboard` : `/events/${eventId}/dashboard`);
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("pickket:event-flash", "이벤트가 생성되었습니다");
+      }
+
+      router.push(`/events/${payload.data?.id}/dashboard`);
       router.refresh();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "이벤트 저장에 실패했습니다";
@@ -343,10 +363,13 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
   return (
     <Card className="border-border bg-card/95">
       <CardHeader>
-        <CardTitle className="text-2xl text-foreground">{titleLabel}</CardTitle>
+        <CardTitle className="text-2xl text-foreground">
+          {titleLabel}
+          {mode === "edit" ? <UnsavedBadge show={dirty} /> : null}
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form id={formId} className="space-y-6" onSubmit={handleSubmit}>
           <div className="border-t border-border pt-6 first:border-0 first:pt-0">
             <h3 className="text-lg font-bold text-foreground">기본 정보</h3>
             <p className="mt-1 text-sm text-content-subtle">행사를 식별하는 정보입니다. 제목은 공개 페이지와 티켓에 그대로 쓰입니다.</p>
@@ -940,12 +963,21 @@ export function EventForm({ mode, eventId, initialValue }: EventFormProps) {
 
           {/* 대중교통/주차 안내 — 설정(수정) 모드에서만 표시 */}
 
-          <div className="flex justify-end">
+          <div ref={footerRef} className="flex justify-end">
             <Button type="submit" className="min-w-36" disabled={saving}>
-              {saving ? "저장 중..." : mode === "create" ? "이벤트 만들기" : "저장하기"}
+              {saving ? "저장 중..." : mode === "create" ? "이벤트 만들기" : "기본 정보 저장"}
             </Button>
           </div>
         </form>
+        {/* 양식이 길어서 대표 이미지만 바꾸고 맨 아래 버튼을 못 보고 떠나는 일이 있었다
+            (대표 이미지는 이 버튼을 눌러야 이벤트에 들어간다). 고치는 중이고 맨 아래 버튼이 안 보이면 저장 막대를 띄운다. */}
+        <FloatingSaveBar
+          show={mode === "edit" && dirty && !footerVisible}
+          formId={formId}
+          message="기본 정보에 저장 안 된 변경이 있어요"
+          label="기본 정보 저장"
+          saving={saving}
+        />
       </CardContent>
     </Card>
   );

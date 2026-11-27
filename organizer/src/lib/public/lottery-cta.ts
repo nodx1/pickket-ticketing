@@ -59,3 +59,20 @@ export function marketViewState(
   if (!MARKET_VISIBLE_STATUSES.has(event.status)) return { kind: "pending" };
   return { kind: "live", url: marketEventUrl(event.id, base) };
 }
+
+/**
+ * 피켓고 자체 공개 페이지(/e/[slug]) 상태. 사이드바 「페이지 미리보기」 버튼에서 쓴다.
+ * 공개 페이지는 투영 상태가 `live` 일 때만 열린다(lib/server/events.ts `PUBLIC_LIVE_STATUSES`).
+ * 승인 전 단계에서는 404 가 나서 미리보기가 아니라 고장처럼 보였다. 그래서 버튼을 끄고 이유를 알린다.
+ * 투영값(live)과 v2 원래 값(승인~배정)을 모두 받는다. MARKET_VISIBLE_STATUSES 와 같은 이유다.
+ */
+const SELF_PAGE_OPEN_STATUSES = new Set(["live", "approved", "bidding_open", "bidding_closed", "allocating", "allocated"]);
+
+export function selfPagePreviewState(status: string): { open: true } | { open: false; reason: string } {
+  if (SELF_PAGE_OPEN_STATUSES.has(status)) return { open: true };
+  if (status === "paused") return { open: false, reason: "판매를 멈춘 동안에는 공개 페이지가 닫혀 있어요." };
+  if (status === "archived" || status === "completed" || status === "cancelled") {
+    return { open: false, reason: "끝난 이벤트라 공개 페이지가 닫혀 있어요." };
+  }
+  return { open: false, reason: "관리자 승인 뒤에 열 수 있어요." };
+}

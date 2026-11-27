@@ -40,6 +40,7 @@ import { useTranslations } from "next-intl";
 import { useAuthReady } from "@/providers/AuthProvider";
 import CreateListingDialog from "@/components/resale/CreateListingDialog";
 import { useQuery } from "@tanstack/react-query";
+import { ticketQrRefetchMs } from "@/lib/ticket-qr";
 
 type ApiError = { response?: { data?: { detail?: string } } };
 
@@ -142,11 +143,8 @@ export default function TicketDetailPage() {
       return res.data;
     },
     enabled: ticket?.status === "active",
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      if (!data || data.expires_in_seconds <= 0) return false;
-      return Math.max(1000, (data.expires_in_seconds - 5) * 1000);
-    },
+    // 서버가 정한 주기(30초)로 새 QR 을 받는다. 입구는 60초까지 인정해 떠 있는 QR 은 늘 유효하다.
+    refetchInterval: (query) => ticketQrRefetchMs(query.state.data),
   });
 
   const statusBadge = ticket

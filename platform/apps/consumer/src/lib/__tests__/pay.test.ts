@@ -81,6 +81,42 @@ describe("pay.ts — 결제 개시 공통 헬퍼", () => {
       expect(assignMock).not.toHaveBeenCalled();
     });
 
+    it("provider=nicepay + 서버 모의 모드 → 결제창 없이 모의 승인 경로(성공 화면 → 서버 confirm)", async () => {
+      prepareMock.mockResolvedValue(
+        preparedResponse("nicepay", { provider_params: { ...NICE_PARAMS, mode: "mock" } }),
+      );
+      await startPayment({
+        orderId: "uuid-1",
+        orderName: "티켓",
+        amount: 1000,
+        successUrl: "http://localhost/ko/payment/success?order=uuid-1",
+        failUrl: "http://localhost/ko/payment/fail?order=uuid-1",
+      });
+      expect(startNicePaymentMock).not.toHaveBeenCalled();
+      expect(assignMock).toHaveBeenCalledTimes(1);
+      const url = new URL(assignMock.mock.calls[0][0] as string);
+      expect(url.pathname).toBe("/ko/payment/success");
+      expect(url.searchParams.get("order")).toBe("uuid-1");
+      expect(url.searchParams.get("paymentKey")).toBe("mock_ord_x_a1");
+      expect(url.searchParams.get("orderId")).toBe("ord_x_a1");
+      expect(url.searchParams.get("amount")).toBe("1000");
+    });
+
+    it("provider=nicepay + 서버 실결제 모드(live) → 실제 나이스 결제창", async () => {
+      prepareMock.mockResolvedValue(
+        preparedResponse("nicepay", { provider_params: { ...NICE_PARAMS, mode: "live" } }),
+      );
+      await startPayment({
+        orderId: "uuid-1",
+        orderName: "티켓",
+        amount: 30000,
+        successUrl: "http://localhost/ko/payment/success?order=uuid-1",
+        failUrl: "http://localhost/ko/payment/fail?order=uuid-1",
+      });
+      expect(startNicePaymentMock).toHaveBeenCalledTimes(1);
+      expect(assignMock).not.toHaveBeenCalled();
+    });
+
     it("provider=nicepay 인데 provider_params 누락 → 명확한 에러(조용한 실패 금지)", async () => {
       prepareMock.mockResolvedValue(preparedResponse("nicepay"));
       const onNiceError = vi.fn();

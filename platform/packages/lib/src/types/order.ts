@@ -29,6 +29,8 @@ export interface OrderDetail {
 
 export interface NicePayProviderParams {
   js_url: string;
+  /** 서버 게이트웨이 모드. "mock" 이면 상점키 없는 개발 환경 — 결제창 없이 모의 승인한다(운영은 늘 "live"). */
+  mode?: "mock" | "live";
   form: Record<string, string>;
 }
 

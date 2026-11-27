@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CollapsibleSidebarGroup } from "@/components/layout/collapsible-sidebar-group";
 import { EVIDENCE_MENU_ONLY, evidenceMenuGroups, pinnedItem, visibleGroupsFor } from "@/components/layout/event-sidebar-groups";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { marketViewState } from "@/lib/public/lottery-cta";
+import { marketViewState, selfPagePreviewState } from "@/lib/public/lottery-cta";
 import { useUIPreferences } from "@/lib/stores/uiPreferencesStore";
 import type { EventStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -41,6 +41,8 @@ export function EventSidebar({ event }: EventSidebarProps) {
   // 과업 증빙용 간단 메뉴 — 시연 동선 메뉴만(event-sidebar-groups.ts EVIDENCE_MENU).
   const visibleGroups = EVIDENCE_MENU_ONLY ? evidenceMenuGroups(visibleGroupsFor(event)) : visibleGroupsFor(event);
   const market = marketViewState(event);
+  const selfPreview = selfPagePreviewState(event.status);
+  const selfPreviewLabel = market.kind === "off" ? "이벤트 페이지 미리보기" : "피켓고 페이지 미리보기";
   // 🔴 1280px 미만(태블릿·모바일)에서는 메뉴 40여 개가 본문 위에 통째로 쌓였다(UI 감사 P0-3).
   //    좁은 화면은 '현재 화면 + 메뉴 버튼' 한 줄로 접고, 누르면 펼친다. 화면을 옮기면 다시 접힌다
   //    (열린 경로를 기억해 비교 — 이펙트로 닫지 않는다).
@@ -96,11 +98,23 @@ export function EventSidebar({ event }: EventSidebarProps) {
             피켓 마켓에 올릴 이벤트예요. 게시 준비에서 심사를 요청하고 관리자가 승인하면 피켓에 공개돼요.
           </p>
         ) : null}
-        <Button asChild variant={market.kind === "live" ? "outline" : "default"} className="w-full">
-          <Link href={`/e/${event.slug}`} target="_blank" rel="noopener noreferrer">
-            {market.kind === "off" ? "이벤트 페이지 미리보기" : "피켓고 페이지 미리보기"}
-          </Link>
-        </Button>
+        {/* 공개 페이지는 승인 뒤(live)에만 열린다. 그 전에 누르면 404 라 버튼을 끄고 이유를 붙인다. */}
+        {selfPreview.open ? (
+          <Button asChild variant={market.kind === "live" ? "outline" : "default"} className="w-full">
+            <Link href={`/e/${event.slug}`} target="_blank" rel="noopener noreferrer">
+              {selfPreviewLabel}
+            </Link>
+          </Button>
+        ) : (
+          <div className="space-y-1.5">
+            <Button type="button" variant="outline" className="w-full" disabled aria-describedby="self-preview-reason">
+              {selfPreviewLabel}
+            </Button>
+            <p id="self-preview-reason" className="text-center text-xs text-content-subtle">
+              {selfPreview.reason}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 space-y-6">

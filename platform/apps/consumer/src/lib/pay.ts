@@ -101,6 +101,14 @@ export async function startPayment(params: StartPaymentParams): Promise<void> {
         "나이스 결제창 정보를 받지 못했습니다. 잠시 후 다시 시도해주세요.",
       );
     }
+    // 서버가 모의 결제(상점키 없는 개발 환경)라고 알려 주면 실제 결제창을 부르지 않는다 —
+    // 불러 봐야 서명이 비어 결제창에서 멈춘다. 토스 모의 결제와 같은 길로 성공 화면에 가서
+    // 서버 confirm 으로 확정한다(서버는 주문의 결제사=나이스 모의 게이트웨이로 승인).
+    // 운영 안전: 서버는 운영에서 모의 결제를 켤 수 없고(설정 검증), 이 함수도 운영 빌드에서는 막는다.
+    if (providerParams.mode === "mock") {
+      mockRedirectToSuccess(paymentId, params.amount, params.successUrl);
+      return;
+    }
     try {
       await startNicePayment(providerParams, {
         // 팝업 닫힘/취소는 예외가 아니라 SDK 전역콜백으로 도착 — processing 고착 탈출.

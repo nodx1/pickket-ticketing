@@ -9,6 +9,85 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
+
+# ── 연동 원장(과업 3-1 ② 「… 예매처의 인터페이스 간 데이터 송수신 감사 로그(append-only)」) ──
+# 예매처(파트너)가 부른 요청과 우리 응답을 integration_ledger(해시 체인)에 남긴다.
+# 업무 트랜잭션과 분리된 세션으로 쓰고, 기록 실패는 응답을 막지 않는다. 구매자 이름은 남기지 않고 이메일은 가린다.
+# 테스트는 이 팩토리를 테스트 DB 로 바꿔 끼운다(app/tests/conftest.py).
+import functools  # noqa: E402
+import time  # noqa: E402
+
+from app.core.database import async_session as ledger_session_factory  # noqa: E402
+
+_PARTNER_REQUEST_DROP = {"partner", "db", "buyer_name"}
+
+
+def _partner_request(kwargs: dict) -> dict:
+    out: dict = {}
+    for k, v in kwargs.items():
+        if k in _PARTNER_REQUEST_DROP:
+            continue
+        if hasattr(v, "model_dump"):
+            v = {kk: vv for kk, vv in v.model_dump(mode="json").items() if kk not in _PARTNER_REQUEST_DROP}
+        out[k] = v if isinstance(v, (str, int, float, bool, dict, list, type(None))) else str(v)
+    return out
+
+
+def _partner_response(result) -> dict:
+    if result is None:
+        return {}
+    data = result.model_dump(mode="json") if hasattr(result, "model_dump") else {}
+    summary = {k: data[k] for k in ("id", "event_id", "status", "amount", "currency", "total") if k in data}
+    for k in ("events", "tiers", "inventory"):
+        if isinstance(data.get(k), list):
+            summary[f"{k}_count"] = len(data[k])
+    return summary
+
+
+def _partner_ledgered(operation: str):
+    def deco(fn):
+        @functools.wraps(fn)
+        async def wrapper(*args, **kwargs):
+            started = time.perf_counter()
+            status, result, error = "ok", None, None
+            try:
+                result = await fn(*args, **kwargs)
+                return result
+            except HTTPException as exc:
+                status, error = "rejected", {"status_code": exc.status_code}
+                raise
+            except Exception as exc:
+                status, error = "error", {"error": type(exc).__name__}
+                raise
+            finally:
+                partner = kwargs.get("partner")
+                request = _partner_request(kwargs)
+                response = error or _partner_response(result)
+                event_id = kwargs.get("event_id") or getattr(kwargs.get("data"), "event_id", None) or response.get("event_id")
+                try:
+                    from app.services.integration_ledger import record_integration
+
+                    async with ledger_session_factory() as ldb:
+                        await record_integration(
+                            ldb,
+                            counterpart="partner",
+                            counterpart_id=str(partner.id) if partner is not None else None,
+                            direction="inbound",
+                            operation=f"partner.{operation}",
+                            event_id=uuid.UUID(str(event_id)) if event_id else None,
+                            request=request,
+                            response=response,
+                            status=status,
+                            latency_ms=int((time.perf_counter() - started) * 1000),
+                        )
+                        await ldb.commit()
+                except Exception:  # noqa: BLE001 — 원장 기록 실패가 예매처 응답을 막으면 안 된다
+                    logger.error("partner ledger write failed (%s)", operation, exc_info=True)
+
+        return wrapper
+
+    return deco
+
 from app.core.database import get_db, get_read_db
 from app.middleware.auth import get_current_admin
 from app.middleware.partner_auth import get_partner
@@ -50,10 +129,10 @@ async def register_partner(
     db.add(partner)
     await db.commit()
     await db.refresh(partner)
-    # Return the raw key only at creation time
-    response = PartnerCreateResponse.model_validate(partner)
-    response.api_key = raw_key
-    return response
+    # Return the raw key only at creation time.
+    # 🔴 예전엔 model_validate(partner) 를 먼저 불러 api_key(필수) 가 없어 500 이 났다 — 예매처는 저장되는데
+    #    키를 한 번도 돌려받지 못해 예매처 API 를 쓸 수 없었다(2026-11-27 실측). 키를 함께 넣어 만든다.
+    return PartnerCreateResponse(**PartnerResponse.model_validate(partner).model_dump(), api_key=raw_key)
 
 
 @router.get("/admin/partners", response_model=list[PartnerResponse])
@@ -71,6 +150,7 @@ async def list_partners(
 
 # -- Partner API: Events ---
 @router.get("/partners/events", response_model=PartnerEventListResponse)
+@_partner_ledgered("events.list")
 async def partner_list_events(
     category: str | None = None,
     skip: int = Query(0, ge=0),
@@ -116,6 +196,7 @@ async def partner_list_events(
 
 
 @router.get("/partners/events/{event_id}", response_model=PartnerEventResponse)
+@_partner_ledgered("events.get")
 async def partner_get_event(
     event_id: uuid.UUID,
     partner: Partner = Depends(get_partner),
@@ -161,6 +242,7 @@ async def partner_get_event(
 
 
 @router.get("/partners/inventory/{event_id}", response_model=PartnerInventoryResponse)
+@_partner_ledgered("inventory.get")
 async def partner_get_inventory(
     event_id: uuid.UUID,
     partner: Partner = Depends(get_partner),
@@ -194,6 +276,7 @@ async def partner_get_inventory(
 
 
 @router.post("/partners/orders", response_model=PartnerOrderResponse)
+@_partner_ledgered("orders.create")
 async def partner_create_order(
     data: PartnerOrderCreate,
     partner: Partner = Depends(get_partner),
@@ -257,6 +340,7 @@ async def partner_create_order(
 
 
 @router.get("/partners/orders/{order_id}", response_model=PartnerOrderResponse)
+@_partner_ledgered("orders.get")
 async def partner_get_order(
     order_id: uuid.UUID,
     partner: Partner = Depends(get_partner),

@@ -355,6 +355,37 @@ async def test_initiate_payment_default_provider_params_none(db_session):
     assert resp.provider_params is None
 
 
+
+@pytest.mark.asyncio
+async def test_initiate_payment_nicepay_mock_mode_is_signalled(db_session, monkeypatch):
+    """상점키가 없는 개발 환경이면 provider_params.mode == "mock" — 피켓이 결제창 대신 모의 승인으로 간다.
+
+    예전엔 이 값을 내려주지 않아 피켓이 실제 결제창을 불렀고(서명이 비어) 「나이스페이로 결제 중…」에서 멈췄다.
+    운영은 설정 검증이 상점키를 강제하므로 mock 이 나올 수 없다(test_config 쪽 가드).
+    """
+    from app.core.config import settings
+    from app.services.nicepay_gateway import NicepayGateway
+
+    monkeypatch.setattr(settings, "NICE_MID", "nicepay00m", raising=False)
+    monkeypatch.setattr(settings, "NICE_MERCHANT_KEY", "", raising=False)
+    monkeypatch.setattr(settings, "NICEPAY_MOCK_MODE", False, raising=False)
+
+    bundle = await _create_order_bundle(db_session, order_status=OrderStatus.PENDING)
+    svc = PaymentService(db_session)
+    svc.gateway = NicepayGateway()
+    assert svc.gateway.mock_mode is True
+    resp = await svc.initiate_payment(
+        bundle["order"].id,
+        idempotency_key="idem_nicepay_mock",
+        success_url="https://www.pickket.kr/pay/success",
+        fail_url="https://www.pickket.kr/pay/fail",
+    )
+    assert resp.provider == "nicepay"
+    assert resp.provider_params is not None
+    assert resp.provider_params["mode"] == "mock"
+    # 결제창 폼은 그대로(서명 입력 필드에 mode 가 섞이지 않는다)
+    assert "mode" not in resp.provider_params["form"]
+
 @pytest.mark.asyncio
 async def test_initiate_payment_nicepay_provider_params(db_session, monkeypatch):
     """nicepay 게이트웨이면 provider_params.form 에 payForm 필드 노출.
@@ -400,6 +431,8 @@ async def test_initiate_payment_nicepay_provider_params(db_session, monkeypatch)
     assert form["ReturnURL"] == "https://api.pickket.kr/api/v1/payments/nice/return"
     assert form["MallReserved"] == success
     assert resp.provider_params["js_url"]
+    # 상점키가 있으면 실결제 모드 — 피켓은 실제 나이스 결제창을 연다.
+    assert resp.provider_params["mode"] == "live"
 
     # 재반환(idempotent) 경로: 저장된 payment_metadata['prepare'] 에서 동일 재구성.
     replay = await svc.initiate_payment(

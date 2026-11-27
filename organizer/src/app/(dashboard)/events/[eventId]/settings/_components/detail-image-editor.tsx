@@ -17,6 +17,8 @@ import {
   type DetailSection,
 } from "@/lib/public/detail-image";
 import { canSaveEditor } from "@/lib/forms/save-guard";
+import { useUnsavedSection } from "@/lib/hooks/unsaved-sections";
+import { UnsavedBadge } from "@/components/shared/unsaved-badge";
 import {
   appendToSection,
   countInSection,
@@ -51,6 +53,7 @@ export function DetailImageEditor({ eventId }: { eventId: string }) {
   const [uploading, setUploading] = useState<DetailSection | null>(null);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  useUnsavedSection("detail-images", "상세 안내 이미지", dirty);
   const inputRef = useRef<HTMLInputElement | null>(null);
   /** 파일 선택창을 띄운 그룹 — onChange 에서 어느 섹션인지 알아야 한다. */
   const pendingSection = useRef<DetailSection>("intro");
@@ -158,7 +161,10 @@ export function DetailImageEditor({ eventId }: { eventId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>상세 안내 이미지</CardTitle>
+        <CardTitle>
+          상세 안내 이미지
+          <UnsavedBadge show={dirty} />
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
@@ -327,7 +333,7 @@ export function DetailImageEditor({ eventId }: { eventId: string }) {
           onClick={() => void save()}
           disabled={!canSaveEditor({ loading, loadFailed, dirty, saving })}
         >
-          {saving ? "저장 중..." : dirty ? "저장" : "저장됨"}
+          {saving ? "저장 중..." : dirty ? "상세 이미지 저장" : "저장됨"}
         </Button>
       </CardContent>
     </Card>

@@ -53,3 +53,5 @@ class TicketQrResponse(BaseModel):
     ticket_id: uuid.UUID
     qr_data: str
     expires_in_seconds: int
+    # 화면이 새 QR 을 받아 올 주기(초). expires_in_seconds(입구에서 인정하는 시간)보다 짧다.
+    refresh_in_seconds: int | None = None

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isLotterySaleMode, marketEventsUrl, marketEventUrl, marketViewState, publicCtaMode } from "./lottery-cta";
+import { isLotterySaleMode, marketEventsUrl, marketEventUrl, marketViewState, publicCtaMode, selfPagePreviewState } from "./lottery-cta";
 
 describe("피켓고 공개 페이지 — 추첨 등급 CTA", () => {
   it("추첨 등급만 있으면 피켓 응모로 연결", () => {
@@ -43,5 +43,22 @@ describe("피켓고 이벤트 화면 — 피켓에서 보기", () => {
 describe("피켓고 첫 화면 — 실제 이벤트 보기", () => {
   it("피켓 이벤트 목록으로", () => {
     expect(marketEventsUrl("http://localhost:3020")).toBe("http://localhost:3020/ko/events");
+  });
+});
+
+describe("피켓고 페이지 미리보기 — 공개 페이지가 열리는 상태에서만", () => {
+  it("승인 뒤(live 투영값, v2 승인~배정 값)에는 연다", () => {
+    for (const status of ["live", "approved", "bidding_open", "bidding_closed", "allocating", "allocated"]) {
+      expect(selfPagePreviewState(status)).toEqual({ open: true });
+    }
+  });
+  it("승인 전(작성 중·심사 중·반려)에는 막고 승인 뒤에 열린다고 알린다", () => {
+    for (const status of ["draft", "pending_review", "rejected", "under_review", "revision_requested"]) {
+      expect(selfPagePreviewState(status)).toEqual({ open: false, reason: "관리자 승인 뒤에 열 수 있어요." });
+    }
+  });
+  it("판매 중지·종료에는 막고 이유를 따로 알린다", () => {
+    expect(selfPagePreviewState("paused")).toEqual({ open: false, reason: "판매를 멈춘 동안에는 공개 페이지가 닫혀 있어요." });
+    expect(selfPagePreviewState("archived")).toEqual({ open: false, reason: "끝난 이벤트라 공개 페이지가 닫혀 있어요." });
   });
 });

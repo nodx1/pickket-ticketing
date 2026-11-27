@@ -6,6 +6,8 @@ import { useToast } from "@/lib/hooks/useToast";
 import { Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { canSaveEditor } from "@/lib/forms/save-guard";
+import { useUnsavedSection } from "@/lib/hooks/unsaved-sections";
+import { UnsavedBadge } from "@/components/shared/unsaved-badge";
 // 🔴 zod 없는 파일에서 가져온다 — 스키마 파일에서 가져오면 클라이언트 번들에 zod 가 딸려온다(원칙 #14).
 import { REFUND_NOTICE_MAX } from "@/lib/events/refund-notice-limits";
 
@@ -39,6 +41,7 @@ export function CancellationPolicy({ eventId }: { eventId: string }) {
   const [loadFailed, setLoadFailed] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  useUnsavedSection("cancellation-policy", "취소 정책", dirty);
   const { addToast } = useToast();
 
   const fetch_ = useCallback(async () => {
@@ -143,11 +146,14 @@ export function CancellationPolicy({ eventId }: { eventId: string }) {
     <div className="rounded-lg border border-border bg-card p-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold text-foreground">취소/환불 정책</h3>
+          <h3 className="text-xl font-bold text-foreground">
+            취소/환불 정책
+            <UnsavedBadge show={dirty} />
+          </h3>
           <p className="mt-1 text-sm text-content-subtle">이벤트 시작 기준 일자별 취소 수수료를 설정합니다.</p>
         </div>
         <Button type="button" onClick={save} disabled={!canSaveEditor({ loading, loadFailed, dirty, saving }) || duplicateDays.length > 0}>
-          <Save className="size-4" />{saving ? "저장 중..." : "저장"}
+          <Save className="size-4" />{saving ? "저장 중..." : "취소 정책 저장"}
         </Button>
       </div>
 

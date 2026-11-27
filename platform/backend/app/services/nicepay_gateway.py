@@ -53,10 +53,13 @@ payment_service·refund_service 에서 drop-in 으로 쓴다.
 
 from __future__ import annotations
 
+import dataclasses
+import functools
 import hashlib
 import hmac
 import logging
 import re
+import time
 import uuid
 from datetime import datetime, timezone
 from urllib.parse import parse_qsl, urlparse
@@ -75,6 +78,84 @@ from app.services.payment_gateway import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ── 연동 원장(과업 3-1 ② 「선정된 외부 결제 서비스 … 인터페이스 간 데이터 송수신 감사 로그」) ──
+# 나이스와 주고받은 승인·취소·망취소·조회·가상계좌 요청과 응답을 integration_ledger(append-only, 해시 체인)에 남긴다.
+#  · 결제 트랜잭션과 **분리된** 세션으로 쓴다 — 결제가 롤백돼도 호출 사실은 남는다(토스 직결과 같은 방식).
+#  · 정해 둔 항목만 남긴다(허용 목록). 인증 토큰·승인 주소·환불 계좌·서명·키는 넣지 않는다.
+#  · 기록 실패는 결제를 막지 않는다. 모의 결제(mock)도 mode 로 구분해 남긴다.
+# 테스트는 이 팩토리를 테스트 DB 로 바꿔 끼운다(app/tests/conftest.py).
+from app.core.database import async_session as ledger_session_factory  # noqa: E402
+
+_LEDGER_REQUEST_KEYS = (
+    "payment_id", "transaction_id", "order_id", "expected_amount", "amount", "original_amount",
+    "currency", "reason", "payment_method", "goods_name", "bank_code",
+)
+_LEDGER_RESPONSE_KEYS = (
+    "ResultCode", "ResultMsg", "TID", "Moid", "Amt", "CancelAmt", "status", "mode",
+    "provider", "payment_id", "transaction_id", "amount", "method", "approved_at",
+)
+
+
+def _ledger_summary(value, keys) -> dict:
+    if value is None:
+        return {}
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        value = dataclasses.asdict(value)
+    if not isinstance(value, dict):
+        return {"type": type(value).__name__}
+    return {k: value[k] for k in keys if k in value and value[k] is not None}
+
+
+def _nice_ledgered(operation: str):
+    """나이스 외부 호출 한 번을 연동 원장 한 행으로 남기는 데코레이터."""
+
+    def deco(fn):
+        @functools.wraps(fn)
+        async def wrapper(self, *args, **kwargs):
+            started = time.perf_counter()
+            status, result = "ok", None
+            try:
+                result = await fn(self, *args, **kwargs)
+                return result
+            except Exception as exc:  # 결제 오류는 그대로 올리고 기록만 남긴다
+                status, result = "error", {"error": type(exc).__name__}
+                raise
+            finally:
+                request = _ledger_summary(kwargs, _LEDGER_REQUEST_KEYS)
+                if args:  # fetch_payment_by_order_id(order_id, …) 처럼 위치 인자로 받는 값
+                    request.setdefault("order_id", str(args[0]))
+                request["mode"] = "mock" if self.mock_mode else "live"
+                await _write_nice_ledger(
+                    operation, request, _ledger_summary(result, _LEDGER_RESPONSE_KEYS), status,
+                    int((time.perf_counter() - started) * 1000),
+                )
+
+        return wrapper
+
+    return deco
+
+
+async def _write_nice_ledger(operation: str, request: dict, response: dict, status: str, latency_ms: int) -> None:
+    from app.services.integration_ledger import record_integration
+
+    try:
+        async with ledger_session_factory() as db:
+            await record_integration(
+                db,
+                counterpart="pg",
+                counterpart_id="nicepay",
+                direction="outbound",
+                operation=f"nicepay.{operation}",
+                request=request,
+                response=response,
+                status=status,
+                latency_ms=latency_ms,
+            )
+            await db.commit()
+    except Exception:  # noqa: BLE001 — 원장 기록 실패가 결제를 막으면 안 된다
+        logger.error("nicepay ledger write failed (%s)", operation, exc_info=True)
+
 
 # ── 엔드포인트(NICEPAY-LEGACY-VERIFIED-SPEC §2) ──────────────────────────
 _NICEPAY_WEBAPI_BASE = "https://webapi.nicepay.co.kr"
@@ -661,6 +742,7 @@ class NicepayGateway:
         )
 
     # ── verify (= 승인 approval) ────────────────────────────────────────
+    @_nice_ledgered("approve")
     async def verify_payment(
         self,
         *,
@@ -862,6 +944,7 @@ class NicepayGateway:
             raw=body,
         )
 
+    @_nice_ledgered("net_cancel")
     async def net_cancel(
         self, *, net_cancel_url: str, auth_token: str, amount: int | float
     ) -> dict[str, str]:
@@ -928,6 +1011,7 @@ class NicepayGateway:
         )
 
     # ── void / cancel (환불·취소) ───────────────────────────────────────
+    @_nice_ledgered("cancel")
     async def void_authorization(
         self,
         *,
@@ -1105,6 +1189,7 @@ class NicepayGateway:
         tid = f"{mid10}03{ts}{rand}"  # 10+2+12+6 = 30
         return tid[:30]
 
+    @_nice_ledgered("vbank_issue")
     async def issue_vbank(
         self,
         *,
@@ -1224,6 +1309,7 @@ class NicepayGateway:
         amt = body.get("Amt") or body.get("amount")
         return _amt_repr(str(amt)) if amt is not None else None
 
+    @_nice_ledgered("inquiry")
     async def fetch_payment_by_order_id(
         self, order_id: str, *, transaction_id: str | None = None
     ) -> dict | None:

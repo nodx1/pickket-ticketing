@@ -23,12 +23,19 @@ async def _draw_pool(pool_id):
     Celery worker 의 영속 event loop 에서 실행한다. 자체 engine/NullPool 은 추첨
     트랜잭션의 독립성을 유지하고 호출 종료 시 명시적으로 dispose 한다.
     """
+    from app.core.redis import close_redis, init_redis
     from app.services.lottery_service import LotteryService
 
     db_url = settings.DATABASE_URL
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     engine = create_async_engine(db_url, poolclass=NullPool, echo=False)
+    # 🔴 Celery 워커에는 API 서버의 시작 훅(init_redis)이 없다. 그대로 두면 추첨의 분산 락
+    #    (redis_lock)이 「Redis not initialized」로 실패해 **마감 뒤 자동 추첨이 한 건도 안 된다**
+    #    (2026-11-27 로컬 실측: 밀린 추첨 6건 모두 실패, pools_drawn=0). 수동 추첨(API)은 서버가
+    #    Redis 를 이미 열어 둬서 이 문제를 가렸다. queue_processor 와 같은 방식으로 이 워커
+    #    프로세스의 영속 루프(run_async)에서 추첨마다 열고 끝나면 닫는다.
+    await init_redis()
     try:
         # F-1 commit-reveal: 응모 마감(deadline 도래) 시점 훅 — 추첨과
         # 분리된 세션/트랜잭션에서 사전 시드 커밋을 먼저 영속화한다.
@@ -44,6 +51,7 @@ async def _draw_pool(pool_id):
             await session.commit()
             return result
     finally:
+        await close_redis()
         await engine.dispose()
 
 

@@ -1600,6 +1600,8 @@ export interface TicketQrResponse {
   ticket_id: string;
   qr_data: string;
   expires_in_seconds: number;
+  /** 화면이 새 QR 을 받아 올 주기(초). expires_in_seconds(입구에서 인정하는 시간)보다 짧다. 옛 서버는 안 보낸다. */
+  refresh_in_seconds?: number | null;
 }
 
 export interface NfcTicketLookup {
@@ -1741,6 +1743,8 @@ export interface BenchmarkData {
 export interface NicePayProviderParams {
   /** nicepay-pgweb.js SDK URL(goPay 제공). */
   js_url: string;
+  /** 서버 게이트웨이 모드. "mock" 이면 상점키 없는 개발 환경 — 결제창 없이 모의 승인한다(운영은 늘 "live"). */
+  mode?: "mock" | "live";
   /** goPay 폼 필드 — 전부 문자열, 서버 생성값 그대로 hidden input 으로 주입. */
   form: Record<string, string>;
 }

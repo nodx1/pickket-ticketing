@@ -46,6 +46,19 @@ const nextConfig: NextConfig = {
     optimizeCss: true,
     viewTransition: true,
   },
+  // 로컬 개발 전용: 피켓고(UPLOAD_PROVIDER=local)가 올린 이벤트 대표 이미지는 「/uploads/…」 상대 주소로 저장된다.
+  // 피켓에서 같은 주소를 열면 피켓 서버에 없는 파일이라 404 가 나서, 개발 서버에서만 피켓고로 넘긴다.
+  // 배포에서는 이미지가 S3/CDN 절대 주소라 이 규칙이 생기지 않는다.
+  ...(process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_GO_URL
+    ? {
+        rewrites: async () => [
+          {
+            source: "/uploads/:path*",
+            destination: `${(process.env.NEXT_PUBLIC_GO_URL ?? "").replace(/\/$/, "")}/uploads/:path*`,
+          },
+        ],
+      }
+    : {}),
   headers: async () => [
     {
       // All routes except /widget — strict security
@@ -92,12 +105,18 @@ const nextConfig: NextConfig = {
         { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
       ],
     },
-    {
-      source: "/(.*)\\.(js|css|woff2)",
-      headers: [
-        { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-      ],
-    },
+    // 1년 캐시는 **배포 빌드에서만**. 배포 파일은 이름에 내용 해시가 붙어 바뀌면 새 이름이 되지만,
+    // 개발 서버의 파일(webpack.js, main-app.js, app/…/page.js)은 이름이 그대로인 채 내용만 바뀐다.
+    // 개발에서도 immutable 을 붙이면 사파리가 옛 파일을 끝까지 써서 새 코드와 엇갈리고,
+    // 화면이 무한히 새로고침됐다(2026-11-27 실측, 크롬은 증상이 덜 드러남).
+    ...(process.env.NODE_ENV === "production"
+      ? [
+          {
+            source: "/(.*)\\.(js|css|woff2)",
+            headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+          },
+        ]
+      : []),
     {
       // 🔴 서비스 워커는 위 *.js 1년 캐시 규칙을 덮어써야 한다 — 아니면 배포해도 옛 워커가 남는다.
       //    (같은 키는 뒤 규칙이 이긴다.)

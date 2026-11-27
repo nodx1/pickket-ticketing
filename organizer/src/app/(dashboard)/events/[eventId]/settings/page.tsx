@@ -6,6 +6,7 @@ import { CancellationPolicy } from "./_components/cancellation-policy";
 import { SaleChannels } from "./_components/sale-channels";
 // LandingEditor: 노출 중단(아래 렌더부 주석 참조). 컴포넌트·API 는 존치 — 도메인 기능 연결 시 복구.
 import { DetailImageEditor } from "./_components/detail-image-editor";
+import { UnsavedSectionsGuard } from "@/lib/hooks/unsaved-sections";
 import { EventDangerZone } from "./_components/event-danger-zone";
 import { EventStatusCard } from "./_components/event-status-card";
 import { getServerSession } from "@/lib/auth/server-session";
@@ -164,6 +165,8 @@ export default async function EventSettingsPage({ params }: PageProps) {
         rejectionReason={latestReject?.reason ?? null}
         approvedAt={latestApprove?.created_at ?? null}
       />
+      {/* 저장 버튼이 구획마다 있다. 떠날 때 경고는 여기 하나가 저장 안 된 구획 이름을 모아 한 번만 묻는다. */}
+      <UnsavedSectionsGuard />
       <EventForm mode="edit" eventId={eventId} initialValue={initialValue} />
       {/* 소개 글 바로 뒤에 오는 콘텐츠라 폼 다음에 둔다(화면 순서 = 랜딩 순서). */}
       <DetailImageEditor eventId={eventId} />

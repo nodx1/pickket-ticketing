@@ -144,6 +144,10 @@ async function handleWrite(method: "POST" | "PUT" | "PATCH", ctx: Ctx): Promise<
   if (method === "POST" && key === "onsite/terminals") {
     return successResponse(await v2Write("POST", `/internal/events/${eventId}/terminals`, body, "gwasup.terminal.register"));
   }
+  // 직원 입장 링크 새로 만들기 = 단말 키 새로 발급(예전 링크는 바로 끊김). 단말이 이 이벤트 것인지는 v2 가 확인한다.
+  if (method === "POST" && path[0] === "onsite" && path[1] === "terminals" && path[3] === "key" && path.length === 4 && UUID_RE.test(path[2])) {
+    return successResponse(await v2Write("POST", `/internal/events/${eventId}/terminals/${path[2]}/key`, body, "gwasup.terminal.rekey"));
+  }
   if (method === "PATCH" && path[0] === "onsite" && path[1] === "terminals" && path.length === 3 && UUID_RE.test(path[2])) {
     return successResponse(await v2Write("PATCH", `/internal/events/${eventId}/terminals/${path[2]}`, body, "gwasup.terminal.update"));
   }

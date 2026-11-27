@@ -246,6 +246,10 @@ async def test_get_ticket_qr_owned_ticket(client):
     assert isinstance(body["qr_data"], str)
     assert len(body["qr_data"]) > 20
     assert body["expires_in_seconds"] > 0
+    # 화면은 30초마다 새 QR 을 받고, 입구는 60초까지 인정한다 — 떠 있는 QR 은 늘 유효하다.
+    assert body["refresh_in_seconds"] == 30
+    assert body["expires_in_seconds"] == 60
+    assert body["refresh_in_seconds"] < body["expires_in_seconds"]
 
 
 # ---------------------------------------------------------------------------
@@ -364,3 +368,13 @@ async def test_lookup_by_nfc_allowed_for_admin(client):
     )
     assert resp.status_code == 200
     assert resp.json()["ticket_id"] == ticket_id
+
+
+def test_qr_refresh_must_be_shorter_than_validity():
+    """화면 갱신 주기가 입구 인정 시간 이상이면 떠 있는 QR 이 입구에서 만료될 수 있다 — 설정 단계에서 막는다."""
+    import pytest as _pytest
+
+    from app.core.config import Settings
+
+    with _pytest.raises(ValueError, match="TICKET_QR_REFRESH_SECONDS"):
+        Settings(TICKET_QR_REFRESH_SECONDS=60, CHECKIN_QR_MAX_AGE_SECONDS=60).validate_secrets()

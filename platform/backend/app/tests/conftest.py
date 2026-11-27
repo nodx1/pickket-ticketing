@@ -209,6 +209,17 @@ def event_loop_policy():
 
 
 @pytest.fixture(autouse=True)
+def _isolate_integration_ledger(monkeypatch):
+    """나이스페이·예매처 연동 원장은 결제 트랜잭션과 분리된 세션(app.core.database.async_session)으로 쓴다.
+    테스트에서는 그 세션도 테스트 DB 로 바꿔 끼워 개발 DB 에 기록이 새지 않게 한다(SQLite 에서는 원장 기록이 건너뛰어진다)."""
+    import app.api.v1.partners as partners_api
+    import app.services.nicepay_gateway as nicepay_gateway
+
+    monkeypatch.setattr(nicepay_gateway, "ledger_session_factory", TestSession)
+    monkeypatch.setattr(partners_api, "ledger_session_factory", TestSession)
+
+
+@pytest.fixture(autouse=True)
 def _mock_redis(monkeypatch):
     """Mock Redis for tests that don't need real Redis.
 

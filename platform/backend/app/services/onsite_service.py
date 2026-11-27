@@ -45,13 +45,18 @@ logger = logging.getLogger(__name__)
 
 QR_WINDOW_SECONDS = 30
 QR_TOLERANCE_WINDOWS = 5  # go 와 같은 기본값(±150초)
-# 피켓 앱·웹 티켓 QR(v2 서명 회전 QR) 유효 시간 — 스태프 입장 확인(/tickets/validate-qr)과 같은 60초.
-PICKKET_QR_MAX_AGE_SECONDS = 60
+# 피켓 앱·웹 티켓 QR(v2 서명 회전 QR) 유효 시간은 스태프 체크인과 같은 설정값(CHECKIN_QR_MAX_AGE_SECONDS, 60초)을 쓴다.
 REPLAY_WINDOW_SECONDS = 120
 DUPLICATE_GATE_SECONDS = 60
 DUPLICATE_READ_SECONDS = 5
 ONLINE_SECONDS = 60
 KEY_PREFIX = "pkt_term_"
+# 단말 키(= 직원 입장 링크)는 행사가 끝나고 이만큼 지나면 더 이상 통하지 않는다.
+# 공연이 늦게 끝나거나 퇴장·재입장이 이어지는 경우를 넉넉히 덮는 값이다.
+TERMINAL_CLOSE_GRACE = timedelta(hours=12)
+# 직원 입장 링크를 새로 만들 수 있는 이벤트 상태(관리자 승인 뒤 ~ 추첨·배정 완료).
+ENTRY_LINK_OPEN_STATUSES = frozenset({"approved", "bidding_open", "bidding_closed", "allocating", "allocated"})
+TERMINAL_CLOSED_MESSAGE = "행사가 끝나 이 단말(입장 링크)은 닫혔습니다"
 
 FRAUD_CODES = {"forged_qr", "blocked_ticket", "sanctioned_account", "qr_replay", "duplicate_ticket"}
 MESSAGES = {
@@ -87,6 +92,38 @@ def _aware(dt: datetime | None) -> datetime | None:
     if dt is not None and dt.tzinfo is None:
         return dt.replace(tzinfo=UTC)
     return dt
+
+
+def _status_value(event: Event) -> str:
+    return str(getattr(event.status, "value", event.status))
+
+
+def terminal_closes_at(event: Event) -> datetime | None:
+    """이 행사의 단말 키가 닫히는 시각 — 끝나는 시각(없으면 시작 시각) + 여유."""
+    end = _aware(event.event_date_end) or _aware(event.event_date)
+    return end + TERMINAL_CLOSE_GRACE if end else None
+
+
+def event_closed_for_terminals(event: Event, now: datetime | None = None) -> bool:
+    """행사가 취소됐거나 끝난 뒤 여유 시간까지 지났으면 True. 승인 전 리허설은 막지 않는다."""
+    if _status_value(event) == "cancelled":
+        return True
+    closes = terminal_closes_at(event)
+    return closes is not None and (now or _now()) >= closes
+
+
+def entry_link_state(event: Event, now: datetime | None = None) -> dict:
+    """피켓고 「직원 입장 링크」 칸에 보여 줄 상태 — 지금 새 링크를 만들 수 있는지와 그 이유."""
+    closes = terminal_closes_at(event)
+    status = _status_value(event)
+    if event_closed_for_terminals(event, now):
+        reason = "취소된 이벤트라 입장 링크를 만들 수 없어요." if status == "cancelled" else "행사가 끝나 입장 링크가 닫혔어요."
+        return {"open": False, "reason": reason, "closes_at": closes.isoformat() if closes else None}
+    if status == "completed":
+        return {"open": False, "reason": "끝난 이벤트라 입장 링크를 만들 수 없어요.", "closes_at": closes.isoformat() if closes else None}
+    if status not in ENTRY_LINK_OPEN_STATUSES:
+        return {"open": False, "reason": "관리자 승인 뒤에 입장 링크를 만들 수 있어요.", "closes_at": closes.isoformat() if closes else None}
+    return {"open": True, "reason": None, "closes_at": closes.isoformat() if closes else None}
 
 
 def _mask(name: str | None) -> str:
@@ -147,7 +184,7 @@ async def resolve_pickket_qr(session: AsyncSession, payload: str) -> tuple[str, 
         return ("expired_qr" if err == "totp_expired" else "forged_qr"), ticket.ticket_number
 
     secret = settings.QR_HMAC_SECRET
-    ticket_id = verify_qr(payload, secret, max_age_seconds=PICKKET_QR_MAX_AGE_SECONDS)
+    ticket_id = verify_qr(payload, secret, max_age_seconds=settings.CHECKIN_QR_MAX_AGE_SECONDS)
     if ticket_id is None:
         # 서명은 맞는데 오래됐으면 만료, 서명이 틀리면 위조(부정 경보), 형식부터 아니면 무효.
         stale = verify_qr(payload, secret, max_age_seconds=10 * 365 * 24 * 3600)
@@ -300,12 +337,65 @@ class OnsiteService:
         _publish_after_commit(self.session, lambda: _publish("permission", event_id, payload))
         return terminal
 
-    async def authenticate(self, key: str | None) -> OnsiteTerminal | None:
+    async def reissue_key(
+        self, terminal_id: uuid.UUID, *, event_id: uuid.UUID, actor: str | None = None
+    ) -> tuple[OnsiteTerminal, str]:
+        """단말 키를 새로 발급한다(= 직원 입장 링크 새로 만들기). 예전 키는 그 즉시 통하지 않는다.
+
+        키는 해시로만 저장하므로 예전 링크를 「다시 보여 주기」는 할 수 없다 — 새로 만들고 옛것을 끊는다.
+        """
+        terminal = await self.session.get(OnsiteTerminal, terminal_id)
+        if terminal is None or terminal.event_id != event_id:
+            raise OnsiteError("단말을 찾을 수 없습니다")
+        if terminal.status == "revoked":
+            raise OnsiteError("폐기된 단말은 새 링크를 만들 수 없습니다")
+        event = await self.session.get(Event, event_id)
+        if event is None:
+            raise OnsiteError("이벤트를 찾을 수 없습니다")
+        if event_closed_for_terminals(event):
+            raise OnsiteError(TERMINAL_CLOSED_MESSAGE)
+        key = KEY_PREFIX + secrets.token_urlsafe(32)
+        old_prefix = terminal.key_prefix
+        terminal.key_hash = hash_key(key)
+        terminal.key_prefix = key[: len(KEY_PREFIX) + 4]
+        terminal.updated_at = _now()
+        await self.session.flush()
+        await write_audit_log(
+            self.session,
+            action="onsite_terminal_key_reissued",
+            resource_type="onsite_terminal",
+            resource_id=str(terminal.id),
+            event_id=event_id,
+            old_value={"key_prefix": old_prefix},
+            new_value={"key_prefix": terminal.key_prefix, "actor": actor},
+        )
+        # 예전 키로 붙어 있던 기기는 바로 끊는다(다시 붙으려 하면 키가 맞지 않아 거부된다).
+        payload = {
+            "terminal_id": str(terminal.id),
+            "gate": terminal.gate,
+            "allowed_tier_ids": list(terminal.allowed_tier_ids or []),
+            "status": terminal.status,
+            "rekeyed": True,
+        }
+        _publish_after_commit(self.session, lambda: _publish("permission", event_id, payload))
+        return terminal, key
+
+    async def check_key(self, key: str | None) -> tuple[OnsiteTerminal | None, str]:
+        """단말 키 확인 — (단말, 이유). 이유: ok | unknown | inactive | event_closed."""
         if not key or not key.startswith(KEY_PREFIX):
-            return None
+            return None, "unknown"
         terminal = await self.session.scalar(select(OnsiteTerminal).where(OnsiteTerminal.key_hash == hash_key(key)))
-        if not isinstance(terminal, OnsiteTerminal) or terminal.status != "active":
-            return None
+        if not isinstance(terminal, OnsiteTerminal):
+            return None, "unknown"
+        if terminal.status != "active":
+            return None, "inactive"
+        event = await self.session.get(Event, terminal.event_id)
+        if event is None or event_closed_for_terminals(event):
+            return None, "event_closed"
+        return terminal, "ok"
+
+    async def authenticate(self, key: str | None) -> OnsiteTerminal | None:
+        terminal, _ = await self.check_key(key)
         return terminal
 
     async def heartbeat(self, terminal: OnsiteTerminal) -> None:
@@ -559,8 +649,10 @@ class OnsiteService:
             text("SELECT count(DISTINCT ticket_id) FROM event_admissions WHERE event_id = :e"), {"e": event_id}
         ) if self.session.get_bind().dialect.name == "postgresql" else None
         total_tickets = await self.session.scalar(select(func.count()).select_from(Ticket).where(Ticket.event_id == event_id))
+        event = await self.session.get(Event, event_id)
         return {
             "event_id": str(event_id),
+            "entry_link": entry_link_state(event, now) if event is not None else {"open": False, "reason": "이벤트를 찾을 수 없어요.", "closes_at": None},
             "totals": {"tickets": int(total_tickets or 0), "admitted_tickets": int(admitted_people or 0), "by_result": counts},
             "by_gate": by_gate,
             "terminals": [

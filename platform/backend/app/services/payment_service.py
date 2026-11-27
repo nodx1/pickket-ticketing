@@ -174,6 +174,10 @@ class PaymentService:
             return None
         return {
             "js_url": raw.get("jsSdkUrl"),
+            # 모의 결제 여부(mock | live). 상점키가 없는 개발 환경에서 피켓이 실제 결제창 대신
+            # 모의 승인으로 가게 하는 신호다. 운영은 설정 검증(validate_secrets)이 상점키·
+            # NICEPAY_MOCK_MODE=false 를 강제하므로 늘 live 다. 결제창 폼(form)·서명과는 무관.
+            "mode": raw.get("mode") or "live",
             "form": {
                 "MID": raw.get("MID"),
                 "Moid": raw.get("Moid"),

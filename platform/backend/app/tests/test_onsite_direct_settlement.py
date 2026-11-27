@@ -415,3 +415,90 @@ async def test_pickket_app_ticket_qr_is_admitted_at_go_terminal(client):
     # 아무 문자열은 무효
     junk = await _scan(client, key, "hello")
     assert junk["code"] == "invalid_qr"
+
+
+# ───────── 직원 입장 링크(단말 키 새로 발급 · 행사 뒤 자동 닫힘) ─────────
+
+
+@pytest.mark.asyncio
+async def test_reissuing_key_cuts_old_link_and_new_link_works(client, monkeypatch):
+    """「새 링크」를 만들면 예전 링크(키)는 바로 끊기고 새 링크로 입장 판정이 된다."""
+    import app.api.v1.onsite as onsite_api
+
+    async def _skip_verify(request):
+        import json as _json
+
+        return _json.loads((await request.body()) or b"{}")
+
+    monkeypatch.setattr(onsite_api, "_verified_json", _skip_verify)
+    event_id, (vip, _), _ = await _event(client, "rekey")
+    ticket = await _ticket(client, event_id, vip, "rekey_fan@test.com")
+    tid, old_key = await _terminal(event_id, name="정문 휴대폰", gate="정문")
+
+    r = await client.post(f"/api/v1/internal/events/{event_id}/terminals/{tid}/key", json={})
+    assert r.status_code == 200, r.text
+    new_key = r.json()["key"]
+    assert new_key != old_key and new_key.startswith("pkt_term_")
+
+    old = await client.post("/api/v1/terminals/scan", json={"payload": qr(ticket)}, headers={"x-terminal-key": old_key})
+    assert old.status_code == 401
+    assert (await _scan(client, new_key, qr(ticket)))["result"] == "admitted"
+
+    # 다른 이벤트 경로로는 새로 발급할 수 없다
+    other_event, _, _ = await _event(client, "rekey2")
+    wrong = await client.post(f"/api/v1/internal/events/{other_event}/terminals/{tid}/key", json={})
+    assert wrong.status_code == 400
+
+    # 폐기된 단말은 새 링크를 만들 수 없다
+    async with TestSession() as s:
+        await OnsiteService(s).update_terminal(tid, event_id=event_id, status="revoked", actor="t")
+        await s.commit()
+    revoked = await client.post(f"/api/v1/internal/events/{event_id}/terminals/{tid}/key", json={})
+    assert revoked.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_terminal_link_closes_after_event_ends(client):
+    """행사가 끝나고 여유 시간(12시간)이 지나면 단말 키가 통하지 않고, 새 링크도 만들 수 없다."""
+    event_id, (vip, _), _ = await _event(client, "closed")
+    ticket = await _ticket(client, event_id, vip, "closed_fan@test.com")
+    tid, key = await _terminal(event_id)
+
+    async with TestSession() as s:
+        overview = await OnsiteService(s).overview(event_id)
+    assert overview["entry_link"]["open"] is True and overview["entry_link"]["closes_at"]
+
+    async with TestSession() as s:
+        ev = await s.get(Event, event_id)
+        ev.event_date = datetime.now(UTC) - timedelta(days=2)
+        ev.event_date_end = datetime.now(UTC) - timedelta(hours=13)
+        await s.commit()
+
+    r = await client.post("/api/v1/terminals/scan", json={"payload": qr(ticket)}, headers={"x-terminal-key": key})
+    assert r.status_code == 401
+    assert "행사가 끝나" in r.text
+
+    async with TestSession() as s:
+        overview = await OnsiteService(s).overview(event_id)
+        assert overview["entry_link"]["open"] is False
+        assert "끝나" in overview["entry_link"]["reason"]
+        with pytest.raises(OnsiteError):
+            await OnsiteService(s).reissue_key(tid, event_id=event_id)
+
+    # 끝난 지 12시간이 안 됐으면(늦게 끝나는 공연) 아직 열려 있다
+    async with TestSession() as s:
+        ev = await s.get(Event, event_id)
+        ev.event_date_end = datetime.now(UTC) - timedelta(hours=11)
+        await s.commit()
+    assert (await _scan(client, key, qr(ticket)))["result"] == "admitted"
+
+
+@pytest.mark.asyncio
+async def test_entry_link_waits_for_approval(client):
+    """관리자 승인 전에는 「직원 입장 링크」 칸이 닫혀 있고 이유를 알려 준다(승인 전 리허설 단말은 그대로 동작)."""
+    org = await get_auth_token(client, email="org_draftlink@test.com", is_organizer=True)
+    event = await create_event_as_organizer(client, org, status=None)
+    async with TestSession() as s:
+        overview = await OnsiteService(s).overview(uuid.UUID(event["id"]))
+    assert overview["entry_link"]["open"] is False
+    assert "승인" in overview["entry_link"]["reason"]

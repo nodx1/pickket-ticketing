@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { canSaveEditor } from "@/lib/forms/save-guard";
+import { useUnsavedSection } from "@/lib/hooks/unsaved-sections";
+import { UnsavedBadge } from "@/components/shared/unsaved-badge";
 import { Globe, ShoppingBag, Save } from "lucide-react";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { useToast } from "@/lib/hooks/useToast";
@@ -20,6 +22,7 @@ export function SaleChannels({ eventId }: { eventId: string }) {
   // 🔴 로드 실패 시 저장 잠금 (2026-07-29 감사) — 화면의 기본값이 서버의 실제 값을 덮어쓴다.
   const [loadFailed, setLoadFailed] = useState(false);
   const [dirty, setDirty] = useState(false);
+  useUnsavedSection("sale-channels", "판매 채널", dirty);
   const { addToast } = useToast();
 
   const fetchChannels = useCallback(async () => {
@@ -64,11 +67,14 @@ export function SaleChannels({ eventId }: { eventId: string }) {
     <div className="rounded-lg border border-border bg-card p-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold text-foreground">판매 채널</h3>
+          <h3 className="text-xl font-bold text-foreground">
+            판매 채널
+            <UnsavedBadge show={dirty} />
+          </h3>
           <p className="mt-1 text-sm text-content-subtle">티켓을 어디서 판매할지 선택하세요.</p>
         </div>
         <Button type="button" onClick={save} disabled={!canSaveEditor({ loading, loadFailed, dirty, saving })}>
-          <Save className="size-4" />{saving ? "저장 중..." : "저장"}
+          <Save className="size-4" />{saving ? "저장 중..." : "판매 채널 저장"}
         </Button>
       </div>
       <div className="space-y-3">

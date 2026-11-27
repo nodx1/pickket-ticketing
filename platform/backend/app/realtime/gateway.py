@@ -134,7 +134,8 @@ async def publish(kind: str, event_id: uuid.UUID, payload: dict) -> None:
     elif kind == "permission":
         await sio.emit("permission.update", payload, room=f"terminal:{payload.get('terminal_id')}", namespace="/terminal")
         await sio.emit("terminal.status", payload, room=room, namespace="/monitor")
-        if payload.get("status") in ("suspended", "revoked"):
+        # 중지·폐기, 또는 키를 새로 발급(입장 링크 새로 만들기)했으면 예전 키로 붙어 있던 기기를 끊는다.
+        if payload.get("status") in ("suspended", "revoked") or payload.get("rekeyed"):
             await sio.disconnect_room(f"terminal:{payload.get('terminal_id')}", namespace="/terminal") if hasattr(sio, "disconnect_room") else None
     elif kind == "terminal":
         await sio.emit("terminal.status", payload, room=room, namespace="/monitor")
@@ -169,9 +170,10 @@ class TerminalNamespace(socketio.AsyncNamespace):
         key = key or environ.get("HTTP_X_TERMINAL_KEY")
         async with session_factory() as db:
             service = OnsiteService(db)
-            terminal = await service.authenticate(key)
+            terminal, reason = await service.check_key(key)
             if terminal is None:
-                raise socketio.exceptions.ConnectionRefusedError("unauthorized terminal")
+                # 단말 화면이 「사용 중지」와 「행사 끝나 닫힘」을 구분해 안내하도록 이유를 붙인다(키 자체는 안 돌려준다).
+                raise socketio.exceptions.ConnectionRefusedError(f"unauthorized terminal: {reason}")
             await service.heartbeat(terminal)
             blocklist = await service.blocklist(terminal.event_id)
             info = {"terminal_id": str(terminal.id), "event_id": str(terminal.event_id), "gate": terminal.gate, "name": terminal.name, "kind": terminal.kind}

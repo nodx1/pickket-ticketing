@@ -86,8 +86,13 @@ class Settings(BaseSettings):
     REFRESH_COOKIE_DOMAIN: str = ""
 
     # Check-in security
-    CHECKIN_QR_MAX_AGE_SECONDS: int = 5
-    CHECKIN_REPLAY_TTL_SECONDS: int = 30
+    # 피켓 티켓 QR(서명+만든 시각)을 입구·체크인에서 인정하는 시간. 현장 단말(onsite)과 스태프 체크인이
+    # 같은 값을 쓴다. 예전엔 5초였고, 그 값에 맞춰 팬 화면이 1초마다 QR 을 새로 받아 왔다(2026-11-27 변경).
+    CHECKIN_QR_MAX_AGE_SECONDS: int = 60
+    # 같은 QR 화면을 다시 쓰는 것(캡처 공유)을 막는 기록 보관 시간 — 위 인정 시간 이상이어야 한다.
+    CHECKIN_REPLAY_TTL_SECONDS: int = 120
+    # 팬 「내 티켓」 화면이 새 QR 을 받아 오는 주기. 인정 시간보다 짧아야 화면의 QR 이 늘 유효하다.
+    TICKET_QR_REFRESH_SECONDS: int = 30
     CHECKIN_REQUIRE_QR: bool = True
 
     # Engine
@@ -535,6 +540,8 @@ class Settings(BaseSettings):
             raise ValueError("CHECKIN_QR_MAX_AGE_SECONDS must be positive")
         if self.CHECKIN_REPLAY_TTL_SECONDS < self.CHECKIN_QR_MAX_AGE_SECONDS:
             raise ValueError("CHECKIN_REPLAY_TTL_SECONDS must be >= CHECKIN_QR_MAX_AGE_SECONDS")
+        if not 0 < self.TICKET_QR_REFRESH_SECONDS < self.CHECKIN_QR_MAX_AGE_SECONDS:
+            raise ValueError("TICKET_QR_REFRESH_SECONDS must be > 0 and < CHECKIN_QR_MAX_AGE_SECONDS")
 
         if self.ENVIRONMENT == "production":
             if not self.SECRET_KEY or len(self.SECRET_KEY) < 32:

@@ -217,6 +217,8 @@ export interface MaskedEntry {
 
 export interface OnsiteOverview {
   event_id: string;
+  /** 직원 입장 링크를 지금 만들 수 있는지(관리자 승인 뒤 ~ 행사 끝 + 12시간)와 닫히는 시각. */
+  entry_link?: { open: boolean; reason: string | null; closes_at: string | null };
   totals: { tickets: number; admitted_tickets: number; by_result: Record<string, number> };
   by_gate: Record<string, { admitted: number; reentry_ok: number; rejected: number }>;
   terminals: Array<{

@@ -6,7 +6,8 @@
  *
  *  - 실시간: v2 Socket.IO `/monitor` 로 판정·부정 경보·단말 상태를 받는다(연결 상태 표시)
  *  - 집계: TimescaleDB 1분 집계(분당 입장 차트) + 게이트별 현황
- *  - 단말: 등록·키 발급·일시중지·폐기, 게이트·입장 가능 등급(입장 권한)
+ *  - 직원 입장 링크: 승인된 이벤트에서 링크를 만들면 직원 휴대폰이 바로 카메라 입장 단말이 된다
+ *  - 단말: 등록·키(입장 링크) 발급·새 링크·일시중지·폐기, 게이트·입장 가능 등급(입장 권한)
  *  - 차단: 티켓 차단/해제, 제재 계정 티켓 자동 포함 → 모든 단말에 즉시 동기화
  *  - 모니터링: 같은 기기 다중 계정·매크로 탐지 목록과 제재 해제
  */
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 import type { OnsiteOverview, SanctionMonitor, TimeseriesView } from "@/lib/v2/gwasup-client";
 
 import { BlockPanel, SanctionPanel } from "./_components/guard-panel";
+import { StaffLinkPanel } from "./_components/staff-link-panel";
 import { TerminalPanel } from "./_components/terminal-panel";
 import { type LiveDecision, useOnsiteLive } from "./_components/use-onsite-live";
 
@@ -119,7 +121,7 @@ export default function OnsitePage() {
       <PageHeader
         eyebrow="현장"
         title="현장 입장 관리"
-        description="키오스크·POS·게이트 스캐너의 입장 판정이 실시간으로 모입니다. 캡처 화면 재사용, 같은 티켓의 다른 게이트 중복 사용, 차단·제재 티켓은 자동으로 막고 모든 단말에 알립니다."
+        description="직원 휴대폰·키오스크·POS·게이트 스캐너의 입장 판정이 실시간으로 모입니다. 캡처 화면 재사용, 같은 티켓의 다른 게이트 중복 사용, 차단·제재 티켓은 자동으로 막고 모든 단말에 알립니다."
         actions={
           <>
             <Pill tone={live === "live" ? "success" : live === "connecting" ? "default" : "danger"}>
@@ -132,6 +134,8 @@ export default function OnsitePage() {
           </>
         }
       />
+
+      {overview ? <StaffLinkPanel eventId={eventId} overview={overview} onChanged={() => void load()} /> : null}
 
       {alerts.length ? (
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4" role="alert">

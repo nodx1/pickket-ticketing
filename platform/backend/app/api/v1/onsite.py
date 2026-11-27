@@ -36,16 +36,17 @@ from app.models.onsite import OnsiteTerminal
 from app.realtime.gateway import issue_monitor_token
 from app.services import integration_ledger
 from app.services.direct_settlement import DirectSettlementError, DirectSettlementService
-from app.services.onsite_service import OnsiteError, OnsiteService
+from app.services.onsite_service import TERMINAL_CLOSED_MESSAGE, OnsiteError, OnsiteService
 
 terminal_router = APIRouter()
 internal_router = APIRouter()
 
 
 async def _terminal(db: AsyncSession, key: str | None) -> OnsiteTerminal:
-    terminal = await OnsiteService(db).authenticate(key)
+    terminal, reason = await OnsiteService(db).check_key(key)
     if terminal is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="등록되지 않았거나 사용이 중지된 단말입니다")
+        detail = TERMINAL_CLOSED_MESSAGE if reason == "event_closed" else "등록되지 않았거나 사용이 중지된 단말입니다"
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
     return terminal
 
 
@@ -120,6 +121,18 @@ async def register_terminal(event_id: uuid.UUID, request: Request, db: AsyncSess
     #    (실측 2026-11-18). 아래 내부 쓰기 경로 모두 같다.
     await db.commit()
     return {"id": str(terminal.id), "key": key, "key_prefix": terminal.key_prefix, "notice": "이 키는 다시 볼 수 없습니다. 단말에 바로 입력해 주세요."}
+
+
+@internal_router.post("/events/{event_id}/terminals/{terminal_id}/key")
+async def reissue_terminal_key(event_id: uuid.UUID, terminal_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db)):
+    """단말 키 새로 발급(= 직원 입장 링크 새로 만들기). 예전 키·링크는 바로 끊긴다."""
+    body = await _verified_json(request)
+    try:
+        terminal, key = await OnsiteService(db).reissue_key(terminal_id, event_id=event_id, actor=str(body.get("actor") or "") or None)
+    except (OnsiteError, ValueError) as exc:
+        raise _bad_request(exc) from exc
+    await db.commit()
+    return {"id": str(terminal.id), "key": key, "key_prefix": terminal.key_prefix, "notice": "예전 링크는 더 이상 동작하지 않습니다."}
 
 
 @internal_router.patch("/events/{event_id}/terminals/{terminal_id}")

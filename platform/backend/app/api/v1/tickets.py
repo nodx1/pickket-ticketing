@@ -212,6 +212,7 @@ async def get_ticket_qr(
             ticket_id=ticket.id,
             qr_data=qr_data,
             expires_in_seconds=TOTPQRService.INTERVAL,
+            refresh_in_seconds=TOTPQRService.INTERVAL,
         )
 
     # AUDIT §25 P0: QR 도메인 전용 시크릿 (SECRET_KEY 공유 제거)
@@ -222,6 +223,7 @@ async def get_ticket_qr(
         ticket_id=ticket.id,
         qr_data=qr_data,
         expires_in_seconds=expires_in,
+        refresh_in_seconds=settings.TICKET_QR_REFRESH_SECONDS,
     )
 
 

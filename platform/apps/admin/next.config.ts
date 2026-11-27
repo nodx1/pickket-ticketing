@@ -10,12 +10,21 @@ const extraImageHosts = (process.env.NEXT_PUBLIC_IMAGE_HOSTS || "")
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8021";
 
+// 「/uploads/…」 이미지가 실제로 있는 곳.
+// 로컬 개발에서는 피켓고(UPLOAD_PROVIDER=local)가 이벤트 대표 이미지를 자기 public/uploads 에 두고
+// 「/uploads/…」 상대 주소로 저장한다. 백엔드는 /uploads 를 제공하지 않아서 관리자 화면 이미지가 깨졌다.
+// 그래서 개발 서버에서만 피켓고로 넘긴다. 배포 동작(API 서버로 넘김)은 그대로다.
+const UPLOADS_ORIGIN =
+  process.env.NODE_ENV !== "production"
+    ? (process.env.NEXT_PUBLIC_GO_URL || "http://localhost:3033").replace(/\/$/, "")
+    : API_URL;
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   output: "standalone",
   transpilePackages: ["@pickket/ui", "@pickket/lib", "@pickket/store"],
   rewrites: async () => [
-    { source: "/uploads/:path*", destination: `${API_URL}/uploads/:path*` },
+    { source: "/uploads/:path*", destination: `${UPLOADS_ORIGIN}/uploads/:path*` },
   ],
   images: {
     formats: ["image/avif", "image/webp"],

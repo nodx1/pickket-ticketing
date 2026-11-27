@@ -111,7 +111,9 @@ function SkeletonNotifications() {
 }
 
 export default function NotificationsPage() {
-  const t = useTranslations();
+  // 알림 화면 문구는 messages 의 `notifications.notifications.*` 에 있다(같은 이름의 `notifications.settings`
+  // 와 나란히). 루트에서 `notifications.title` 을 찾으면 없어서 MISSING_MESSAGE 가 났다.
+  const t = useTranslations("notifications");
   const { user } = useAuthStore();
   const ready = useAuthReady();
   const router = useRouter();

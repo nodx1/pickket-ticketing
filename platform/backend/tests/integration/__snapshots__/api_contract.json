@@ -2252,6 +2252,17 @@
           "title": "Qr Data",
           "type": "string"
         },
+        "refresh_in_seconds": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Refresh In Seconds"
+        },
         "ticket_id": {
           "format": "uuid",
           "title": "Ticket Id",
@@ -2890,6 +2901,17 @@
           "title": "Is Organizer",
           "type": "boolean"
         },
+        "membership_of": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Membership Of"
+        },
         "name": {
           "anyOf": [
             {
@@ -2911,6 +2933,17 @@
             }
           ],
           "title": "Organizer Ref"
+        },
+        "organizer_role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Organizer Role"
         },
         "phone": {
           "anyOf": [
