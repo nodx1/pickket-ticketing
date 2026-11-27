@@ -94,3 +94,36 @@ describe("nicepay-methods — isNiceCardOnly (카드 고정 판정)", () => {
     expect(isNiceCardOnly(["CARD", "VBANK"])).toBe(true);
   });
 });
+
+describe("nicepay-methods — 상점 계약에 열린 수단만 노출(NEXT_PUBLIC_NICE_PAY_METHODS)", () => {
+  const KEY = "NEXT_PUBLIC_NICE_PAY_METHODS";
+  const restore = (v: string | undefined) => {
+    if (v === undefined) delete process.env[KEY];
+    else process.env[KEY] = v;
+  };
+
+  it("CARD,BANK 로 설정하면 간편결제·휴대폰은 숨긴다(나이스 W004 방지)", () => {
+    const prev = process.env[KEY];
+    process.env[KEY] = "CARD,BANK";
+    try {
+      expect(getNiceMethods()).toEqual(["CARD", "BANK"]);
+      // 이벤트가 휴대폰만 허용해도 계약에 없으면 카드로 폴백한다.
+      expect(getNiceMethods(["CELLPHONE"])).toEqual(["CARD"]);
+      expect(getNiceMethods(["BANK", "EASYPAY"])).toEqual(["BANK"]);
+    } finally {
+      restore(prev);
+    }
+  });
+
+  it("미설정·빈 값·무효 값이면 현행대로 전체 노출", () => {
+    const prev = process.env[KEY];
+    try {
+      for (const v of [undefined, "", " , ", "HACK"]) {
+        restore(v);
+        expect(getNiceMethods()).toEqual([...NICE_METHOD_ORDER]);
+      }
+    } finally {
+      restore(prev);
+    }
+  });
+});

@@ -79,7 +79,12 @@ export function buildCspHeader(
     // 나이스페이 구형 결제창 SDK(nicepay-pgweb.js) 로드 도메인.
     // js_url = https://pg-web.nicepay.co.kr/v3/common/js/nicepay-pgweb.js (nice.ts / VERIFIED-SPEC §2).
     "https://pg-web.nicepay.co.kr",
-    ...(isDev ? ["'unsafe-eval'"] : []),
+    // 🔴 운영에서도 'unsafe-eval' 이 필요하다. 나이스 SDK(nicepay-pgweb.js)는 결제창 iframe 이 보내는
+    //    postMessage 문자열을 `eval("(" + data + ")")` 로 읽는다(NicePayStd.receiveMessageValue).
+    //    여기에 결제창 높이 조절(code 10)과 인증 완료(code 0 → nicepaySubmit) 메시지가 실려 오므로,
+    //    막히면 결제창이 505px 로 잘리고 인증 뒤 결제가 확정되지 않는다(실측 2026-11-27, 운영 빌드).
+    //    nonce 로 외부 스크립트 삽입은 계속 막힌다. 피켓고(organizer/src/proxy.ts)도 같은 이유로 허용 중.
+    "'unsafe-eval'",
   ].join(" ");
 
   return [

@@ -36,6 +36,21 @@ export const NICE_METHOD_ORDER: readonly NicePayMethod[] = [
   "CELLPHONE",
 ];
 
+/**
+ * 나이스 상점 계약(MID)에서 실제로 열린 결제수단 — `NEXT_PUBLIC_NICE_PAY_METHODS`(쉼표 구분, 예 "CARD,BANK").
+ * 계약에 없는 수단을 고르면 나이스 결제창이 `[W004] 결제수단이 유효하지 않습니다` 로 멈추므로
+ * 아예 노출하지 않는다. 미설정·빈 값·전부 무효면 NICE_METHOD_ORDER 전체(현행 그대로).
+ * 나이스에서 간편결제·휴대폰 결제가 열리면 이 값에 EASYPAY·CELLPHONE 을 더하고 다시 빌드한다.
+ */
+export function platformNiceMethods(): NicePayMethod[] {
+  const raw = process.env.NEXT_PUBLIC_NICE_PAY_METHODS || "";
+  const enabled = new Set(
+    raw.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
+  );
+  const out = NICE_METHOD_ORDER.filter((m) => enabled.has(m));
+  return out.length > 0 ? out : [...NICE_METHOD_ORDER];
+}
+
 /** 각 수단의 i18n 라벨 키(payment.niceMethod.*). */
 export const NICE_METHOD_LABEL_KEYS: Record<NicePayMethod, string> = {
   CARD: "niceMethod.card",
@@ -102,12 +117,13 @@ export function normalizeAllowedNiceMethods(
 export function getNiceMethods(
   allowed?: readonly string[] | null,
 ): NicePayMethod[] {
+  const base = platformNiceMethods();
   const normalized = normalizeAllowedNiceMethods(allowed);
   if (!normalized) {
-    return [...NICE_METHOD_ORDER];
+    return base;
   }
   const allowSet = new Set(normalized);
-  const filtered = NICE_METHOD_ORDER.filter((m) => allowSet.has(m));
+  const filtered = base.filter((m) => allowSet.has(m));
   return filtered.length > 0 ? filtered : [DEFAULT_NICE_METHOD];
 }
 
